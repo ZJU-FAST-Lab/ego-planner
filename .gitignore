@@ -4,3 +4,4 @@ build/
 devel/
 files/
 README.md
+src/CMakeLists.txt
