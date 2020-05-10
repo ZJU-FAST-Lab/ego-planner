@@ -5,7 +5,7 @@
   <arg name="map_size_z" value=" 5.0"/>
 
   <!-- topic of your odometry such as VIO or LIO -->
-  <arg name="odom_topic" value="/state_ukf/odom" />
+  <arg name="odom_topic" value="/visual_slam/odom" />
 
   <!-- main algorithm params -->
   <include file="$(find plan_manage)/launch/rebo_algorithm.xml">
