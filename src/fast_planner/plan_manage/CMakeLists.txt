@@ -55,8 +55,6 @@ include_directories(
 
 add_executable(fast_planner_node
   src/fast_planner_node.cpp 
-  src/kino_replan_fsm.cpp
-  src/topo_replan_fsm.cpp
   src/rebo_replan_fsm.cpp
   src/planner_manager.cpp
   )

@@ -56,10 +56,10 @@ public:
   GlobalTrajData global_data_;
   MidPlanData plan_data_;
   EDTEnvironment::Ptr edt_environment_;
+  SDFMap::Ptr sdf_map_;
 
 private:
   /* main planning algorithms & modules */
-  SDFMap::Ptr sdf_map_;
   PlanningVisualization::Ptr visualization_;
 
   unique_ptr<Astar> geo_path_finder_;

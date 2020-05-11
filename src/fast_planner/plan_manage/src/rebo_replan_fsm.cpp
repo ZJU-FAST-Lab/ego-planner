@@ -118,44 +118,6 @@ void ReboReplanFSM::waypointCallback(const nav_msgs::PathConstPtr& msg) {
   
 }
 
-Eigen::Vector3d ReboReplanFSM::estimateAcc(const nav_msgs::OdometryConstPtr& msg)
-{
-  static Eigen::Vector3d last_vel, last_acc, last_last_acc;
-  static ros::Time last_time;
-  static bool first_call = true;
-  if ( first_call )
-  {
-    first_call = false;
-    last_time = msg->header.stamp;
-    last_vel << msg->twist.twist.linear.x, msg->twist.twist.linear.y, msg->twist.twist.linear.z;
-
-    odom_acc_.setZero();
-    last_last_acc.setZero();
-  }
-  else
-  {
-    ros::Time time = msg->header.stamp;
-    Eigen::Vector3d vel(msg->twist.twist.linear.x, msg->twist.twist.linear.y, msg->twist.twist.linear.z);
-    Eigen::Vector3d acc = (vel - last_vel) / (time-last_time).toSec();
-
-    odom_acc_ = 0.5*(2*last_acc-last_last_acc) + 0.5*acc;
-
-    last_vel = vel;
-    last_time = time;
-    last_last_acc = last_acc;
-    last_acc = odom_acc_;
-  }
-  
-  // plan_manage::DataDisp data_disp;
-  // data_disp.header.stamp = ros::Time::now();
-  // data_disp.a = odom_acc_(0);
-  // data_disp.b = odom_acc_(1);
-  // data_disp.c = odom_acc_(2);
-
-  // data_disp_pub_.publish(data_disp);
-  //data_disp.
-}
-
 void ReboReplanFSM::odometryCallback(const nav_msgs::OdometryConstPtr& msg) {
   odom_pos_(0) = msg->pose.pose.position.x;
   odom_pos_(1) = msg->pose.pose.position.y;
@@ -398,100 +360,6 @@ void ReboReplanFSM::checkCollisionCallback(const ros::TimerEvent& e) {
   }
 }
 
-bool ReboReplanFSM::checkCollision() {
-  LocalTrajData* info = &planner_manager_->local_data_;
-
-
-  auto map = planner_manager_->edt_environment_->sdf_map_;
-  /* ---------- check trajectory ---------- */
-    
-  constexpr double time_step = 0.01;
-  double t_cur = ( ros::Time::now() - info->start_time_ ).toSec();
-  for ( double t=t_cur; t<info->duration_; t+=time_step )
-  {
-    bool occ = map->getInflateOccupancy( info->position_traj_.evaluateDeBoorT(t) );
-    cout << occ << " " ;
-    if ( occ )
-    {
-      if ( t-t_cur < 0.5 ) // 0.5s of emergency time
-      {
-        ROS_ERROR("Got no time to avoid obstacles. emergency stop!");
-        changeFSMExecState(EMERGENCY_STOP, "SAFETY");
-        return true;
-      }
-      else
-      {
-        ROS_WARN("current traj in collision, replan.");
-        changeFSMExecState(REPLAN_TRAJ, "SAFETY");
-        return true;
-      }
-    } 
-  }
-  cout << endl;
-  
-  return false;
-}
-
-bool ReboReplanFSM::callSlidingWindow() {
-
-
-  LocalTrajData* info     = &planner_manager_->local_data_;
-  ros::Time      time_now = ros::Time::now();
-  double         t_cur    = (time_now - info->start_time_).toSec();
-
-  start_pt_  = info->position_traj_.evaluateDeBoorT(t_cur);
-  start_vel_ = info->velocity_traj_.evaluateDeBoorT(t_cur);
-  start_acc_ = info->acceleration_traj_.evaluateDeBoorT(t_cur);
-
-  start_yaw_(0) = info->yaw_traj_.evaluateDeBoorT(t_cur)[0];
-  start_yaw_(1) = info->yawdot_traj_.evaluateDeBoorT(t_cur)[0];
-  start_yaw_(2) = info->yawdotdot_traj_.evaluateDeBoorT(t_cur)[0];
-
-  if ( ( end_pt_ - start_pt_ ).norm() < planning_horizen_ )
-    return true;
-
-  getLocalTargetT();
-
-  planner_manager_->slidingWindow(local_target_pt_, local_target_vel_);
-
-  plan_manage::Bspline bspline;
-  bspline.order      = 3;
-  bspline.start_time = info->start_time_;
-  bspline.traj_id    = info->traj_id_;
-
-  Eigen::MatrixXd pos_pts = info->position_traj_.getControlPoint();
-
-  for (int i = 0; i < pos_pts.rows(); ++i) {
-    geometry_msgs::Point pt;
-    pt.x = pos_pts(i, 0);
-    pt.y = pos_pts(i, 1);
-    pt.z = pos_pts(i, 2);
-    bspline.pos_pts.push_back(pt);
-  }
-
-  Eigen::VectorXd knots = info->position_traj_.getKnot();
-  for (int i = 0; i < knots.rows(); ++i) {
-    bspline.knots.push_back(knots(i));
-  }
-
-  planner_manager_->planYaw(start_yaw_);
-
-  Eigen::MatrixXd yaw_pts = info->yaw_traj_.getControlPoint();
-  for (int i = 0; i < yaw_pts.rows(); ++i) {
-    double yaw = yaw_pts(i, 0);
-    bspline.yaw_pts.push_back(yaw);
-  }
-  bspline.yaw_dt = info->yaw_traj_.getInterval();
-
-  bspline_pub_.publish(bspline);
-
-  /* visulization */
-  auto plan_data = &planner_manager_->plan_data_;
-  //visualization_->drawGeometricPath(plan_data->kino_path_, 0.075, Eigen::Vector4d(1, 1, 0, 0.4));
-  visualization_->drawBspline(info->position_traj_, 0.1, Eigen::Vector4d(1.0, 0, 0.0, 1), false, 0.2,
-                              Eigen::Vector4d(1, 0, 0, 1));
-}
-
 bool ReboReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj) {
   
   getLocalTarget();
@@ -612,57 +480,6 @@ bool ReboReplanFSM::callEmergencyStop( Eigen::Vector3d stop_pos ) {
   return true;
 }
 
-void ReboReplanFSM::getLocalTargetT()
-{
-  auto gl_info = &planner_manager_->global_data_;
-
-  if ( (gl_info->global_duration_ - (ros::Time::now() - gl_info->global_start_time_).toSec()) < planning_horizen_time_ )
-  {
-    local_target_pt_ = end_pt_;
-    local_target_vel_ = gl_info->global_traj_.evaluateVel(gl_info->global_duration_);
-  }
-  else
-  {
-    double t = (ros::Time::now() - gl_info->global_start_time_).toSec() + planning_horizen_time_;
-    local_target_pt_ = gl_info->global_traj_.evaluate(t);
-    local_target_vel_ = gl_info->global_traj_.evaluateVel(t);
-  }
-}
-
-void ReboReplanFSM::getLocalTargetSphere()
-{
-  if ( ( end_pt_ - start_pt_ ).norm() < planning_horizen_ )
-  {
-    local_target_pt_ = end_pt_;
-  }
-  else
-  {
-    //local_target_pt_ = start_pt_ + (end_pt_ - start_pt_).normalized() * planning_horizen_;
-
-    Eigen::Vector3d M = init_pt_, N = end_pt_ - init_pt_; // line: X = M + N*t
-    Eigen::Vector3d X0 = start_pt_; double h = planning_horizen_; // sphere: (X-X0)'*(X-X0)=h
-    double a = N.squaredNorm();
-    double b = 2*(M-X0).dot(N);
-    double c = (M-X0).squaredNorm() - h*h;
-    // cout << "M=" << M.transpose() << " N=" << N.transpose() << " X0=" << X0.transpose() << " h=" << h << endl;
-    // cout << "a=" << a << " b=" << b << " c=" << c << endl;
-    if ( b*b-4*a*c > 0 )
-    {
-      double t = (-b + sqrt( b*b-4*a*c )) / (2*a);
-      local_target_pt_ = M + N*t;
-    }
-    else
-    {
-      ROS_WARN("the drone goes too far to the stright line.");
-      double t = -b/(2*a);
-      local_target_pt_ = M + N*t;
-      //local_target_pt_ = start_pt_ + (end_pt_ - start_pt_).normalized() * planning_horizen_;
-    }
-    
-  }
-  local_target_vel_ = (end_pt_ - init_pt_).normalized() * planner_manager_->pp_.max_vel_; // 3m/s
-}
-
 void ReboReplanFSM::getLocalTarget()
 {
   if ( ( end_pt_ - start_pt_ ).norm() < planning_horizen_ )
@@ -705,5 +522,4 @@ void ReboReplanFSM::getLocalTarget()
   
 }
 
-// KinoReplanFSM::
 }  // namespace fast_planner

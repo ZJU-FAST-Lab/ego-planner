@@ -37,9 +37,6 @@
     <remap from = "/sdf_map/pose"   to = "$(arg camera_pose_topic)"/> 
     <remap from = "/sdf_map/depth" to = "$(arg depth_topic)"/>
 
-    <!-- replanning method -->
-    <param name="planner_node/planner" value="3" type="int"/>
-
     <!-- planning fsm -->
     <param name="fsm/flight_type" value="$(arg flight_type)" type="int"/>
     <param name="fsm/thresh_replan" value="0.5" type="double"/>
