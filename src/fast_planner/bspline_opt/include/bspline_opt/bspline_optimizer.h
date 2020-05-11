@@ -2,9 +2,9 @@
 #define _BSPLINE_OPTIMIZER_H_
 
 #include <Eigen/Eigen>
-#include <plan_env/edt_environment.h>
 #include <path_searching/dyn_a_star.h>
 #include <bspline/non_uniform_bspline.h>
+#include <plan_env/sdf_map.h>
 #include <ros/ros.h>
 
 // Gradient and elasitc band optimization
@@ -30,7 +30,7 @@ public:
   ~BsplineOptimizer() {}
 
   /* main API */
-  void            setEnvironment(const EDTEnvironment::Ptr& env);
+  void            setEnvironment(const SDFMap::Ptr& env);
   void            setParam(ros::NodeHandle& nh);
   Eigen::MatrixXd BsplineOptimizeTraj(const Eigen::MatrixXd& points, const double& ts,
                                       const int& cost_function, int max_num_id, int max_time_id);
@@ -51,10 +51,9 @@ public:
   void optimize();
 
   Eigen::MatrixXd         getControlPoints();
-  vector<Eigen::Vector3d> matrixToVectors(const Eigen::MatrixXd& ctrl_pts);
 
 private:
-  EDTEnvironment::Ptr edt_environment_;
+  SDFMap::Ptr sdf_map_;
 
   // main input
   Eigen::MatrixXd control_points_;     // B-spline control points, N x dim
@@ -121,8 +120,6 @@ private:
   // q contains all control points
   void calcSmoothnessCost(const vector<Eigen::Vector3d>& q, double& cost,
                           vector<Eigen::Vector3d>& gradient, bool falg_use_jerk = true);
-  void calcDistanceCost(const vector<Eigen::Vector3d>& q, double& cost,
-                        vector<Eigen::Vector3d>& gradient);
   void calcFeasibilityCost(const vector<Eigen::Vector3d>& q, double& cost,
                            vector<Eigen::Vector3d>& gradient);
   void calcEndpointCost(const vector<Eigen::Vector3d>& q, double& cost,

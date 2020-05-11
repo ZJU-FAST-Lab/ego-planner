@@ -5,7 +5,6 @@
 #include <algorithm>
 #include <bspline/non_uniform_bspline.h>
 #include <iostream>
-#include <path_searching/topo_prm.h>
 #include <plan_env/obj_predictor.h>
 #include <poly_traj/polynomial_traj.h>
 #include <ros/ros.h>
@@ -81,11 +80,6 @@ public:
   // draw a set of bspline trajectories generated in different phases
   void drawBsplinesPhase1(vector<NonUniformBspline>& bsplines, double size);
   void drawBsplinesPhase2(vector<NonUniformBspline>& bsplines, double size);
-
-  // draw topological graph and paths
-  void drawTopoGraph(list<GraphNode::Ptr>& graph, double point_size, double line_width,
-                     const Eigen::Vector4d& color1, const Eigen::Vector4d& color2,
-                     const Eigen::Vector4d& color3, int id = 0);
 
   void drawTopoPathsPhase1(vector<vector<Eigen::Vector3d>>& paths, double line_width);
   void drawTopoPathsPhase2(vector<vector<Eigen::Vector3d>>& paths, double line_width);

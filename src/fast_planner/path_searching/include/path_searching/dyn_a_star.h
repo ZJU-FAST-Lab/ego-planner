@@ -5,8 +5,8 @@
 #include <ros/ros.h>
 #include <ros/console.h>
 #include <Eigen/Eigen>
+#include <plan_env/sdf_map.h>
 #include <queue>
-#include "plan_env/edt_environment.h"
 
 constexpr double inf = 1>>20;
 struct GridNode;
@@ -34,7 +34,7 @@ public:
 class AStar
 {
 	private:
-  		fast_planner::EDTEnvironment::Ptr edt_environment_;
+  		SDFMap::Ptr sdf_map_;
 
 		inline void coord2gridIndexFast(const double x, const double y, const double z, int & id_x, int & id_y, int & id_z);
 		
@@ -50,7 +50,7 @@ class AStar
 
 		//bool (*checkOccupancyPtr)( const Eigen::Vector3d &pos );
 
-		inline bool checkOccupancy( const Eigen::Vector3d &pos ) { return (bool)edt_environment_->sdf_map_->getInflateOccupancy(pos); }
+		inline bool checkOccupancy( const Eigen::Vector3d &pos ) { return (bool)sdf_map_->getInflateOccupancy(pos); }
 
 		std::vector<GridNodePtr> retrievePath(GridNodePtr current);
 
@@ -72,7 +72,7 @@ class AStar
 		AStar(){};
 		~AStar();
 
-		void initGridMap( fast_planner::EDTEnvironment::Ptr edt_environment, const Eigen::Vector3i pool_size );
+		void initGridMap( SDFMap::Ptr occ_map, const Eigen::Vector3i pool_size );
 
 		bool AstarSearch( const double step_size, Eigen::Vector3d start_pt, Eigen::Vector3d end_pt);
 

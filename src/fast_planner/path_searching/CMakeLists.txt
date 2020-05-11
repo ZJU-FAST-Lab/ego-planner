@@ -32,10 +32,7 @@ include_directories(
 set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS} -O3 -Wall")
 
 add_library( path_searching 
-    src/kinodynamic_astar.cpp 
-    src/astar.cpp
     src/dyn_a_star.cpp
-    src/topo_prm.cpp
     )
 target_link_libraries( path_searching
     ${catkin_LIBRARIES} 

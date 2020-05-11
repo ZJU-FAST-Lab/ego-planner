@@ -121,12 +121,12 @@ void bsplineCallback(plan_manage::BsplineConstPtr msg) {
 
   // parse yaw traj
 
-  Eigen::MatrixXd yaw_pts(msg->yaw_pts.size(), 1);
-  for (int i = 0; i < msg->yaw_pts.size(); ++i) {
-    yaw_pts(i, 0) = msg->yaw_pts[i];
-  }
+  // Eigen::MatrixXd yaw_pts(msg->yaw_pts.size(), 1);
+  // for (int i = 0; i < msg->yaw_pts.size(); ++i) {
+  //   yaw_pts(i, 0) = msg->yaw_pts[i];
+  // }
 
-  NonUniformBspline yaw_traj(yaw_pts, msg->order, msg->yaw_dt);
+  //NonUniformBspline yaw_traj(yaw_pts, msg->order, msg->yaw_dt);
 
   start_time_ = msg->start_time;
   traj_id_ = msg->traj_id;
@@ -135,8 +135,8 @@ void bsplineCallback(plan_manage::BsplineConstPtr msg) {
   traj_.push_back(pos_traj);
   traj_.push_back(traj_[0].getDerivative());
   traj_.push_back(traj_[1].getDerivative());
-  traj_.push_back(yaw_traj);
-  traj_.push_back(yaw_traj.getDerivative());
+  // traj_.push_back(yaw_traj);
+  // traj_.push_back(yaw_traj.getDerivative());
 
   traj_duration_ = traj_[0].getTimeSum();
 
@@ -185,12 +185,80 @@ void cmdCallback(const ros::TimerEvent& e) {
   Eigen::Vector3d pos, vel, acc, pos_f;
   double yaw, yawdot;
 
+  static double last_yaw = 0;
+  static ros::Time time_last = ros::Time::now();
+  constexpr double PI = 3.1415926;
+  constexpr double YAW_DOT_MAX_PER_SEC = PI;
   if (t_cur < traj_duration_ && t_cur >= 0.0) {
     pos = traj_[0].evaluateDeBoorT(t_cur);
     vel = traj_[1].evaluateDeBoorT(t_cur);
     acc = traj_[2].evaluateDeBoorT(t_cur);
-    yaw = traj_[3].evaluateDeBoorT(t_cur)[0];
-    yawdot = traj_[4].evaluateDeBoorT(t_cur)[0];
+    // yaw = traj_[3].evaluateDeBoorT(t_cur)[0];
+    // yawdot = traj_[4].evaluateDeBoorT(t_cur)[0];
+
+    Eigen::Vector3d dir = t_cur + 1.0 <= traj_duration_ ? traj_[0].evaluateDeBoorT(t_cur+1.0) - pos : traj_[0].evaluateDeBoorT(traj_duration_) - pos;
+    double yaw_temp = dir.norm() > 0.1 ? atan2( dir(1), dir(0) ) : last_yaw;
+    double max_yaw_change = YAW_DOT_MAX_PER_SEC*(time_now-time_last).toSec();
+    if ( yaw_temp - last_yaw > PI )
+    {
+      if ( yaw_temp - last_yaw - 2*PI < -max_yaw_change )
+      {
+        yaw = last_yaw - max_yaw_change;
+        if ( yaw < -PI ) 
+          yaw += 2*PI;
+        
+        yawdot = -YAW_DOT_MAX_PER_SEC;
+      }
+      else
+      {
+        yaw = yaw_temp;
+        yawdot = (yaw_temp - last_yaw) / (time_now-time_last).toSec();
+      }
+      
+    }
+    else if ( yaw_temp - last_yaw < -PI )
+    {
+      if ( yaw_temp - last_yaw + 2*PI > max_yaw_change )
+      {
+        yaw = last_yaw + max_yaw_change;
+        if ( yaw > PI ) 
+          yaw -= 2*PI;
+        
+        yawdot = YAW_DOT_MAX_PER_SEC;
+      }
+      else
+      {
+        yaw = yaw_temp;
+        yawdot = (yaw_temp - last_yaw) / (time_now-time_last).toSec();
+      }
+      
+    }
+    else 
+    {
+      if ( yaw_temp - last_yaw < -max_yaw_change )
+      {
+        yaw = last_yaw - max_yaw_change;
+        if ( yaw < -PI ) 
+          yaw += 2*PI;
+        
+        yawdot = -YAW_DOT_MAX_PER_SEC;
+      }
+      else if ( yaw_temp - last_yaw > max_yaw_change )
+      {
+        yaw = last_yaw + max_yaw_change;
+        if ( yaw > PI ) 
+          yaw -= 2*PI;
+        
+        yawdot = YAW_DOT_MAX_PER_SEC;
+      }
+      else
+      {
+        yaw = yaw_temp;
+        yawdot = (yaw_temp - last_yaw) / (time_now-time_last).toSec();
+      }
+    }
+
+    last_yaw = yaw;
 
     double tf = min(traj_duration_, t_cur + 2.0);
     pos_f = traj_[0].evaluateDeBoorT(tf);
@@ -200,14 +268,18 @@ void cmdCallback(const ros::TimerEvent& e) {
     pos = traj_[0].evaluateDeBoorT(traj_duration_);
     vel.setZero();
     acc.setZero();
-    yaw = traj_[3].evaluateDeBoorT(traj_duration_)[0];
-    yawdot = traj_[4].evaluateDeBoorT(traj_duration_)[0];
+    // yaw = traj_[3].evaluateDeBoorT(traj_duration_)[0];
+    // yawdot = traj_[4].evaluateDeBoorT(traj_duration_)[0];
+
+    yaw = last_yaw;
+    yawdot = 0;
 
     pos_f = pos;
 
   } else {
     cout << "[Traj server]: invalid time." << endl;
   }
+  time_last = time_now;
 
   cmd.header.stamp = time_now;
   cmd.header.frame_id = "world";

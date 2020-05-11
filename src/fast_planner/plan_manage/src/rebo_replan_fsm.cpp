@@ -198,9 +198,9 @@ void ReboReplanFSM::execFSMCallback(const ros::TimerEvent& e) {
       start_vel_ = odom_vel_;
       start_acc_.setZero();
 
-      Eigen::Vector3d rot_x = odom_orient_.toRotationMatrix().block(0, 0, 3, 1);
-      start_yaw_(0)         = atan2(rot_x(1), rot_x(0));
-      start_yaw_(1) = start_yaw_(2) = 0.0;
+      // Eigen::Vector3d rot_x = odom_orient_.toRotationMatrix().block(0, 0, 3, 1);
+      // start_yaw_(0)         = atan2(rot_x(1), rot_x(0));
+      // start_yaw_(1) = start_yaw_(2) = 0.0;
 
       bool flag_random_poly_init;
       if ( timesOfConsecutiveStateCalls().first == 1 ) 
@@ -259,9 +259,9 @@ void ReboReplanFSM::execFSMCallback(const ros::TimerEvent& e) {
       start_vel_ = info->velocity_traj_.evaluateDeBoorT(t_cur);
       start_acc_ = info->acceleration_traj_.evaluateDeBoorT(t_cur);
 
-      start_yaw_(0) = info->yaw_traj_.evaluateDeBoorT(t_cur)[0];
-      start_yaw_(1) = info->yawdot_traj_.evaluateDeBoorT(t_cur)[0];
-      start_yaw_(2) = info->yawdotdot_traj_.evaluateDeBoorT(t_cur)[0];
+      // start_yaw_(0) = info->yaw_traj_.evaluateDeBoorT(t_cur)[0];
+      // start_yaw_(1) = info->yawdot_traj_.evaluateDeBoorT(t_cur)[0];
+      // start_yaw_(2) = info->yawdotdot_traj_.evaluateDeBoorT(t_cur)[0];
 
       // std_msgs::Empty replan_msg;
       // replan_pub_.publish(replan_msg);
@@ -321,7 +321,7 @@ void ReboReplanFSM::execFSMCallback(const ros::TimerEvent& e) {
 
 void ReboReplanFSM::checkCollisionCallback(const ros::TimerEvent& e) {
   LocalTrajData* info = &planner_manager_->local_data_;
-  auto map = planner_manager_->edt_environment_->sdf_map_;
+  auto map = planner_manager_->sdf_map_;
 
   if ( exec_state_ == WAIT_TARGET )
     return;
@@ -378,7 +378,7 @@ bool ReboReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomP
 
   if (plan_success) {
 
-    planner_manager_->planYaw(start_yaw_);
+    //planner_manager_->planYaw(start_yaw_);
 
     auto info = &planner_manager_->local_data_;
 
@@ -403,12 +403,12 @@ bool ReboReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomP
       bspline.knots.push_back(knots(i));
     }
 
-    Eigen::MatrixXd yaw_pts = info->yaw_traj_.getControlPoint();
-    for (int i = 0; i < yaw_pts.rows(); ++i) {
-      double yaw = yaw_pts(i, 0);
-      bspline.yaw_pts.push_back(yaw);
-    }
-    bspline.yaw_dt = info->yaw_traj_.getInterval();
+    // Eigen::MatrixXd yaw_pts = info->yaw_traj_.getControlPoint();
+    // for (int i = 0; i < yaw_pts.rows(); ++i) {
+    //   double yaw = yaw_pts(i, 0);
+    //   bspline.yaw_pts.push_back(yaw);
+    // }
+    // bspline.yaw_dt = info->yaw_traj_.getInterval();
 
     bspline_pub_.publish(bspline);
 

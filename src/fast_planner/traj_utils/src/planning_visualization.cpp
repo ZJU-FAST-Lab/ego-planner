@@ -211,41 +211,6 @@ void PlanningVisualization::drawBspline(NonUniformBspline& bspline, double size,
   displaySphereList(ctp, size2, color2, BSPLINE_CTRL_PT + id2 % 100);
 }
 
-void PlanningVisualization::drawTopoGraph(list<GraphNode::Ptr>& graph, double point_size,
-                                          double line_width, const Eigen::Vector4d& color1,
-                                          const Eigen::Vector4d& color2, const Eigen::Vector4d& color3,
-                                          int id) {
-  // clear exsiting node and edge (drawn last time)
-  vector<Eigen::Vector3d> empty;
-  displaySphereList(empty, point_size, color1, GRAPH_NODE, 1);
-  displaySphereList(empty, point_size, color1, GRAPH_NODE + 50, 1);
-  displayLineList(empty, empty, line_width, color3, GRAPH_EDGE, 1);
-
-  /* draw graph node */
-  vector<Eigen::Vector3d> guards, connectors;
-  for (list<GraphNode::Ptr>::iterator iter = graph.begin(); iter != graph.end(); ++iter) {
-
-    if ((*iter)->type_ == GraphNode::Guard) {
-      guards.push_back((*iter)->pos_);
-    } else if ((*iter)->type_ == GraphNode::Connector) {
-      connectors.push_back((*iter)->pos_);
-    }
-  }
-  displaySphereList(guards, point_size, color1, GRAPH_NODE, 1);
-  displaySphereList(connectors, point_size, color2, GRAPH_NODE + 50, 1);
-
-  /* draw graph edge */
-  vector<Eigen::Vector3d> edge_pt1, edge_pt2;
-  for (list<GraphNode::Ptr>::iterator iter = graph.begin(); iter != graph.end(); ++iter) {
-    for (int k = 0; k < (*iter)->neighbors_.size(); ++k) {
-
-      edge_pt1.push_back((*iter)->pos_);
-      edge_pt2.push_back((*iter)->neighbors_[k]->pos_);
-    }
-  }
-  displayLineList(edge_pt1, edge_pt2, line_width, color3, GRAPH_EDGE, 1);
-}
-
 void PlanningVisualization::drawTopoPathsPhase2(vector<vector<Eigen::Vector3d>>& paths,
                                                 double                           line_width) {
   // clear drawn paths

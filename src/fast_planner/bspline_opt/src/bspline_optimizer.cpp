@@ -47,8 +47,8 @@ void BsplineOptimizer::setParam(ros::NodeHandle& nh) {
   nh.param("optimization/order", order_, -1);
 }
 
-void BsplineOptimizer::setEnvironment(const EDTEnvironment::Ptr& env) {
-  this->edt_environment_ = env;
+void BsplineOptimizer::setEnvironment(const SDFMap::Ptr& env) {
+  this->sdf_map_ = env;
 }
 
 void BsplineOptimizer::setControlPoints(const Eigen::MatrixXd& points) {
@@ -222,83 +222,6 @@ void BsplineOptimizer::calcSmoothnessCost(const vector<Eigen::Vector3d>& q, doub
   
 }
 
-void BsplineOptimizer::calcDistanceCost(const vector<Eigen::Vector3d>& q, double& cost,
-                                        vector<Eigen::Vector3d>& gradient) {
-  cost = 0.0;
-  Eigen::Vector3d zero(0, 0, 0);
-  std::fill(gradient.begin(), gradient.end(), zero);
-
-  double          dist;
-  Eigen::Vector3d dist_grad, g_zero(0, 0, 0);
-
-  int end_idx = (cost_function_ & ENDPOINT) ? q.size() : q.size() - order_;
-
-  for (int i = order_; i < end_idx; i++) {
-    edt_environment_->evaluateEDTWithGrad(q[i], -1.0, dist, dist_grad);
-    if (dist_grad.norm() > 1e-4) dist_grad.normalize();
-
-    if (dist < dist0_) {
-      cost += pow(dist - dist0_, 2);
-      gradient[i] += 2.0 * (dist - dist0_) * dist_grad;
-    }
-  }
-}
-
-// void BsplineOptimizer::calcFeasibilityCost(const vector<Eigen::Vector3d>& q, double& cost,
-//                                            vector<Eigen::Vector3d>& gradient) {
-//   cost = 0.0;
-//   Eigen::Vector3d zero(0, 0, 0);
-//   std::fill(gradient.begin(), gradient.end(), zero);
-
-//   /* abbreviation */
-//   double ts, vm2, am2, ts_inv2, ts_inv4;
-//   vm2 = max_vel_ * max_vel_;
-//   am2 = max_acc_ * max_acc_;
-
-//   ts      = bspline_interval_;
-//   ts_inv2 = 1 / ts / ts;
-//   ts_inv4 = ts_inv2 * ts_inv2;
-
-//   /* velocity feasibility */
-//   for (int i = 0; i < q.size() - 1; i++) {
-//     Eigen::Vector3d vi = q[i + 1] - q[i];
-
-//     //cout << "temp_v * vi=" ;
-//     for (int j = 0; j < 3; j++) {
-//       double vd = vi(j) * vi(j) * ts_inv2 - vm2;
-//       if (vd > 0.0) {
-//         cost += vd;
-
-//         double temp_v = 2.0 * vi(j) * ts_inv2;
-//         gradient[i + 0](j) += -temp_v;
-//         gradient[i + 1](j) += temp_v;
-//       }
-//       //cout << 4.0 * vd * ts_inv2 * vi(j) << " ";
-//     }
-//     //cout << endl;
-//   }
-
-//   /* acceleration feasibility */
-//   for (int i = 0; i < q.size() - 2; i++) {
-//     Eigen::Vector3d ai = q[i + 2] - 2 * q[i + 1] + q[i];
-
-//     //cout << "temp_a * ai=" ;
-//     for (int j = 0; j < 3; j++) {
-//       double ad = ai(j) * ai(j) * ts_inv4 - am2;
-//       if (ad > 0.0) {
-//         cost += ad;
-
-//         double temp_a = 2.0 * ai(j) * ts_inv4;
-//         gradient[i + 0](j) += temp_a;
-//         gradient[i + 1](j) += -2 * temp_a;
-//         gradient[i + 2](j) += temp_a;
-//       }
-//       //cout << 4.0 * ad * ts_inv4 * ai(j) << " ";
-//     }
-//     //cout << endl;
-//   }
-// }
-
 void BsplineOptimizer::calcFeasibilityCost(const vector<Eigen::Vector3d>& q, double& cost,
                                            vector<Eigen::Vector3d>& gradient) {
   cost = 0.0;
@@ -380,26 +303,6 @@ void BsplineOptimizer::calcFeasibilityCost(const vector<Eigen::Vector3d>& q, dou
 
 }
 
-void BsplineOptimizer::calcEndpointCost(const vector<Eigen::Vector3d>& q, double& cost,
-                                        vector<Eigen::Vector3d>& gradient) {
-  cost = 0.0;
-  Eigen::Vector3d zero(0, 0, 0);
-  std::fill(gradient.begin(), gradient.end(), zero);
-
-  // zero cost and gradient in hard constraints
-  Eigen::Vector3d q_3, q_2, q_1, dq;
-  q_3 = q[q.size() - 3];
-  q_2 = q[q.size() - 2];
-  q_1 = q[q.size() - 1];
-
-  dq = 1 / 6.0 * (q_3 + 4 * q_2 + q_1) - end_pt_;
-  cost += dq.squaredNorm();
-
-  gradient[q.size() - 3] += 2 * dq * (1 / 6.0);
-  gradient[q.size() - 2] += 2 * dq * (4 / 6.0);
-  gradient[q.size() - 1] += 2 * dq * (1 / 6.0);
-}
-
 void BsplineOptimizer::calcWaypointsCost(const vector<Eigen::Vector3d>& q, double& cost,
                                          vector<Eigen::Vector3d>& gradient) {
   cost = 0.0;
@@ -423,24 +326,6 @@ void BsplineOptimizer::calcWaypointsCost(const vector<Eigen::Vector3d>& q, doubl
     gradient[idx] += dq * (2.0 / 6.0);      // 2*dq*(1/6)
     gradient[idx + 1] += dq * (8.0 / 6.0);  // 2*dq*(4/6)
     gradient[idx + 2] += dq * (2.0 / 6.0);
-  }
-}
-
-/* use the uniformly sampled points on a geomertic path to guide the
- * trajectory. For each control points to be optimized, it is assigned a
- * guiding point on the path and the distance between them is penalized */
-void BsplineOptimizer::calcGuideCost(const vector<Eigen::Vector3d>& q, double& cost,
-                                     vector<Eigen::Vector3d>& gradient) {
-  cost = 0.0;
-  Eigen::Vector3d zero(0, 0, 0);
-  std::fill(gradient.begin(), gradient.end(), zero);
-
-  int end_idx = q.size() - order_;
-
-  for (int i = order_; i < end_idx; i++) {
-    Eigen::Vector3d gpt = guide_pts_[i - order_];
-    cost += (q[i] - gpt).squaredNorm();
-    gradient[i] += 2 * (q[i] - gpt);
   }
 }
 
@@ -495,29 +380,11 @@ void BsplineOptimizer::combineCost(const std::vector<double>& x, std::vector<dou
     for (int i = 0; i < variable_num_ / dim_; i++)
       for (int j = 0; j < dim_; j++) grad[dim_ * i + j] += lambda1_ * g_smoothness_[i + order_](j);
   }
-  if (cost_function_ & DISTANCE) {
-    calcDistanceCost(g_q_, f_distance, g_distance_);
-    f_combine += lambda2_ * f_distance;
-    for (int i = 0; i < variable_num_ / dim_; i++)
-      for (int j = 0; j < dim_; j++) grad[dim_ * i + j] += lambda2_ * g_distance_[i + order_](j);
-  }
   if (cost_function_ & FEASIBILITY) {
     calcFeasibilityCost(g_q_, f_feasibility, g_feasibility_);
     f_combine += lambda3_ * f_feasibility;
     for (int i = 0; i < variable_num_ / dim_; i++)
       for (int j = 0; j < dim_; j++) grad[dim_ * i + j] += lambda3_ * g_feasibility_[i + order_](j);
-  }
-  if (cost_function_ & ENDPOINT) {
-    calcEndpointCost(g_q_, f_endpoint, g_endpoint_);
-    f_combine += lambda4_ * f_endpoint;
-    for (int i = 0; i < variable_num_ / dim_; i++)
-      for (int j = 0; j < dim_; j++) grad[dim_ * i + j] += lambda4_ * g_endpoint_[i + order_](j);
-  }
-  if (cost_function_ & GUIDE) {
-    calcGuideCost(g_q_, f_guide, g_guide_);
-    f_combine += lambda5_ * f_guide;
-    for (int i = 0; i < variable_num_ / dim_; i++)
-      for (int j = 0; j < dim_; j++) grad[dim_ * i + j] += lambda5_ * g_guide_[i + order_](j);
   }
   if (cost_function_ & WAYPOINTS) {
     calcWaypointsCost(g_q_, f_waypoints, g_waypoints_);
@@ -572,14 +439,6 @@ double BsplineOptimizer::costFunction(const std::vector<double>& x, std::vector<
   // }
 }
 
-vector<Eigen::Vector3d> BsplineOptimizer::matrixToVectors(const Eigen::MatrixXd& ctrl_pts) {
-  vector<Eigen::Vector3d> ctrl_q;
-  for (int i = 0; i < ctrl_pts.rows(); ++i) {
-    ctrl_q.push_back(ctrl_pts.row(i));
-  }
-  return ctrl_q;
-}
-
 Eigen::MatrixXd BsplineOptimizer::getControlPoints() { return this->control_points_; }
 
 bool BsplineOptimizer::isQuadratic() {
@@ -615,7 +474,7 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
 
   /*** Segment the initial trajectory according to obstacles ***/
   constexpr int ENOUGH_INTERVAL = 2;
-  double step_size = edt_environment_->sdf_map_->getResolution() / ( (init_points[0] - init_points.back()).norm() / (init_points.size()-1) ) / 2;
+  double step_size = sdf_map_->getResolution() / ( (init_points[0] - init_points.back()).norm() / (init_points.size()-1) ) / 2;
   //cout << "step_size = " << step_size << endl;
   int in_id, out_id;
   vector<std::pair<int,int>> segment_ids;
@@ -626,7 +485,7 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
   {
     for ( double a=1.0; a>=0.0; a-=step_size )
     {
-      occ = edt_environment_->sdf_map_->getInflateOccupancy(a * init_points[i-1] + (1-a) * init_points[i]);
+      occ = sdf_map_->getInflateOccupancy(a * init_points[i-1] + (1-a) * init_points[i]);
 
       // cout << "occ = " << occ << "  p = " << (a * init_points[i-1] + (1-a) * init_points[i]).transpose() << endl;
       // cout << "i=" << i <<endl;
@@ -668,25 +527,6 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
       }
     }
   }
-
-  // if ( segment_ids.empty() )
-  // {
-  //   ROS_ERROR("EMPTY?????????????????????????");
-
-  //   Eigen::MatrixXd temp_cps( cps_.size(), 3 );
-
-  //   for ( int i=0; i<cps_.size(); ++i )
-  //     temp_cps.row(i) = cps_[i].point.transpose();
-
-  //   auto traj = NonUniformBspline( temp_cps, 3, bspline_interval_ );
-  //   double duration = traj.getTimeSum();
-  //   for ( double t=0; t<duration; t+=0.02 )
-  //   {
-  //     bool occ = edt_environment_->sdf_map_->getInflateOccupancy( traj.evaluateDeBoorT(t) );
-  //     cout << "occ = " << occ << "  p = " << traj.evaluateDeBoorT(t).transpose() << endl;
-  //   }
-  //   cout << endl;
-  // }
 
 
   /*** a star search ***/
@@ -831,14 +671,14 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
         double length = (intersection_point - cps_[j].point).norm();
         if ( length > 1e-5 )
         {
-          for ( double a=length; a>=0.0; a-=edt_environment_->sdf_map_->getResolution() )
+          for ( double a=length; a>=0.0; a-=sdf_map_->getResolution() )
           {
-            occ =  edt_environment_->sdf_map_->getInflateOccupancy((a/length)*intersection_point + (1-a/length)*cps_[j].point);
+            occ =  sdf_map_->getInflateOccupancy((a/length)*intersection_point + (1-a/length)*cps_[j].point);
       
-            if ( occ || a < edt_environment_->sdf_map_->getResolution() )
+            if ( occ || a < sdf_map_->getResolution() )
             {
               if ( occ )
-                a+=edt_environment_->sdf_map_->getResolution();
+                a+=sdf_map_->getResolution();
               cps_[j].base_point.push_back( (a/length)*intersection_point + (1-a/length)*cps_[j].point );
               cps_[j].direction.push_back( (intersection_point - cps_[j].point).normalized() );
               break;
@@ -1093,7 +933,7 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
   for ( int i=order_-1; i<=end_idx; ++i )
   {
 
-    bool occ = edt_environment_->sdf_map_->getInflateOccupancy(cps_[i].point);
+    bool occ = sdf_map_->getInflateOccupancy(cps_[i].point);
 
     /*** check if the new collision will be valid ***/
     if ( occ )
@@ -1103,7 +943,7 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
         cout.precision(2);
         //cout << "Test_02" << " i=" << i << " k=" << k << " direction[k]=" << cps_[i].direction[k].transpose() << " base_point[k]=" << cps_[i].base_point[k].transpose() << " point=" << cps_[i].point.transpose() << " dot=" << ( cps_[i].point - cps_[i].base_point[k] ).dot(cps_[i].direction[k]) << endl;
         //if ( dir.dot(cps_[j].direction[k]) > 1e-5 ) // the angle of two directions is smaller than 90 degree. 
-        if ( ( cps_[i].point - cps_[i].base_point[k] ).dot(cps_[i].direction[k]) < 1 * edt_environment_->sdf_map_->getResolution() ) // current point is outside any of the collision_points. 
+        if ( ( cps_[i].point - cps_[i].base_point[k] ).dot(cps_[i].direction[k]) < 1 * sdf_map_->getResolution() ) // current point is outside any of the collision_points. 
         {
           occ = false;
           //cout << "Test_00" << " flag_new_obs=" << flag_new_obs << " j=" << j << " k=" << k << " dir=" << dir.transpose() << " cps_[j].direction[k]=" << cps_[j].direction[k].transpose() << " dot=" << ( cps_[j].point - cps_[j].base_point[k] ).dot(cps_[j].direction[k]) << endl;
@@ -1121,7 +961,7 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
       int j;
       for ( j=i-1; j>=0; --j )
       {
-        occ = edt_environment_->sdf_map_->getInflateOccupancy(cps_[j].point);
+        occ = sdf_map_->getInflateOccupancy(cps_[j].point);
         if ( !occ )
         {
           in_id = j;
@@ -1136,7 +976,7 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
 
       for ( j=i+1; j<cps_.size(); ++j )
       {
-        occ = edt_environment_->sdf_map_->getInflateOccupancy(cps_[j].point);
+        occ = sdf_map_->getInflateOccupancy(cps_[j].point);
         if ( !occ )
         {
           out_id = j;
@@ -1244,14 +1084,14 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
           double length = (intersection_point - cps_[j].point).norm();
           if ( length > 1e-5 )
           {
-            for ( double a=length; a>=0.0; a-=edt_environment_->sdf_map_->getResolution() )
+            for ( double a=length; a>=0.0; a-=sdf_map_->getResolution() )
             {
-              bool occ = edt_environment_->sdf_map_->getInflateOccupancy((a/length)*intersection_point + (1-a/length)*cps_[j].point);
+              bool occ = sdf_map_->getInflateOccupancy((a/length)*intersection_point + (1-a/length)*cps_[j].point);
         
-              if ( occ || a < edt_environment_->sdf_map_->getResolution() )
+              if ( occ || a < sdf_map_->getResolution() )
               {
                 if ( occ )
-                  a+=edt_environment_->sdf_map_->getResolution();
+                  a+=sdf_map_->getResolution();
                 cps_[j].base_point.push_back( (a/length)*intersection_point + (1-a/length)*cps_[j].point );
                 cps_[j].direction.push_back( (intersection_point - cps_[j].point).normalized() );
                 break;
@@ -1404,7 +1244,7 @@ bool BsplineOptimizer::rebound_optimize(double time_limit, double time_start)
       constexpr double t_step = 0.02;
       for ( double t = tm; t<tmp; t+=t_step )
       {
-        flag_occ = edt_environment_->sdf_map_->getInflateOccupancy( traj.evaluateDeBoor(t) );
+        flag_occ = sdf_map_->getInflateOccupancy( traj.evaluateDeBoor(t) );
         if ( flag_occ )
         {
           cout << "hit_obs, t=" << t << " P=" << traj.evaluateDeBoor(t).transpose() << endl;
@@ -1429,27 +1269,6 @@ bool BsplineOptimizer::rebound_optimize(double time_limit, double time_start)
       success = true;
 
       hit_obs:; 
-
-      // double step_size = edt_environment_->sdf_map_->getResolution() / ( (cps_[0].point - cps_.back().point ).norm() / cps_.size() );
-      // for ( size_t i=1; i<cps_.size()-order_-1; ++i )
-      // {
-      //   for ( double a=1.0; a>=0.0; a-=step_size )
-      //   {
-      //     flag_occ = edt_environment_->sdf_map_->getInflateOccupancy(a * cps_[i].point + (1-a) * cps_[i+1].point) == 0 ? false : true;
-      //     if ( flag_occ )
-      //     {
-      //       if ( i < order_-1 ) // First 3 control points in obstacles!
-      //       {
-      //         cout << cps_[1].point.transpose() << "\n"  << cps_[2].point.transpose() << "\n"  << cps_[3].point.transpose() << "\n" << cps_[4].point.transpose() << endl;
-      //         ROS_ERROR("First 3 control points in obstacles! return false, i=%d",i);
-      //         return false;
-      //       }
-      //       cout << "occ_pt=" << (a * cps_[i-1].point + (1-a) * cps_[i].point).transpose() << endl;
-      //       goto out_loop;
-      //     }
-      //   }
-      // }
-      // out_loop:;
 
       if ( !flag_occ )
       {
@@ -1532,21 +1351,6 @@ bool BsplineOptimizer::refine_optimize(double time_limit, double time_start)
       q[3 * (i - start_id) + j] = control_points_(i,j);
   }
 
-  // // leftover shit!!!
-  // NonUniformBspline traj =  NonUniformBspline(control_points_, 3, bspline_interval_);
-  // double tm, tmp;
-  // traj.getTimeSpan(tm, tmp);
-  // constexpr double t_step = 0.02;
-  // for ( double t = tm; t<tmp; t+=t_step )
-  // {
-  //   if ( edt_environment_->sdf_map_->getInflateOccupancy( traj.evaluateDeBoor(t) ) )
-  //   {
-  //     cout << "hit_obs, t=" << t << " P=" << traj.evaluateDeBoor(t).transpose() << endl;
-
-  //     break;
-  //   }
-  // }
-
   double origin_lambda9 = lambda9_;
   bool flag_safe = true;
   int iter_count = 0;
@@ -1571,7 +1375,7 @@ bool BsplineOptimizer::refine_optimize(double time_limit, double time_start)
       constexpr double t_step = 0.01;
       for ( double t = tm; t<tmp; t+=t_step )
       {
-        if ( edt_environment_->sdf_map_->getInflateOccupancy( traj.evaluateDeBoor(t) ) )
+        if ( sdf_map_->getInflateOccupancy( traj.evaluateDeBoor(t) ) )
         {
           cout << "hit_obs, t=" << t << " P=" << traj.evaluateDeBoor(t).transpose() << endl;
           flag_safe = false;
@@ -1631,7 +1435,7 @@ void BsplineOptimizer::combineCostRebound(const std::vector<double>& x, std::vec
   for ( size_t i=order_; i<cps_.size()-order_; ++i )
   {
     cps_[i].point = q[i];
-    cps_[i].occupancy = edt_environment_->sdf_map_->getInflateOccupancy(cps_[i].point);
+    cps_[i].occupancy = sdf_map_->getInflateOccupancy(cps_[i].point);
   }
 
   // for ( int i=0; i<cps_.size(); i++ )

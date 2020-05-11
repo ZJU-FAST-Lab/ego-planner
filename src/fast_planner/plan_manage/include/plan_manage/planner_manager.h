@@ -8,11 +8,7 @@
 
 #include <plan_manage/DataDisp.h>
 
-#include <path_searching/astar.h>
-#include <path_searching/kinodynamic_astar.h>
-#include <path_searching/topo_prm.h>
-
-#include <plan_env/edt_environment.h>
+#include <plan_env/sdf_map.h>
 
 #include <plan_manage/plan_container.hpp>
 
@@ -55,18 +51,14 @@ public:
   LocalTrajData local_data_;
   GlobalTrajData global_data_;
   MidPlanData plan_data_;
-  EDTEnvironment::Ptr edt_environment_;
   SDFMap::Ptr sdf_map_;
 
 private:
   /* main planning algorithms & modules */
   PlanningVisualization::Ptr visualization_;
 
-  unique_ptr<Astar> geo_path_finder_;
-  unique_ptr<KinodynamicAstar> kino_path_finder_;
-  unique_ptr<TopologyPRM> topo_prm_;
   vector<BsplineOptimizer::Ptr> bspline_optimizers_;
-  BsplineOptimizer::Ptr bspline_optimizer_rebound_;
+  BsplineOptimizer::Ptr bspline_optimizer_rebound_, bspline_optimizer_refine_;
 
   void updateTrajInfo();
 

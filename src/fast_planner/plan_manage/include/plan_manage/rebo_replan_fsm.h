@@ -12,7 +12,6 @@
 #include <visualization_msgs/Marker.h>
 
 #include <bspline_opt/bspline_optimizer.h>
-#include <plan_env/edt_environment.h>
 #include <plan_env/obj_predictor.h>
 #include <plan_env/sdf_map.h>
 #include <plan_manage/Bspline.h>

@@ -31,24 +31,22 @@ void FastPlannerManager::initPlanModules(ros::NodeHandle& nh, PlanningVisualizat
   local_data_.traj_id_ = 0;
   sdf_map_.reset(new SDFMap);
   sdf_map_->initMap(nh);
-  edt_environment_.reset(new EDTEnvironment);
-  edt_environment_->setMap(sdf_map_);
 
   if (use_optimization) {
     bspline_optimizers_.resize(10);
     for (int i = 0; i < 10; ++i) {
       bspline_optimizers_[i].reset(new BsplineOptimizer);
       bspline_optimizers_[i]->setParam(nh);
-      bspline_optimizers_[i]->setEnvironment(edt_environment_);
+      bspline_optimizers_[i]->setEnvironment(sdf_map_);
     }
   }
 
   if (use_rebound) {
     bspline_optimizer_rebound_.reset(new BsplineOptimizer);
     bspline_optimizer_rebound_->setParam(nh);
-    bspline_optimizer_rebound_->setEnvironment(edt_environment_);
+    bspline_optimizer_rebound_->setEnvironment(sdf_map_);
     bspline_optimizer_rebound_->a_star_.reset( new AStar );
-    bspline_optimizer_rebound_->a_star_->initGridMap(edt_environment_, Eigen::Vector3i(100,100,100));
+    bspline_optimizer_rebound_->a_star_->initGridMap(sdf_map_, Eigen::Vector3i(100,100,100));
   }
 
   visualization_ = vis;
@@ -56,34 +54,6 @@ void FastPlannerManager::initPlanModules(ros::NodeHandle& nh, PlanningVisualizat
 
 void FastPlannerManager::setGlobalWaypoints(vector<Eigen::Vector3d>& waypoints) {
   plan_data_.global_waypoints_ = waypoints;
-}
-
-bool FastPlannerManager::checkTrajCollision(double& distance) {
-
-  double t_now = (ros::Time::now() - local_data_.start_time_).toSec();
-
-  double tm, tmp;
-  local_data_.position_traj_.getTimeSpan(tm, tmp);
-  Eigen::Vector3d cur_pt = local_data_.position_traj_.evaluateDeBoor(tm + t_now);
-
-  double          radius = 0.0;
-  Eigen::Vector3d fut_pt;
-  double          fut_t = 0.02;
-
-  while (radius < 6.0 && t_now + fut_t < local_data_.duration_) {
-    fut_pt = local_data_.position_traj_.evaluateDeBoor(tm + t_now + fut_t);
-
-    double dist = edt_environment_->evaluateCoarseEDT(fut_pt, -1.0);
-    if (dist < 0.1) {
-      distance = radius;
-      return false;
-    }
-
-    radius = (fut_pt - cur_pt).norm();
-    fut_t += 0.02;
-  }
-
-  return true;
 }
 
 bool FastPlannerManager::checkTrajCollisionInflate(NonUniformBspline &traj) {
@@ -94,7 +64,7 @@ bool FastPlannerManager::checkTrajCollisionInflate(NonUniformBspline &traj) {
   constexpr double t_step = 0.02;
   for ( double t = tm; t<tmp; t+=t_step )
   {
-    if ( edt_environment_->sdf_map_->getInflateOccupancy( traj.evaluateDeBoor(t) ) )
+    if ( sdf_map_->getInflateOccupancy( traj.evaluateDeBoor(t) ) )
     {
       return false;
     }
