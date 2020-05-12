@@ -10,7 +10,7 @@
 
 using std::vector;
 
-namespace fast_planner {
+namespace rebound_planner {
 
 class GlobalTrajData {
 private:
@@ -181,6 +181,6 @@ struct LocalTrajData {
   NonUniformBspline position_traj_, velocity_traj_, acceleration_traj_;
 };
 
-}  // namespace fast_planner
+}  // namespace rebound_planner
 
 #endif

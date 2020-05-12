@@ -1,7 +1,7 @@
 
 #include <plan_manage/rebo_replan_fsm.h>
 
-namespace fast_planner {
+namespace rebound_planner {
 
 void ReboReplanFSM::init(ros::NodeHandle& nh) {
   current_wp_  = 0;
@@ -25,7 +25,7 @@ void ReboReplanFSM::init(ros::NodeHandle& nh) {
 
   /* initialize main modules */
   visualization_.reset(new PlanningVisualization(nh));
-  planner_manager_.reset(new FastPlannerManager);
+  planner_manager_.reset(new ReboundPlannerManager);
   planner_manager_->initPlanModules(nh, visualization_);
 
   /* callback */
@@ -447,4 +447,4 @@ void ReboReplanFSM::getLocalTarget()
   
 }
 
-}  // namespace fast_planner
+}  // namespace rebound_planner

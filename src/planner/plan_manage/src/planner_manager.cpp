@@ -2,15 +2,15 @@
 #include <plan_manage/planner_manager.h>
 #include <thread>
 
-namespace fast_planner {
+namespace rebound_planner {
 
 // SECTION interfaces for setup and query
 
-FastPlannerManager::FastPlannerManager() {}
+ReboundPlannerManager::ReboundPlannerManager() {}
 
-FastPlannerManager::~FastPlannerManager() { std::cout << "des manager" << std::endl; }
+ReboundPlannerManager::~ReboundPlannerManager() { std::cout << "des manager" << std::endl; }
 
-void FastPlannerManager::initPlanModules(ros::NodeHandle& nh, PlanningVisualization::Ptr vis) {
+void ReboundPlannerManager::initPlanModules(ros::NodeHandle& nh, PlanningVisualization::Ptr vis) {
   /* read algorithm parameters */
 
   nh.param("manager/max_vel", pp_.max_vel_, -1.0);
@@ -31,7 +31,7 @@ void FastPlannerManager::initPlanModules(ros::NodeHandle& nh, PlanningVisualizat
   visualization_ = vis;
 }
 
-bool FastPlannerManager::checkTrajCollisionInflate(NonUniformBspline &traj) {
+bool ReboundPlannerManager::checkTrajCollisionInflate(NonUniformBspline &traj) {
 
   double tm, tmp;
   traj.getTimeSpan(tm, tmp);
@@ -52,7 +52,7 @@ bool FastPlannerManager::checkTrajCollisionInflate(NonUniformBspline &traj) {
 
 // SECTION rebond replanning
 
-bool FastPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vector3d start_vel,
+bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vector3d start_vel,
                                            Eigen::Vector3d start_acc, Eigen::Vector3d local_target_pt,
                                            Eigen::Vector3d local_target_vel, bool flag_polyInit, bool flag_randomPolyTraj) {
 
@@ -333,7 +333,7 @@ bool FastPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vector3d
   return flag_step_2_success;
 }
 
-bool FastPlannerManager::EmergencyStop(Eigen::Vector3d stop_pos)
+bool ReboundPlannerManager::EmergencyStop(Eigen::Vector3d stop_pos)
 {
   Eigen::MatrixXd control_points(6,3);
   for ( int i=0; i<6; i++ )
@@ -348,7 +348,7 @@ bool FastPlannerManager::EmergencyStop(Eigen::Vector3d stop_pos)
   return true;
 }
 
-bool FastPlannerManager::planGlobalTraj(const Eigen::Vector3d& start_pos, const Eigen::Vector3d& start_vel, const Eigen::Vector3d& start_acc,
+bool ReboundPlannerManager::planGlobalTraj(const Eigen::Vector3d& start_pos, const Eigen::Vector3d& start_vel, const Eigen::Vector3d& start_acc,
                                         const Eigen::Vector3d& end_pos, const Eigen::Vector3d& end_vel, const Eigen::Vector3d& end_acc) 
 {
 
@@ -407,7 +407,7 @@ bool FastPlannerManager::planGlobalTraj(const Eigen::Vector3d& start_pos, const 
   return true;
 }
 
-bool FastPlannerManager::refineTrajAlgo2(NonUniformBspline& traj, vector<Eigen::Vector3d>& start_end_derivative, double& time_inc, double& ts, Eigen::MatrixXd& optimal_control_points) {
+bool ReboundPlannerManager::refineTrajAlgo2(NonUniformBspline& traj, vector<Eigen::Vector3d>& start_end_derivative, double& time_inc, double& ts, Eigen::MatrixXd& optimal_control_points) {
   time_inc     = 0.0;
   double    t_inc;
 
@@ -431,7 +431,7 @@ bool FastPlannerManager::refineTrajAlgo2(NonUniformBspline& traj, vector<Eigen::
   return success;
 }
 
-void FastPlannerManager::updateTrajInfo() {
+void ReboundPlannerManager::updateTrajInfo() {
   local_data_.velocity_traj_     = local_data_.position_traj_.getDerivative();
   local_data_.acceleration_traj_ = local_data_.velocity_traj_.getDerivative();
   local_data_.start_pos_         = local_data_.position_traj_.evaluateDeBoorT(0.0);
@@ -439,7 +439,7 @@ void FastPlannerManager::updateTrajInfo() {
   local_data_.traj_id_ += 1;
 }
 
-void FastPlannerManager::reparamBspline(NonUniformBspline& bspline, vector<Eigen::Vector3d>& start_end_derivative, double ratio,
+void ReboundPlannerManager::reparamBspline(NonUniformBspline& bspline, vector<Eigen::Vector3d>& start_end_derivative, double ratio,
                                         Eigen::MatrixXd& ctrl_pts, double& dt, double& time_inc) {
   double time_origin = bspline.getTimeSum();
   int    seg_num     = bspline.getControlPoint().rows() - 3;
@@ -459,4 +459,4 @@ void FastPlannerManager::reparamBspline(NonUniformBspline& bspline, vector<Eigen
   // ROS_WARN("prev: %d, new: %d", prev_num, ctrl_pts.rows());
 }
 
-}  // namespace fast_planner
+}  // namespace rebound_planner

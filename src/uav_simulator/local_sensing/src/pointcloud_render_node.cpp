@@ -125,15 +125,15 @@ void renderSensedPoints(const ros::TimerEvent& event) {
       // if ((fabs(pt.z - _odom.pose.pose.position.z) / (pt.x - _odom.pose.pose.position.x)) >
       //     tan(M_PI / 12.0))
       //   continue;
-      // if ((fabs(pt.z - _odom.pose.pose.position.z) / sensing_horizon) >
-      //     tan(M_PI / 12.0))
-      //   continue; // shit
+      if ((fabs(pt.z - _odom.pose.pose.position.z) / sensing_horizon) >
+          tan(M_PI / 12.0))
+        continue; // shit
 
       Vector3d pt_vec(pt.x - _odom.pose.pose.position.x,
                       pt.y - _odom.pose.pose.position.y,
                       pt.z - _odom.pose.pose.position.z);
 
-      // if (pt_vec.dot(yaw_vec) < 0) continue;  // shit
+      if (pt_vec.dot(yaw_vec) < 0) continue;  // shit
 
       _local_map.points.push_back(pt);
     }

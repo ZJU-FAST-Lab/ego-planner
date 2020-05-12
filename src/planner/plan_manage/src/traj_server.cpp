@@ -16,7 +16,7 @@ quadrotor_msgs::PositionCommand cmd;
 double pos_gain[3] = { 5.7, 5.7, 6.2 };
 double vel_gain[3] = { 3.4, 3.4, 4.0 };
 
-using fast_planner::NonUniformBspline;
+using rebound_planner::NonUniformBspline;
 
 bool receive_traj_ = false;
 vector<NonUniformBspline> traj_;

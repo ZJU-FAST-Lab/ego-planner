@@ -16,16 +16,16 @@
 
 #include <traj_utils/planning_visualization.h>
 
-namespace fast_planner {
+namespace rebound_planner {
 
 // Fast Planner Manager
 // Key algorithms of mapping and planning are called
 
-class FastPlannerManager {
+class ReboundPlannerManager {
   // SECTION stable
 public:
-  FastPlannerManager();
-  ~FastPlannerManager();
+  ReboundPlannerManager();
+  ~ReboundPlannerManager();
 
   /* main planning interface */
   bool kinodynamicReplan(Eigen::Vector3d start_pt, Eigen::Vector3d start_vel, Eigen::Vector3d start_acc,
@@ -85,10 +85,10 @@ private:
   // SECTION developing
 
 public:
-  typedef unique_ptr<FastPlannerManager> Ptr;
+  typedef unique_ptr<ReboundPlannerManager> Ptr;
 
   // !SECTION
 };
-}  // namespace fast_planner
+}  // namespace rebound_planner
 
 #endif

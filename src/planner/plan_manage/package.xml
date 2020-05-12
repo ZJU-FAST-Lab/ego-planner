@@ -19,7 +19,7 @@
   <!-- Url tags are optional, but multiple are allowed, one per tag -->
   <!-- Optional attribute type can be: website, bugtracker, or repository -->
   <!-- Example: -->
-  <!-- <url type="website">http://wiki.ros.org/fast_planner</url> -->
+  <!-- <url type="website">http://wiki.ros.org/rebound_planner</url> -->
 
 
   <!-- Author tags are optional, multiple are allowed, one per tag -->

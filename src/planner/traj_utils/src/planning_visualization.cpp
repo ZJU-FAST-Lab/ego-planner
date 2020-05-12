@@ -2,7 +2,7 @@
 
 using std::cout;
 using std::endl;
-namespace fast_planner {
+namespace rebound_planner {
 PlanningVisualization::PlanningVisualization(ros::NodeHandle& nh) {
   node = nh;
 
@@ -541,4 +541,4 @@ void PlanningVisualization::displayArrowList(ros::Publisher& pub, const vector<E
 }
 
 // PlanningVisualization::
-}  // namespace fast_planner
+}  // namespace rebound_planner

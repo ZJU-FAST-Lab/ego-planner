@@ -7,7 +7,7 @@
 
 using namespace std;
 
-namespace fast_planner {
+namespace rebound_planner {
 // An implementation of non-uniform B-spline with different dimensions
 // It also represents uniform B-spline which is a special case of non-uniform
 class NonUniformBspline {
@@ -83,5 +83,5 @@ public:
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
-}  // namespace fast_planner
+}  // namespace rebound_planner
 #endif

@@ -2,7 +2,7 @@
 #include <nlopt.hpp>
 // using namespace std;
 
-namespace fast_planner {
+namespace rebound_planner {
 
 void BsplineOptimizer::setParam(ros::NodeHandle& nh) {
   nh.param("optimization/lambda1", lambda1_, -1.0);
@@ -1230,4 +1230,4 @@ void BsplineOptimizer::combineCostRefine(const std::vector<double>& x, std::vect
 }
 
 
-}  // namespace fast_planner
+}  // namespace rebound_planner

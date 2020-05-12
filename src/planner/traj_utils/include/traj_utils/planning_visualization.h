@@ -13,7 +13,7 @@
 #include <stdlib.h>
 
 using std::vector;
-namespace fast_planner {
+namespace rebound_planner {
 class PlanningVisualization {
 private:
   enum TRAJECTORY_PLANNING_ID {
@@ -111,9 +111,9 @@ public:
   void displayOptimalList(Eigen::MatrixXd optimal_pts, int id);
   void displayAStarList(std::vector<std::vector<Eigen::Vector3d>> a_star_paths, int id);
   void displayArrowList(ros::Publisher& pub, const vector<Eigen::Vector3d>& list, double scale, Eigen::Vector4d color, int id);
-  // void displayIntermediateState(ros::Publisher& intermediate_pub, fast_planner::BsplineOptimizer::Ptr optimizer, double sleep_time, const int start_iteration);
-  // void displayNewArrow(ros::Publisher& guide_vector_pub, fast_planner::BsplineOptimizer::Ptr optimizer);
+  // void displayIntermediateState(ros::Publisher& intermediate_pub, rebound_planner::BsplineOptimizer::Ptr optimizer, double sleep_time, const int start_iteration);
+  // void displayNewArrow(ros::Publisher& guide_vector_pub, rebound_planner::BsplineOptimizer::Ptr optimizer);
 
 };
-}  // namespace fast_planner
+}  // namespace rebound_planner
 #endif

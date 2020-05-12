@@ -20,7 +20,7 @@
 
 using std::vector;
 
-namespace fast_planner {
+namespace rebound_planner {
 
 // class Test {
 // private:
@@ -51,7 +51,7 @@ private:
   enum TARGET_TYPE { MANUAL_TARGET = 1, PRESET_TARGET = 2, REFENCE_PATH = 3 };
 
   /* planning utils */
-  FastPlannerManager::Ptr planner_manager_;
+  ReboundPlannerManager::Ptr planner_manager_;
   PlanningVisualization::Ptr visualization_;
   rebound_planner::DataDisp data_disp_;
 
@@ -114,6 +114,6 @@ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-}  // namespace fast_planner
+}  // namespace rebound_planner
 
 #endif
