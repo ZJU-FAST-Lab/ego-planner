@@ -1247,7 +1247,7 @@ bool BsplineOptimizer::rebound_optimize(double time_limit, double time_start)
         flag_occ = sdf_map_->getInflateOccupancy( traj.evaluateDeBoor(t) );
         if ( flag_occ )
         {
-          cout << "hit_obs, t=" << t << " P=" << traj.evaluateDeBoor(t).transpose() << endl;
+          //cout << "hit_obs, t=" << t << " P=" << traj.evaluateDeBoor(t).transpose() << endl;
 
           if ( t <= bspline_interval_ ) // First 3 control points in obstacles!
           {
@@ -1377,7 +1377,7 @@ bool BsplineOptimizer::refine_optimize(double time_limit, double time_start)
       {
         if ( sdf_map_->getInflateOccupancy( traj.evaluateDeBoor(t) ) )
         {
-          cout << "hit_obs, t=" << t << " P=" << traj.evaluateDeBoor(t).transpose() << endl;
+          //cout << "hit_obs, t=" << t << " P=" << traj.evaluateDeBoor(t).transpose() << endl;
           flag_safe = false;
           break;
         }
@@ -1385,24 +1385,25 @@ bool BsplineOptimizer::refine_optimize(double time_limit, double time_start)
 
       if ( !flag_safe ) lambda9_*=2;
 
-      iter_count++;
     }
     catch (std::exception& e)
     {
       cout << e.what() << endl;
       return false;
     }
-  } while ( !flag_safe && iter_count <= 3 );
+    
+    iter_count++;
+  } while ( !flag_safe && iter_count <= 0 );
 
-  if ( iter_count > 1 && iter_count <=3 )
-  {
-    ROS_ERROR("Refine iter_count > 1 && iter_count <=3");
-  }
-  if ( iter_count > 3 )
-  {
-    cout << "iter_count=" << iter_count << endl;
-    ROS_ERROR("Refine iter_count > 3");
-  }
+  // if ( iter_count > 1 && iter_count <=3 )
+  // {
+  //   ROS_ERROR("Refine iter_count > 1 && iter_count <=3");
+  // }
+  // if ( iter_count > 3 )
+  // {
+  //   cout << "iter_count=" << iter_count << endl;
+  //   ROS_ERROR("Refine iter_count > 3");
+  // }
   
   lambda9_ = origin_lambda9;
 

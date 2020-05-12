@@ -48,7 +48,7 @@ class ReboReplanFSM {
 
 private:
   /* ---------- flag ---------- */
-  enum FSM_EXEC_STATE { INIT, WAIT_TARGET, GEN_NEW_TRAJ, REPLAN_TRAJ, EXEC_TRAJ, REPLAN_NEW, EMERGENCY_STOP };
+  enum FSM_EXEC_STATE { INIT, WAIT_TARGET, GEN_NEW_TRAJ, REPLAN_TRAJ, EXEC_TRAJ, EMERGENCY_STOP };
   enum TARGET_TYPE { MANUAL_TARGET = 1, PRESET_TARGET = 2, REFENCE_PATH = 3 };
 
   /* planning utils */
@@ -88,6 +88,7 @@ private:
   bool callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj);        // front-end and back-end method
   bool callEmergencyStop(Eigen::Vector3d stop_pos);        // front-end and back-end method
   bool callSlidingWindow();        // front-end and back-end method
+  bool planFromCurrentTraj();
 
   /* return value: std::pair< Times of the same state be continuously called, current continuously called state > */
   void changeFSMExecState(FSM_EXEC_STATE new_state, string pos_call);

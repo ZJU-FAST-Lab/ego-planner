@@ -502,10 +502,10 @@ void PlanningVisualization::generateArrowDisplayArray(visualization_msgs::Marker
   }
 }
 
-void PlanningVisualization::displayInitList(vector<Eigen::Vector3d> init_pts, int id)
+void PlanningVisualization::displayInitList(vector<Eigen::Vector3d> init_pts, const double scale, int id)
 {
     Eigen::Vector4d color(0,0,1,1);
-    displayMarkerList(init_list_pub, init_pts, 0.1, color, id);
+    displayMarkerList(init_list_pub, init_pts, scale, color, id);
 }
 
 void PlanningVisualization::displayOptimalList(Eigen::MatrixXd optimal_pts, int id)

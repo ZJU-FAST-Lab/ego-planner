@@ -109,7 +109,7 @@ public:
     const vector<Eigen::Vector3d>& list, double scale, Eigen::Vector4d color, int id);
   void generateArrowDisplayArray(visualization_msgs::MarkerArray &array, 
     const vector<Eigen::Vector3d>& list, double scale, Eigen::Vector4d color, int id);
-  void displayInitList(vector<Eigen::Vector3d> init_pts, int id);
+  void displayInitList(vector<Eigen::Vector3d> init_pts, const double scale, int id);
   void displayOptimalList(Eigen::MatrixXd optimal_pts, int id);
   void displayAStarList(std::vector<std::vector<Eigen::Vector3d>> a_star_paths, int id);
   void displayArrowList(ros::Publisher& pub, const vector<Eigen::Vector3d>& list, double scale, Eigen::Vector4d color, int id);

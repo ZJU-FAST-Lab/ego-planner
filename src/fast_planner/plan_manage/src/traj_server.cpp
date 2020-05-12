@@ -175,7 +175,8 @@ void visCallback(const ros::TimerEvent& e) {
   displayTrajWithColor(traj_cmd_, 0.05, Eigen::Vector4d(0, 1, 0, 1), 2);
 }
 
-void cmdCallback(const ros::TimerEvent& e) {
+void cmdCallback(const ros::TimerEvent& e) 
+{
   /* no publishing before receive traj_ */
   if (!receive_traj_) return;
 
@@ -185,20 +186,24 @@ void cmdCallback(const ros::TimerEvent& e) {
   Eigen::Vector3d pos, vel, acc, pos_f;
   double yaw, yawdot;
 
-  static double last_yaw = 0;
+  static double last_yaw = 0, last_yaw_dot = 0;
   static ros::Time time_last = ros::Time::now();
   constexpr double PI = 3.1415926;
   constexpr double YAW_DOT_MAX_PER_SEC = PI;
-  if (t_cur < traj_duration_ && t_cur >= 0.0) {
+  constexpr double YAW_DOT_DOT_MAX_PER_SEC = PI;
+  if (t_cur < traj_duration_ && t_cur >= 0.0) 
+  {
     pos = traj_[0].evaluateDeBoorT(t_cur);
     vel = traj_[1].evaluateDeBoorT(t_cur);
     acc = traj_[2].evaluateDeBoorT(t_cur);
     // yaw = traj_[3].evaluateDeBoorT(t_cur)[0];
     // yawdot = traj_[4].evaluateDeBoorT(t_cur)[0];
 
+    /*** calculate yaw ***/
     Eigen::Vector3d dir = t_cur + 1.0 <= traj_duration_ ? traj_[0].evaluateDeBoorT(t_cur+1.0) - pos : traj_[0].evaluateDeBoorT(traj_duration_) - pos;
     double yaw_temp = dir.norm() > 0.1 ? atan2( dir(1), dir(0) ) : last_yaw;
     double max_yaw_change = YAW_DOT_MAX_PER_SEC*(time_now-time_last).toSec();
+    double max_yaw_dot_change = YAW_DOT_DOT_MAX_PER_SEC*(time_now-time_last).toSec();
     if ( yaw_temp - last_yaw > PI )
     {
       if ( yaw_temp - last_yaw - 2*PI < -max_yaw_change )
@@ -212,7 +217,10 @@ void cmdCallback(const ros::TimerEvent& e) {
       else
       {
         yaw = yaw_temp;
-        yawdot = (yaw_temp - last_yaw) / (time_now-time_last).toSec();
+        if ( yaw - last_yaw > PI )
+          yawdot = -YAW_DOT_MAX_PER_SEC;
+        else
+          yawdot = (yaw_temp - last_yaw) / (time_now-time_last).toSec();
       }
       
     }
@@ -229,7 +237,10 @@ void cmdCallback(const ros::TimerEvent& e) {
       else
       {
         yaw = yaw_temp;
-        yawdot = (yaw_temp - last_yaw) / (time_now-time_last).toSec();
+        if ( yaw - last_yaw < -PI )
+          yawdot = YAW_DOT_MAX_PER_SEC;
+        else
+          yawdot = (yaw_temp - last_yaw) / (time_now-time_last).toSec();
       }
       
     }
@@ -254,11 +265,21 @@ void cmdCallback(const ros::TimerEvent& e) {
       else
       {
         yaw = yaw_temp;
-        yawdot = (yaw_temp - last_yaw) / (time_now-time_last).toSec();
+        if ( yaw - last_yaw > PI )
+          yawdot = -YAW_DOT_MAX_PER_SEC;
+        else if ( yaw - last_yaw < -PI )
+          yawdot = YAW_DOT_MAX_PER_SEC;
+        else
+          yawdot = (yaw_temp - last_yaw) / (time_now-time_last).toSec();
       }
     }
 
+    if ( fabs( yaw-last_yaw ) <= max_yaw_change )
+      yaw = 0.5*last_yaw + 0.5*yaw; // nieve LPF
+    yawdot = 0.5*last_yaw_dot + 0.5*yawdot;
     last_yaw = yaw;
+    last_yaw_dot = yawdot;
+    /*** calculate yaw ***/
 
     double tf = min(traj_duration_, t_cur + 2.0);
     pos_f = traj_[0].evaluateDeBoorT(tf);
@@ -268,8 +289,6 @@ void cmdCallback(const ros::TimerEvent& e) {
     pos = traj_[0].evaluateDeBoorT(traj_duration_);
     vel.setZero();
     acc.setZero();
-    // yaw = traj_[3].evaluateDeBoorT(traj_duration_)[0];
-    // yawdot = traj_[4].evaluateDeBoorT(traj_duration_)[0];
 
     yaw = last_yaw;
     yawdot = 0;
