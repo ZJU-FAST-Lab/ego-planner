@@ -32,13 +32,13 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
 {
   if ( flag_first_init )
   {
-    cps_.clear();
-    cps_.resize(init_points.size());
+    
+    cps_.clearance = dist0_;
+    cps_.resize( init_points.size() );
 
     for ( size_t i=0; i<init_points.size(); ++i )
     {
-      cps_[i].point = init_points[i];
-      cps_[i].clearance = dist0_;
+      cps_.points[i] = init_points[i];
     }
   }
 
@@ -200,15 +200,15 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
   {
     // step 1
     for ( int j=final_segment_ids[i].first; j <= final_segment_ids[i].second; ++j )
-      cps_[j].flag_temp = false;
+      cps_.flag_temp[j] = false;
 
     // step 2
     int got_intersection_id = -1;
     for ( int j=segment_ids[i].first+1; j<segment_ids[i].second; ++j )
     {
-      Eigen::Vector3d ctrl_pts_law(cps_[j+1].point - cps_[j-1].point), intersection_point;
+      Eigen::Vector3d ctrl_pts_law(cps_.points[j+1] - cps_.points[j-1]), intersection_point;
       int Astar_id = a_star_pathes[i].size() / 2, last_Astar_id; // Let "Astar_id = id_of_the_most_far_away_Astar_point" will be better, but it needs more computation
-      double val = (a_star_pathes[i][Astar_id] - cps_[j].point).dot( ctrl_pts_law ), last_val = val;
+      double val = (a_star_pathes[i][Astar_id] - cps_.points[j]).dot( ctrl_pts_law ), last_val = val;
       while ( Astar_id >=0 && Astar_id < (int)a_star_pathes[i].size() )
       {
         last_Astar_id = Astar_id;
@@ -218,14 +218,14 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
         else
           ++ Astar_id;
         
-        val = (a_star_pathes[i][Astar_id] - cps_[j].point).dot( ctrl_pts_law );
+        val = (a_star_pathes[i][Astar_id] - cps_.points[j]).dot( ctrl_pts_law );
         
         if ( val * last_val <= 0 && ( abs(val) > 0 || abs(last_val) > 0 ) ) // val = last_val = 0.0 is not allowed
         {
           intersection_point = 
             a_star_pathes[i][Astar_id] + 
             ( ( a_star_pathes[i][Astar_id] - a_star_pathes[i][last_Astar_id] ) * 
-              ( ctrl_pts_law.dot( cps_[j].point - a_star_pathes[i][Astar_id] ) / ctrl_pts_law.dot( a_star_pathes[i][Astar_id] -  a_star_pathes[i][last_Astar_id] ) ) // = t
+              ( ctrl_pts_law.dot( cps_.points[j] - a_star_pathes[i][Astar_id] ) / ctrl_pts_law.dot( a_star_pathes[i][Astar_id] -  a_star_pathes[i][last_Astar_id] ) ) // = t
             );
 
           //cout << "i=" << i << " j=" << j << " Astar_id=" << Astar_id << " last_Astar_id=" << last_Astar_id << " intersection_point = " << intersection_point.transpose() << endl;
@@ -237,20 +237,20 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
 
       if ( got_intersection_id >= 0 )
       {
-        cps_[j].flag_temp = true;
-        double length = (intersection_point - cps_[j].point).norm();
+        cps_.flag_temp[j] = true;
+        double length = (intersection_point - cps_.points[j]).norm();
         if ( length > 1e-5 )
         {
           for ( double a=length; a>=0.0; a-=sdf_map_->getResolution() )
           {
-            occ =  sdf_map_->getInflateOccupancy((a/length)*intersection_point + (1-a/length)*cps_[j].point);
+            occ =  sdf_map_->getInflateOccupancy((a/length)*intersection_point + (1-a/length)*cps_.points[j]);
       
             if ( occ || a < sdf_map_->getResolution() )
             {
               if ( occ )
                 a+=sdf_map_->getResolution();
-              cps_[j].base_point.push_back( (a/length)*intersection_point + (1-a/length)*cps_[j].point );
-              cps_[j].direction.push_back( (intersection_point - cps_[j].point).normalized() );
+              cps_.base_point[j].push_back( (a/length)*intersection_point + (1-a/length)*cps_.points[j] );
+              cps_.direction[j].push_back( (intersection_point - cps_.points[j]).normalized() );
               break;
             }
           }
@@ -261,8 +261,8 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
     /* Corner case: the segment length is too short. Here the control points may outside the A* path, leading to opposite gradient direction. So I have to take special care of it */
     if ( segment_ids[i].second - segment_ids[i].first == 1 ) 
     {
-      Eigen::Vector3d ctrl_pts_law(cps_[segment_ids[i].second].point - cps_[segment_ids[i].first].point), intersection_point;
-      Eigen::Vector3d middle_point = (cps_[segment_ids[i].second].point + cps_[segment_ids[i].first].point) / 2;
+      Eigen::Vector3d ctrl_pts_law(cps_.points[segment_ids[i].second] - cps_.points[segment_ids[i].first]), intersection_point;
+      Eigen::Vector3d middle_point = (cps_.points[segment_ids[i].second] + cps_.points[segment_ids[i].first]) / 2;
       int Astar_id = a_star_pathes[i].size() / 2, last_Astar_id; // Let "Astar_id = id_of_the_most_far_away_Astar_point" will be better, but it needs more computation
       double val = (a_star_pathes[i][Astar_id] - middle_point).dot( ctrl_pts_law ), last_val = val;
       while ( Astar_id >=0 && Astar_id < (int)a_star_pathes[i].size() )
@@ -284,9 +284,9 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
               ( ctrl_pts_law.dot( middle_point - a_star_pathes[i][Astar_id] ) / ctrl_pts_law.dot( a_star_pathes[i][Astar_id] -  a_star_pathes[i][last_Astar_id] ) ) // = t
             );
 
-          cps_[segment_ids[i].first].flag_temp = true;
-          cps_[segment_ids[i].first].base_point.push_back( cps_[segment_ids[i].first].point );
-          cps_[segment_ids[i].first].direction.push_back( (intersection_point - middle_point).normalized() );
+          cps_.flag_temp[segment_ids[i].first] = true;
+          cps_.base_point[segment_ids[i].first].push_back( cps_.points[segment_ids[i].first] );
+          cps_.direction[segment_ids[i].first].push_back( (intersection_point - middle_point).normalized() );
 
           got_intersection_id = segment_ids[i].first;
           break;
@@ -298,17 +298,17 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
     if ( got_intersection_id >= 0 )
     {
       for ( int j=got_intersection_id + 1; j <= final_segment_ids[i].second; ++j )
-        if ( ! cps_[j].flag_temp )
+        if ( ! cps_.flag_temp[j] )
         {
-          cps_[j].base_point.push_back( cps_[j-1].base_point.back() );
-          cps_[j].direction.push_back( cps_[j-1].direction.back() );
+          cps_.base_point[j].push_back( cps_.base_point[j-1].back() );
+          cps_.direction[j].push_back( cps_.direction[j-1].back() );
         }
 
       for ( int j=got_intersection_id - 1; j >= final_segment_ids[i].first; --j )
-        if ( ! cps_[j].flag_temp )
+        if ( ! cps_.flag_temp[j] )
         {
-          cps_[j].base_point.push_back( cps_[j+1].base_point.back() );
-          cps_[j].direction.push_back( cps_[j+1].direction.back() );
+          cps_.base_point[j].push_back( cps_.base_point[j+1].back() );
+          cps_.direction[j].push_back( cps_.direction[j+1].back() );
         }
     }
     else
@@ -388,7 +388,7 @@ void BsplineOptimizer::calcDistanceCostRebound(const vector<Eigen::Vector3d>& q,
   Eigen::Vector3d dist_grad;
   int end_idx = q.size() - order_;
 
-  if ( iter_num > 3 && smoothness_cost / ( cps_.size() - 2*order_) < 0.1 ) // 0.1 is an experimental value that indicates the trajectory is smooth enough, leftover shit!!!
+  if ( iter_num > 3 && smoothness_cost / ( cps_.size - 2*order_) < 0.1 ) // 0.1 is an experimental value that indicates the trajectory is smooth enough, leftover shit!!!
   {
     flag_continue_to_optimize_ = check_collision_and_rebound();
     //cout << "flag_continue_to_optimize_ = " << flag_continue_to_optimize_ << endl;
@@ -412,24 +412,24 @@ void BsplineOptimizer::calcDistanceCostRebound(const vector<Eigen::Vector3d>& q,
   /*** calculate distance cost and gradient ***/
   for ( auto i=order_; i<end_idx; ++i )
   {
-    for ( size_t j=0; j<cps_[i].direction.size(); ++j )
+    for ( size_t j=0; j<cps_.direction[i].size(); ++j )
     {
-      dist = (cps_[i].point - cps_[i].base_point[j]).dot(cps_[i].direction[j]);
-      dist_grad = cps_[i].direction[j];
-      if (dist < cps_[i].clearance)
+      dist = (cps_.points[i] - cps_.base_point[i][j]).dot(cps_.direction[i][j]);
+      dist_grad = cps_.direction[i][j];
+      if (dist < cps_.clearance)
       {
-        if ( dist < -cps_[i].clearance )
+        if ( dist < -cps_.clearance )
         {
           // linear if the distance is too far.
           // cost += pow(dist - cps_[i].clearance, 2) - pow(dist + cps_[i].clearance, 2);
-          cost += -4 * cps_[i].clearance * dist;  // == pow(dist - cps_[i].clearance, 2) - pow(dist + cps_[i].clearance, 2)
-          gradient[i] += -4 * cps_[i].clearance * dist_grad;
+          cost += -4 * cps_.clearance * dist;  // == pow(dist - cps_[i].clearance, 2) - pow(dist + cps_[i].clearance, 2)
+          gradient[i] += -4 * cps_.clearance * dist_grad;
           //cout << "run to here! i=" << i << " dist=" << dist << endl;
         }
         else
         {
-          cost += pow(dist - cps_[i].clearance, 2);
-          gradient[i] += 2.0 * (dist - cps_[i].clearance) * dist_grad;
+          cost += pow(dist - cps_.clearance, 2);
+          gradient[i] += 2.0 * (dist - cps_.clearance) * dist_grad;
         }
         
         // if ( iter_num <= 2 )
@@ -624,7 +624,7 @@ void BsplineOptimizer::calcFeasibilityCost(const vector<Eigen::Vector3d>& q, dou
 bool BsplineOptimizer::check_collision_and_rebound(void)
 {
 
-  int end_idx = cps_.size() - order_;
+  int end_idx = cps_.size - order_;
 
   /*** Check and segment the initial trajectory according to obstacles ***/
   int in_id, out_id;
@@ -633,17 +633,17 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
   for ( int i=order_-1; i<=end_idx; ++i )
   {
 
-    bool occ = sdf_map_->getInflateOccupancy(cps_[i].point);
+    bool occ = sdf_map_->getInflateOccupancy(cps_.points[i]);
 
     /*** check if the new collision will be valid ***/
     if ( occ )
     {
-      for ( size_t k=0; k<cps_[i].direction.size(); ++k )
+      for ( size_t k=0; k<cps_.direction[i].size(); ++k )
       {
         cout.precision(2);
         //cout << "Test_02" << " i=" << i << " k=" << k << " direction[k]=" << cps_[i].direction[k].transpose() << " base_point[k]=" << cps_[i].base_point[k].transpose() << " point=" << cps_[i].point.transpose() << " dot=" << ( cps_[i].point - cps_[i].base_point[k] ).dot(cps_[i].direction[k]) << endl;
         //if ( dir.dot(cps_[j].direction[k]) > 1e-5 ) // the angle of two directions is smaller than 90 degree. 
-        if ( ( cps_[i].point - cps_[i].base_point[k] ).dot(cps_[i].direction[k]) < 1 * sdf_map_->getResolution() ) // current point is outside any of the collision_points. 
+        if ( ( cps_.points[i] - cps_.base_point[i][k] ).dot(cps_.direction[i][k]) < 1 * sdf_map_->getResolution() ) // current point is outside any of the collision_points. 
         {
           occ = false;
           //cout << "Test_00" << " flag_new_obs=" << flag_new_obs << " j=" << j << " k=" << k << " dir=" << dir.transpose() << " cps_[j].direction[k]=" << cps_[j].direction[k].transpose() << " dot=" << ( cps_[j].point - cps_[j].base_point[k] ).dot(cps_[j].direction[k]) << endl;
@@ -661,7 +661,7 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
       int j;
       for ( j=i-1; j>=0; --j )
       {
-        occ = sdf_map_->getInflateOccupancy(cps_[j].point);
+        occ = sdf_map_->getInflateOccupancy(cps_.points[j]);
         if ( !occ )
         {
           in_id = j;
@@ -674,16 +674,16 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
         in_id = 0;
       }
 
-      for ( j=i+1; j<cps_.size(); ++j )
+      for ( j=i+1; j<cps_.size; ++j )
       {
-        occ = sdf_map_->getInflateOccupancy(cps_[j].point);
+        occ = sdf_map_->getInflateOccupancy(cps_.points[j]);
         if ( !occ )
         {
           out_id = j;
           break;
         }
       }
-      if ( j >= cps_.size() ) // fail to get the obs free point
+      if ( j >= cps_.size ) // fail to get the obs free point
       {
         ROS_WARN( "WARN! terminal point of the current trajectory is in obstacle, skip this planning." );
         return 0;
@@ -702,7 +702,7 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
     for ( size_t i=0; i<segment_ids.size(); ++i )
     {
       /*** a star search ***/
-      Eigen::Vector3d in( cps_[segment_ids[i].first].point ), out( cps_[segment_ids[i].second].point );
+      Eigen::Vector3d in( cps_.points[segment_ids[i].first] ), out( cps_.points[segment_ids[i].second] );
       if ( a_star_->AstarSearch( /*(in-out).norm()/10+0.05*/0.1, in, out) )
       {
         a_star_pathes.push_back( a_star_->getPath() );
@@ -739,7 +739,7 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
     {
       // step 1
       for ( int j=segment_ids[i].first; j <= segment_ids[i].second; ++j )
-        cps_[j].flag_temp = false;
+        cps_.flag_temp[j] = false;
 
       // for ( auto x : segment_ids )
       // {
@@ -749,9 +749,9 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
       int got_intersection_id = -1;
       for ( int j=segment_ids[i].first+1; j<segment_ids[i].second; ++j )
       {
-        Eigen::Vector3d ctrl_pts_law(cps_[j+1].point - cps_[j-1].point), intersection_point;
+        Eigen::Vector3d ctrl_pts_law(cps_.points[j+1] - cps_.points[j-1]), intersection_point;
         int Astar_id = a_star_pathes[i].size() / 2, last_Astar_id; // Let "Astar_id = id_of_the_most_far_away_Astar_point" will be better, but it needs more computation
-        double val = (a_star_pathes[i][Astar_id] - cps_[j].point).dot( ctrl_pts_law ), last_val = val;
+        double val = (a_star_pathes[i][Astar_id] - cps_.points[j]).dot( ctrl_pts_law ), last_val = val;
         while ( Astar_id >=0 && Astar_id < (int)a_star_pathes[i].size() )
         {
           last_Astar_id = Astar_id;
@@ -761,14 +761,14 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
           else
             ++ Astar_id;
           
-          val = (a_star_pathes[i][Astar_id] - cps_[j].point).dot( ctrl_pts_law );
+          val = (a_star_pathes[i][Astar_id] - cps_.points[j]).dot( ctrl_pts_law );
           
           if ( val * last_val <= 0 && ( abs(val) > 0 || abs(last_val) > 0 ) ) // val = last_val = 0.0 is not allowed
           {
             intersection_point = 
               a_star_pathes[i][Astar_id] + 
               ( ( a_star_pathes[i][Astar_id] - a_star_pathes[i][last_Astar_id] ) * 
-                ( ctrl_pts_law.dot( cps_[j].point - a_star_pathes[i][Astar_id] ) / ctrl_pts_law.dot( a_star_pathes[i][Astar_id] -  a_star_pathes[i][last_Astar_id] ) ) // = t
+                ( ctrl_pts_law.dot( cps_.points[j] - a_star_pathes[i][Astar_id] ) / ctrl_pts_law.dot( a_star_pathes[i][Astar_id] -  a_star_pathes[i][last_Astar_id] ) ) // = t
               );
 
             //cout << "i=" << i << " j=" << j << " Astar_id=" << Astar_id << " last_Astar_id=" << last_Astar_id << " intersection_point = " << intersection_point.transpose() << endl;
@@ -780,20 +780,20 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
 
         if ( got_intersection_id >= 0 )
         {
-          cps_[j].flag_temp = true;
-          double length = (intersection_point - cps_[j].point).norm();
+          cps_.flag_temp[j] = true;
+          double length = (intersection_point - cps_.points[j]).norm();
           if ( length > 1e-5 )
           {
             for ( double a=length; a>=0.0; a-=sdf_map_->getResolution() )
             {
-              bool occ = sdf_map_->getInflateOccupancy((a/length)*intersection_point + (1-a/length)*cps_[j].point);
+              bool occ = sdf_map_->getInflateOccupancy((a/length)*intersection_point + (1-a/length)*cps_.points[j]);
         
               if ( occ || a < sdf_map_->getResolution() )
               {
                 if ( occ )
                   a+=sdf_map_->getResolution();
-                cps_[j].base_point.push_back( (a/length)*intersection_point + (1-a/length)*cps_[j].point );
-                cps_[j].direction.push_back( (intersection_point - cps_[j].point).normalized() );
+                cps_.base_point[j].push_back( (a/length)*intersection_point + (1-a/length)*cps_.points[j] );
+                cps_.direction[j].push_back( (intersection_point - cps_.points[j]).normalized() );
                 break;
               }
             }
@@ -809,17 +809,17 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
       if ( got_intersection_id >= 0 )
       {
         for ( int j=got_intersection_id + 1; j <= segment_ids[i].second; ++j )
-          if ( ! cps_[j].flag_temp )
+          if ( ! cps_.flag_temp[j] )
           {
-            cps_[j].base_point.push_back( cps_[j-1].base_point.back() );
-            cps_[j].direction.push_back( cps_[j-1].direction.back() );
+            cps_.base_point[j].push_back( cps_.base_point[j-1].back() );
+            cps_.direction[j].push_back( cps_.direction[j-1].back() );
           }
 
         for ( int j=got_intersection_id - 1; j >= segment_ids[i].first; --j )
-          if ( ! cps_[j].flag_temp )
+          if ( ! cps_.flag_temp[j] )
           {
-            cps_[j].base_point.push_back( cps_[j+1].base_point.back() );
-            cps_[j].direction.push_back( cps_[j+1].direction.back() );
+            cps_.base_point[j].push_back( cps_.base_point[j+1].back() );
+            cps_.direction[j].push_back( cps_.direction[j+1].back() );
           }
       }
       else
@@ -840,10 +840,10 @@ bool BsplineOptimizer::BsplineOptimizeTrajRebound(const Eigen::MatrixXd init_poi
 
   bool flag_success =  rebound_optimize(time_limit, 99999999999);
 
-  optimal_points.resize(cps_.size(),3);
-  for ( size_t i=0; i<cps_.size(); i++ )
+  optimal_points.resize(cps_.size,3);
+  for ( size_t i=0; i<cps_.size; i++ )
   {
-    optimal_points.row(i) = cps_[i].point;
+    optimal_points.row(i) = cps_.points[i];
   }
 
   return flag_success;
@@ -872,7 +872,7 @@ bool BsplineOptimizer::rebound_optimize(double time_limit, double time_start)
   /* ---------- initialize solver ---------- */
   iter_num_ = 0;
   int start_id = order_;
-  int end_id = this->cps_.size() - order_;
+  int end_id = this->cps_.size - order_;
   variable_num_ = 3 * (end_id - start_id);
 
   // cout << "variable_num_" << variable_num_ << endl;
@@ -917,7 +917,7 @@ bool BsplineOptimizer::rebound_optimize(double time_limit, double time_start)
       for (size_t i = start_id; i < end_id; ++i)
       {
         for (int j = 0; j < 3; j++)
-          q[3 * (i - start_id) + j] = cps_[i].point(j);
+          q[3 * (i - start_id) + j] = cps_.points[i](j);
       }
 
       /*nlopt::result result = */opt.optimize(q, final_cost);
@@ -930,12 +930,12 @@ bool BsplineOptimizer::rebound_optimize(double time_limit, double time_start)
       for (size_t i = start_id; i < end_id; ++i)
       {
         for (int j = 0; j < 3; j++)
-          cps_[i].point(j) = best_variable_[3 * (i - start_id) + j];
+          cps_.points[i](j) = best_variable_[3 * (i - start_id) + j];
       }
 
       // check collision
-      for ( int i=0; i<cps_.size(); ++i )
-        control_points_.row(i) = cps_[i].point.transpose();
+      for ( int i=0; i<cps_.size; ++i )
+        control_points_.row(i) = cps_.points[i].transpose();
       NonUniformBspline traj =  NonUniformBspline(control_points_, 3, bspline_interval_);
       double tm, tmp;
       traj.getTimeSpan(tm, tmp);
@@ -949,7 +949,7 @@ bool BsplineOptimizer::rebound_optimize(double time_limit, double time_start)
 
           if ( t <= bspline_interval_ ) // First 3 control points in obstacles!
           {
-            cout << cps_[1].point.transpose() << "\n"  << cps_[2].point.transpose() << "\n"  << cps_[3].point.transpose() << "\n" << cps_[4].point.transpose() << endl;
+            cout << cps_.points[1].transpose() << "\n"  << cps_.points[2].transpose() << "\n"  << cps_.points[3].transpose() << "\n" << cps_.points[4].transpose() << endl;
             ROS_ERROR("First 3 control points in obstacles! return false, t=%f",t);
             return false;
           }
@@ -975,10 +975,10 @@ bool BsplineOptimizer::rebound_optimize(double time_limit, double time_start)
       else
       {
         restart_nums++;
-        vector<Eigen::Vector3d> control_points(cps_.size());
-        for ( size_t i=0; i<cps_.size(); i++ )
+        vector<Eigen::Vector3d> control_points(cps_.size);
+        for ( size_t i=0; i<cps_.size; i++ )
         {
-          control_points[i] = cps_[i].point;
+          control_points[i] = cps_.points[i];
         }
         initControlPoints(control_points, false);
         //initControlPointsForESDF(control_points, false); lambda2_ *= 2; //ESDF TEST
@@ -1113,28 +1113,28 @@ bool BsplineOptimizer::refine_optimize(double time_limit, double time_start)
 void BsplineOptimizer::combineCostRebound(const std::vector<double>& x, std::vector<double>& grad, double& f_combine)
 {
   /* ---------- convert to control point vector ---------- */
-  vector<Eigen::Vector3d> q;
-  q.reserve( cps_.size() );
+  // vector<Eigen::Vector3d> q;
+  // q.reserve( cps_.size );
 
-  /* first p points */
-  for (int i = 0; i < order_; i++)
-    q.push_back(cps_[i].point);
+  // /* first p points */
+  // for (int i = 0; i < order_; i++)
+  //   q.push_back(cps_.points[i]);
 
   /* optimized control points */
   for (int i = 0; i < variable_num_ / 3; i++)
   {
-    Eigen::Vector3d qi(x[3 * i], x[3 * i + 1], x[3 * i + 2]);
-    q.push_back(qi);
+    cps_.points[i+3](0) = x[3 * i];
+    cps_.points[i+3](1) = x[3 * i + 1];
+    cps_.points[i+3](2) = x[3 * i + 2];
   }
 
-  /* last p points */
-  for (int i = 0; i < order_; i++)
-    q.push_back(cps_[cps_.size() - order_ + i].point);
+  // /* last p points */
+  // for (int i = 0; i < order_; i++)
+  //   q.push_back(cps_.points[cps_.size - order_ + i]);
 
-  for ( size_t i=order_; i<cps_.size()-order_; ++i )
+  for ( size_t i=order_; i<cps_.size-order_; ++i )
   {
-    cps_[i].point = q[i];
-    cps_[i].occupancy = sdf_map_->getInflateOccupancy(cps_[i].point);
+    cps_.occupancy[i] = sdf_map_->getInflateOccupancy(cps_.points[i]);
   }
 
   // for ( int i=0; i<cps_.size(); i++ )
@@ -1145,15 +1145,15 @@ void BsplineOptimizer::combineCostRebound(const std::vector<double>& x, std::vec
   double f_smoothness, f_distance, f_feasibility;
 
   vector<Eigen::Vector3d> g_smoothness, g_distance, g_feasibility;
-  g_smoothness.resize(cps_.size());
-  g_distance.resize(cps_.size());
-  g_feasibility.resize(cps_.size());
+  g_smoothness.resize(cps_.size);
+  g_distance.resize(cps_.size);
+  g_feasibility.resize(cps_.size);
 
   //time_satrt = ros::Time::now();
 
-  calcSmoothnessCost(q, f_smoothness, g_smoothness);
-  calcDistanceCostRebound(q, f_distance, g_distance, iter_num_, f_smoothness);
-  calcFeasibilityCost(q, f_feasibility, g_feasibility);
+  calcSmoothnessCost(cps_.points, f_smoothness, g_smoothness);
+  calcDistanceCostRebound(cps_.points, f_distance, g_distance, iter_num_, f_smoothness);
+  calcFeasibilityCost(cps_.points, f_feasibility, g_feasibility);
 
   /* ---------- convert to NLopt format...---------- */
   f_combine = lambda1_ * f_smoothness + lambda2_ * f_distance + lambda3_ * f_feasibility;

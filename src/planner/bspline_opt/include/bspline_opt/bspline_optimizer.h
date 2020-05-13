@@ -13,6 +13,36 @@
 // Output: the optimized sequence of points
 // The format of points: N x 3 matrix, each row is a point
 namespace rebound_planner {
+
+class ControlPoints
+{
+public:
+
+  double clearance;
+  int size;
+  std::vector<Eigen::Vector3d> points;
+  std::vector<std::vector<Eigen::Vector3d>> base_point; // The point at the statrt of the direction vector (collision point)
+  std::vector<std::vector<Eigen::Vector3d>> direction; // Direction vector, must be normalized.
+  std::vector<bool> flag_temp; // A flag that used in many places. Initialize it everytime before using it.
+  std::vector<bool> occupancy;
+
+  void resize( const int size_set )
+  {
+    size = size_set;
+
+    base_point.clear();
+    direction.clear();
+    flag_temp.clear();
+    occupancy.clear();
+    points.clear();
+    base_point.resize(size);
+    direction.resize(size);
+    flag_temp.resize(size);
+    occupancy.resize(size);
+    points.resize(size);
+  }
+};
+
 class BsplineOptimizer {
 
 public:
@@ -88,16 +118,17 @@ private:
   std::vector<double> best_variable_;  //
   double              min_cost_;       //
 
-  struct ControlPoint
-  {
-    Eigen::Vector3d point;
-    std::vector<Eigen::Vector3d> base_point; // The point at the statrt of the direction vector (collision point)
-    std::vector<Eigen::Vector3d> direction; // Direction vector, must be normalized.
-    double clearance;
-    bool flag_temp; // A flag that used in many places. Initialize it everytime before using it.
-    bool occupancy;
-  };
-  std::vector<ControlPoint> cps_;
+  // struct ControlPoint
+  // {
+  //   Eigen::Vector3d point;
+  //   std::vector<Eigen::Vector3d> base_point; // The point at the statrt of the direction vector (collision point)
+  //   std::vector<Eigen::Vector3d> direction; // Direction vector, must be normalized.
+  //   double clearance;
+  //   bool flag_temp; // A flag that used in many places. Initialize it everytime before using it.
+  //   bool occupancy;
+  // };
+  // std::vector<ControlPoint> cps_;
+  ControlPoints cps_;
 
   /* cost function */
   /* calculate each part of cost function with control points q as input */

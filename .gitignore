@@ -5,3 +5,4 @@ devel/
 files/
 README.md
 src/CMakeLists.txt
+nlopt-2.6.2-modified/

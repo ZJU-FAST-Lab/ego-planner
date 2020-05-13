@@ -4,8 +4,6 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /Planning1
-        - /Mapping1
         - /Mapping1/simulation_map1/Autocompute Value Bounds1
       Splitter Ratio: 0.5
     Tree Height: 250
@@ -180,19 +178,19 @@ Visualization Manager:
           Queue Size: 100
           Value: true
         - Class: rviz/Marker
-          Enabled: true
+          Enabled: false
           Marker Topic: /planning/position_cmd_vis
           Name: position_cmd
           Namespaces:
-            "": true
+            {}
           Queue Size: 100
-          Value: true
+          Value: false
         - Class: rviz/Marker
           Enabled: true
           Marker Topic: /rebound_planner_node/a_star_list
           Name: AStar
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Class: rviz/Marker
@@ -200,7 +198,7 @@ Visualization Manager:
           Marker Topic: /rebound_planner_node/init_list
           Name: InitTraj
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Class: rviz/Marker
@@ -208,7 +206,7 @@ Visualization Manager:
           Marker Topic: /rebound_planner_node/optimal_list
           Name: optimal_traj
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
       Enabled: true
@@ -218,7 +216,7 @@ Visualization Manager:
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
-            Max Value: 2.33999991
+            Max Value: 2.44000006
             Min Value: 0.0399999991
             Value: true
           Axis: Z
@@ -601,7 +599,7 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 13.821908
+      Distance: 15.6642227
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
@@ -616,7 +614,7 @@ Visualization Manager:
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.864796996
+      Pitch: 0.859797001
       Target Frame: base
       Value: ThirdPersonFollower (rviz)
       Yaw: 3.14041615
