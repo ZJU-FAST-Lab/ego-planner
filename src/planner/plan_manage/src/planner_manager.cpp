@@ -72,14 +72,9 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
 
   // cout << "continous_failures_count_=" << continous_failures_count_ << endl;
 
-  ros::Time t1, t2;
+  ros::Time t_start = ros::Time::now(), t_init, t_opt, t_refine;
 
-  double t_search = 0.0, t_opt = 0.0, t_adjust = 0.0;
-
-  // parameterize the path to bspline
-
-  t1 = ros::Time::now();
-
+  /*** STEP 1: INIT ***/
   double ts = pp_.ctrl_pt_dist / pp_.max_vel_*1.0; // Leftover shit!!!
   vector<Eigen::Vector3d> point_set, start_end_derivatives; 
   static bool flag_first_call = true, flag_force_polynomial = false;
@@ -256,17 +251,13 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
 
   a_star_pathes = bspline_optimizer_rebound_->initControlPoints( raw_cps, true );
 
-  t_search = (ros::Time::now() - t1).toSec();
-
   static int vis_id=0;
   visualization_->displayInitList(point_set, 0.2, 0);
   visualization_->displayAStarList(a_star_pathes,vis_id);
 
-  // bspline trajectory optimization
-
-  t1 = ros::Time::now();
-
+  t_init = ros::Time::now();
   
+  /*** STEP 2: OPTIMIZE ***/
   bool flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ctrl_pts, ts);
   cout << "first_optimize_step_success=" << flag_step_1_success << endl;
   if ( !flag_step_1_success )
@@ -277,9 +268,9 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
   } 
   visualization_->displayOptimalList( ctrl_pts, vis_id );
 
-  t_opt = (ros::Time::now() - t1).toSec();
+  t_opt = ros::Time::now();
 
-  t1                    = ros::Time::now();
+  /*** STEP 3: REFINE(RE-ALLOCATE TIME) IF NECESSARY ***/
   NonUniformBspline pos = NonUniformBspline(ctrl_pts, 3, ts);
   pos.setPhysicalLimits(pp_.max_vel_, pp_.max_acc_, pp_.feasibility_tolerance_);
   double to = pos.getTimeSum();
@@ -288,25 +279,25 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
   bool flag_step_2_success = true;
   if ( !pos.checkFeasibility(ratio, false) )
   {
-    cout << "infeasible" << endl;
+    cout << "Need to reallocate time." << endl;
 
     Eigen::MatrixXd optimal_control_points;
     flag_step_2_success = refineTrajAlgo2(pos, start_end_derivatives, ratio, ts, optimal_control_points);
     if ( flag_step_2_success )
       pos = NonUniformBspline(optimal_control_points, 3, ts);
   }
-  else
-  {
-    cout << "feasible" << endl;
+  // else
+  // {
+  //   cout << "feasible" << endl;
 
-    // double t_step = pos.getTimeSum() / (pos.getControlPoint().rows()-3);
-    // bspline_optimizer_rebound_->ref_pts_.clear();
-    // for ( double t=0; t<pos.getTimeSum()+1e-4; t+=t_step )
-    //   bspline_optimizer_rebound_->ref_pts_.push_back( pos.evaluateDeBoorT(t) );
-    // flag_step_2_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRefine(ctrl_pts, ts, optimal_control_points);
-    // if ( flag_step_2_success )
-    //   pos = NonUniformBspline(optimal_control_points, 3, ts) ;
-  }
+  //   // double t_step = pos.getTimeSum() / (pos.getControlPoint().rows()-3);
+  //   // bspline_optimizer_rebound_->ref_pts_.clear();
+  //   // for ( double t=0; t<pos.getTimeSum()+1e-4; t+=t_step )
+  //   //   bspline_optimizer_rebound_->ref_pts_.push_back( pos.evaluateDeBoorT(t) );
+  //   // flag_step_2_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRefine(ctrl_pts, ts, optimal_control_points);
+  //   // if ( flag_step_2_success )
+  //   //   pos = NonUniformBspline(optimal_control_points, 3, ts) ;
+  // }
 
   // cout << "ctrl_pts=" << endl;
   // cout << ctrl_pts << endl << endl;
@@ -332,7 +323,7 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
   //cout << "[rebo replan]: Reallocate ratio: " << tn / to << endl;
   if (tn / to > 3.0) ROS_ERROR("reallocate error.");
 
-  t_adjust = (ros::Time::now() - t1).toSec();
+  t_refine = ros::Time::now();
 
   // save planned results
 
@@ -340,13 +331,12 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
   local_data_.start_time_ = ros::Time::now();
   updateTrajInfo();
 
-  double t_total = t_search + t_opt + t_adjust;
-  cout << "[rebo replan]: time: " << t_total << ", search: " << t_search << ", optimize: " << t_opt
-       << ", adjust time:" << t_adjust << endl;
+  cout << "total time:\033[42m" << (t_refine-t_start).toSec() << "\033[0m,init:" << (t_init-t_start).toSec() << ",optimize:" << (t_opt-t_init).toSec()
+       << ",adjust:" << (t_refine-t_opt).toSec() << endl;
 
-  pp_.time_search_   = t_search;
-  pp_.time_optimize_ = t_opt;
-  pp_.time_adjust_   = t_adjust;
+  // pp_.time_search_   = t_search;
+  // pp_.time_optimize_ = t_opt;
+  // pp_.time_adjust_   = t_adjust;
 
   visualization_->displayOptimalList( local_data_.position_traj_.get_control_points(), vis_id );
   //vis_id += 10;
@@ -435,7 +425,7 @@ bool ReboundPlannerManager::refineTrajAlgo2(NonUniformBspline& traj, vector<Eige
 
   Eigen::MatrixXd ctrl_pts;      // = traj.getControlPoint()
 
-  std::cout << "ratio: " << ratio << std::endl;
+  // std::cout << "ratio: " << ratio << std::endl;
   reparamBspline(traj, start_end_derivative, ratio, ctrl_pts, ts, t_inc);
 
   traj = NonUniformBspline(ctrl_pts, 3, ts);
