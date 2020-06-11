@@ -299,7 +299,7 @@ void ReboReplanFSM::checkCollisionCallback(const ros::TimerEvent& e) {
   {
     if ( map->getInflateOccupancy( info->position_traj_.evaluateDeBoorT(t) ) )
     {
-      if ( planFromCurrentTraj() )
+      if ( planFromCurrentTraj() )  // Make a chance
       {
         changeFSMExecState(EXEC_TRAJ, "SAFETY");
         return;

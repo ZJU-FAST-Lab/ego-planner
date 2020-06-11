@@ -34,6 +34,7 @@ set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS} -O3 -Wall")
 
 add_library( bspline_opt 
     src/bspline_optimizer.cpp 
+    src/gradient_descent_optimizer.cpp
     )
 target_link_libraries( bspline_opt
     ${catkin_LIBRARIES} 

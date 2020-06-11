@@ -77,8 +77,8 @@ public:
   std::vector<Eigen::Vector3d> ref_pts_;
 
   std::vector<std::vector<Eigen::Vector3d>> initControlPoints(std::vector<Eigen::Vector3d> &init_points, bool flag_first_init = true);
-  bool BsplineOptimizeTrajRebound(const Eigen::MatrixXd init_points, Eigen::MatrixXd& optimal_points, double ts, double time_limit);
-  bool BsplineOptimizeTrajRefine(const Eigen::MatrixXd& init_points, const double ts, const double time_limit, Eigen::MatrixXd& optimal_points);
+  bool BsplineOptimizeTrajRebound(const Eigen::MatrixXd init_points, Eigen::MatrixXd& optimal_points, double ts);
+  bool BsplineOptimizeTrajRefine(const Eigen::MatrixXd& init_points, const double ts, Eigen::MatrixXd& optimal_points);
 
   inline int getOrder(void) { return order_; }
 
@@ -88,10 +88,10 @@ private:
   bool flag_continue_to_optimize_{false};
 
   // main input
-  Eigen::MatrixXd control_points_;     // B-spline control points, N x dim
+  // Eigen::MatrixXd control_points_;     // B-spline control points, N x dim
   double          bspline_interval_;   // B-spline knot span
   Eigen::Vector3d end_pt_;             // end of the trajectory
-  int             dim_;                // dimension of the B-spline
+  // int             dim_;                // dimension of the B-spline
                                        //
   vector<Eigen::Vector3d> guide_pts_;  // geometric guiding path points, N-6
   vector<Eigen::Vector3d> waypoints_;  // waypts constraints
@@ -115,7 +115,7 @@ private:
 
   int                 variable_num_;   // optimization variables
   int                 iter_num_;       // iteration of the solver
-  std::vector<double> best_variable_;  //
+  Eigen::VectorXd     best_variable_;  //
   double              min_cost_;       //
 
   // struct ControlPoint
@@ -145,20 +145,24 @@ private:
   void calcFitnessCost(const vector<Eigen::Vector3d>& q, double& cost, vector<Eigen::Vector3d>& gradient);
   bool check_collision_and_rebound(void);
 
-  static double costFunctionRebound(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
-  static double costFunctionRefine(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
+  static double costFunctionRebound(const Eigen::VectorXd& x, Eigen::VectorXd& grad, void* func_data);
+  static double costFunctionRefine(const Eigen::VectorXd& x, Eigen::VectorXd& grad, void* func_data);
+  // static double costFunctionRebound_nlopt(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
+  // static double costFunctionRefine_nlopt(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
 
-  bool rebound_optimize(double time_limit, double time_start);
-  bool refine_optimize(double time_limit, double time_start);
-  void combineCostRebound(const std::vector<double>& x, std::vector<double>& grad, double& f_combine);
-  void combineCostRefine(const std::vector<double>& x, std::vector<double>& grad, double& f_combine);
+  bool rebound_optimize();
+  // bool rebound_optimize_nlopt();
+  bool refine_optimize();
+  // bool refine_optimize_nlopt();
+  void combineCostRebound(const Eigen::VectorXd& x, Eigen::VectorXd& grad, double& f_combine);
+  void combineCostRefine(const Eigen::VectorXd& x, Eigen::VectorXd& grad, double& f_combine);
 
   /* for benckmark evaluation only */
 public:
 
   typedef unique_ptr<BsplineOptimizer> Ptr;
 
-  //EIGEN_MAKE_ALIGNED_OPERATOR_NEW
+  EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
 }  // namespace rebound_planner

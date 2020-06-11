@@ -111,13 +111,14 @@ NonUniformBspline NonUniformBspline::getDerivative() {
 
 double NonUniformBspline::getInterval() { return interval_; }
 
-void NonUniformBspline::setPhysicalLimits(const double& vel, const double& acc) {
+void NonUniformBspline::setPhysicalLimits(const double& vel, const double& acc, const double& tolerance) {
   limit_vel_   = vel;
   limit_acc_   = acc;
   limit_ratio_ = 1.1;
+  feasibility_tolerance_ = tolerance;
 }
 
-bool NonUniformBspline::checkFeasibility(bool show) {
+bool NonUniformBspline::checkFeasibility(double& ratio, bool show) {
   bool fea = true;
   // SETY << "[Bspline]: total points size: " << control_points_.rows() << endl;
 
@@ -126,11 +127,12 @@ bool NonUniformBspline::checkFeasibility(bool show) {
 
   /* check vel feasibility and insert points */
   double max_vel = -1.0;
+  double enlarged_vel_lim = limit_vel_ * (1.0 + feasibility_tolerance_) + 1e-4;
   for (int i = 0; i < P.rows() - 1; ++i) {
     Eigen::VectorXd vel = p_ * (P.row(i + 1) - P.row(i)) / (u_(i + p_ + 1) - u_(i + 1));
 
-    if (fabs(vel(0)) > limit_vel_ + 1e-4 || fabs(vel(1)) > limit_vel_ + 1e-4 ||
-        fabs(vel(2)) > limit_vel_ + 1e-4) {
+    if (fabs(vel(0)) > enlarged_vel_lim || fabs(vel(1)) > enlarged_vel_lim ||
+        fabs(vel(2)) > enlarged_vel_lim) {
 
       if (show) cout << "[Check]: Infeasible vel " << i << " :" << vel.transpose() << endl;
       fea = false;
@@ -143,6 +145,7 @@ bool NonUniformBspline::checkFeasibility(bool show) {
 
   /* acc feasibility */
   double max_acc = -1.0;
+  double enlarged_acc_lim = limit_acc_ * (1.0 + feasibility_tolerance_) + 1e-4;
   for (int i = 0; i < P.rows() - 2; ++i) {
 
     Eigen::VectorXd acc = p_ * (p_ - 1) *
@@ -150,8 +153,8 @@ bool NonUniformBspline::checkFeasibility(bool show) {
          (P.row(i + 1) - P.row(i)) / (u_(i + p_ + 1) - u_(i + 1))) /
         (u_(i + p_ + 1) - u_(i + 2));
 
-    if (fabs(acc(0)) > limit_acc_ + 1e-4 || fabs(acc(1)) > limit_acc_ + 1e-4 ||
-        fabs(acc(2)) > limit_acc_ + 1e-4) {
+    if (fabs(acc(0)) > enlarged_acc_lim || fabs(acc(1)) > enlarged_acc_lim ||
+        fabs(acc(2)) > enlarged_acc_lim) {
 
       if (show) cout << "[Check]: Infeasible acc " << i << " :" << acc.transpose() << endl;
       fea = false;
@@ -162,7 +165,7 @@ bool NonUniformBspline::checkFeasibility(bool show) {
     }
   }
 
-  double ratio = max(max_vel / limit_vel_, sqrt(fabs(max_acc) / limit_acc_));
+  ratio = max(max_vel / limit_vel_, sqrt(fabs(max_acc) / limit_acc_));
 
   return fea;
 }

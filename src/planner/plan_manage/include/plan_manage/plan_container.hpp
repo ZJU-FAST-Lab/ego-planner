@@ -162,8 +162,9 @@ public:
 struct PlanParameters {
   /* planning algorithm parameters */
   double max_vel_, max_acc_, max_jerk_;  // physical limits
-  double ctrl_pt_dist;                   // distance between adjacient B-spline
-                                         // control points
+  double ctrl_pt_dist;                   // distance between adjacient B-spline control points
+  double feasibility_tolerance_;   // permitted ratio of vel/acc exceeding limits
+
   /* processing time */
   double time_search_ = 0.0;
   double time_optimize_ = 0.0;

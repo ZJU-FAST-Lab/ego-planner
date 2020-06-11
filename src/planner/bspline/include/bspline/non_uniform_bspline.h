@@ -24,7 +24,7 @@ private:
 
   Eigen::MatrixXd getDerivativeControlPoints();
 
-  double limit_vel_, limit_acc_, limit_ratio_;  // physical limits and time adjustment ratio
+  double limit_vel_, limit_acc_, limit_ratio_, feasibility_tolerance_;  // physical limits and time adjustment ratio
 
 public:
   NonUniformBspline() {}
@@ -61,8 +61,8 @@ public:
 
   /* check feasibility, adjust time */
 
-  void   setPhysicalLimits(const double& vel, const double& acc);
-  bool   checkFeasibility(bool show = false);
+  void   setPhysicalLimits(const double& vel, const double& acc, const double& tolerance);
+  bool   checkFeasibility(double& ratio, bool show = false);
   double checkRatio();
   void   lengthenTime(const double& ratio);
   bool   reallocateTime(bool show = false);

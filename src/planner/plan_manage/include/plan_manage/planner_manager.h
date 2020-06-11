@@ -57,6 +57,8 @@ private:
 
   BsplineOptimizer::Ptr bspline_optimizer_rebound_;
 
+  int continous_failures_count_{0};
+
   void updateTrajInfo();
 
   // topology guided optimization
@@ -75,7 +77,7 @@ private:
                       double& time_inc);
 
   // zxzx
-  bool refineTrajAlgo2(NonUniformBspline& traj, vector<Eigen::Vector3d>& start_end_derivative, double& time_inc, double& ts, Eigen::MatrixXd& optimal_control_points);
+  bool refineTrajAlgo2(NonUniformBspline& traj, vector<Eigen::Vector3d>& start_end_derivative, double ratio, double& ts, Eigen::MatrixXd& optimal_control_points);
 
   // heading planning
   void calcNextYaw(const double& last_yaw, double& yaw);
