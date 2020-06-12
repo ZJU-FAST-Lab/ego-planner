@@ -152,7 +152,7 @@ void PlanningVisualization::displayLineList(const vector<Eigen::Vector3d>& list1
   ros::Duration(0.001).sleep();
 }
 
-void PlanningVisualization::drawBsplinesPhase1(vector<NonUniformBspline>& bsplines, double size) {
+void PlanningVisualization::drawBsplinesPhase1(vector<UniformBspline>& bsplines, double size) {
   vector<Eigen::Vector3d> empty;
 
   for (int i = 0; i < last_bspline_phase1_num_; ++i) {
@@ -167,7 +167,7 @@ void PlanningVisualization::drawBsplinesPhase1(vector<NonUniformBspline>& bsplin
   }
 }
 
-void PlanningVisualization::drawBsplinesPhase2(vector<NonUniformBspline>& bsplines, double size) {
+void PlanningVisualization::drawBsplinesPhase2(vector<UniformBspline>& bsplines, double size) {
   vector<Eigen::Vector3d> empty;
 
   for (int i = 0; i < last_bspline_phase2_num_; ++i) {
@@ -182,7 +182,7 @@ void PlanningVisualization::drawBsplinesPhase2(vector<NonUniformBspline>& bsplin
   }
 }
 
-void PlanningVisualization::drawBspline(NonUniformBspline& bspline, double size,
+void PlanningVisualization::drawBspline(UniformBspline& bspline, double size,
                                         const Eigen::Vector4d& color, bool show_ctrl_pts, double size2,
                                         const Eigen::Vector4d& color2, int id1, int id2) {
   if (bspline.getControlPoint().size() == 0) return;
@@ -192,7 +192,7 @@ void PlanningVisualization::drawBspline(NonUniformBspline& bspline, double size,
   bspline.getTimeSpan(tm, tmp);
 
   for (double t = tm; t <= tmp; t += 0.01) {
-    Eigen::Vector3d pt = bspline.evaluateDeBoor(t);
+    Eigen::Vector3d pt = bspline.evaluateDeBoorT(t);
     traj_pts.push_back(pt);
   }
   displaySphereList(traj_pts, size, color, BSPLINE + id1 % 100);
@@ -203,8 +203,8 @@ void PlanningVisualization::drawBspline(NonUniformBspline& bspline, double size,
   Eigen::MatrixXd         ctrl_pts = bspline.getControlPoint();
   vector<Eigen::Vector3d> ctp;
 
-  for (int i = 0; i < int(ctrl_pts.rows()); ++i) {
-    Eigen::Vector3d pt = ctrl_pts.row(i).transpose();
+  for (int i = 0; i < int(ctrl_pts.cols()); ++i) {
+    Eigen::Vector3d pt = ctrl_pts.col(i);
     ctp.push_back(pt);
   }
 
@@ -279,7 +279,7 @@ void PlanningVisualization::drawPolynomialTraj(PolynomialTraj poly_traj, double 
   displaySphereList(poly_pts, resolution, color, POLY_TRAJ + id % 100);
 }
 
-void PlanningVisualization::drawYawTraj(NonUniformBspline& pos, NonUniformBspline& yaw,
+void PlanningVisualization::drawYawTraj(UniformBspline& pos, UniformBspline& yaw,
                                         const double& dt) {
   double                  duration = pos.getTimeSum();
   vector<Eigen::Vector3d> pts1, pts2;
@@ -296,7 +296,7 @@ void PlanningVisualization::drawYawTraj(NonUniformBspline& pos, NonUniformBsplin
   displayLineList(pts1, pts2, 0.04, Eigen::Vector4d(1, 0.5, 0, 1), 0, 5);
 }
 
-void PlanningVisualization::drawYawPath(NonUniformBspline& pos, const vector<double>& yaw,
+void PlanningVisualization::drawYawPath(UniformBspline& pos, const vector<double>& yaw,
                                         const double& dt) {
   vector<Eigen::Vector3d> pts1, pts2;
 
@@ -491,9 +491,9 @@ void PlanningVisualization::displayInitList(vector<Eigen::Vector3d> init_pts, co
 void PlanningVisualization::displayOptimalList(Eigen::MatrixXd optimal_pts, int id)
 {
     vector<Eigen::Vector3d> list;
-    for ( int i = 0; i < optimal_pts.rows(); i++)
+    for ( int i = 0; i < optimal_pts.cols(); i++)
     {
-      Eigen::Vector3d pt = optimal_pts.row(i).transpose();
+      Eigen::Vector3d pt = optimal_pts.col(i).transpose();
       list.push_back(pt);
     }
     Eigen::Vector4d color(1,0,0,1);

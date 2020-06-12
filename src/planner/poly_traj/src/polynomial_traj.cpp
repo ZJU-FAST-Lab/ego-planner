@@ -26,12 +26,12 @@ PolynomialTraj minSnapTraj(const Eigen::MatrixXd& Pos, const Eigen::Vector3d& st
 
   for (int k = 0; k < seg_num; k++) {
     /* position to derivative */
-    Dx(k * 6) = Pos(k, 0);
-    Dx(k * 6 + 1) = Pos(k + 1, 0);
-    Dy(k * 6) = Pos(k, 1);
-    Dy(k * 6 + 1) = Pos(k + 1, 1);
-    Dz(k * 6) = Pos(k, 2);
-    Dz(k * 6 + 1) = Pos(k + 1, 2);
+    Dx(k * 6) = Pos(0, k);
+    Dx(k * 6 + 1) = Pos(0, k + 1);
+    Dy(k * 6) = Pos(1, k);
+    Dy(k * 6 + 1) = Pos(1, k + 1);
+    Dz(k * 6) = Pos(2, k);
+    Dz(k * 6 + 1) = Pos(2, k + 1);
 
     if (k == 0) {
       Dx(k * 6 + 2) = start_vel(0);

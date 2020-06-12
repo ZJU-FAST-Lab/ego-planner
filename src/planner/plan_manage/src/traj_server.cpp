@@ -1,4 +1,4 @@
-#include "bspline/non_uniform_bspline.h"
+#include "bspline_opt/uniform_bspline.h"
 #include "nav_msgs/Odometry.h"
 #include "rebound_planner/Bspline.h"
 #include "quadrotor_msgs/PositionCommand.h"
@@ -16,10 +16,10 @@ quadrotor_msgs::PositionCommand cmd;
 double pos_gain[3] = { 5.7, 5.7, 6.2 };
 double vel_gain[3] = { 3.4, 3.4, 4.0 };
 
-using rebound_planner::NonUniformBspline;
+using rebound_planner::UniformBspline;
 
 bool receive_traj_ = false;
-vector<NonUniformBspline> traj_;
+vector<UniformBspline> traj_;
 double traj_duration_;
 ros::Time start_time_;
 int traj_id_;
@@ -103,7 +103,7 @@ void drawCmd(const Eigen::Vector3d& pos, const Eigen::Vector3d& vec, const int& 
 void bsplineCallback(rebound_planner::BsplineConstPtr msg) {
   // parse pos traj
 
-  Eigen::MatrixXd pos_pts(msg->pos_pts.size(), 3);
+  Eigen::MatrixXd pos_pts(3, msg->pos_pts.size());
 
   Eigen::VectorXd knots(msg->knots.size());
   for (int i = 0; i < msg->knots.size(); ++i) {
@@ -111,12 +111,12 @@ void bsplineCallback(rebound_planner::BsplineConstPtr msg) {
   }
 
   for (int i = 0; i < msg->pos_pts.size(); ++i) {
-    pos_pts(i, 0) = msg->pos_pts[i].x;
-    pos_pts(i, 1) = msg->pos_pts[i].y;
-    pos_pts(i, 2) = msg->pos_pts[i].z;
+    pos_pts(0, i) = msg->pos_pts[i].x;
+    pos_pts(1, i) = msg->pos_pts[i].y;
+    pos_pts(2, i) = msg->pos_pts[i].z;
   }
 
-  NonUniformBspline pos_traj(pos_pts, msg->order, 0.1);
+  UniformBspline pos_traj(pos_pts, msg->order, 0.1);
   pos_traj.setKnot(knots);
 
   // parse yaw traj
@@ -126,7 +126,7 @@ void bsplineCallback(rebound_planner::BsplineConstPtr msg) {
   //   yaw_pts(i, 0) = msg->yaw_pts[i];
   // }
 
-  //NonUniformBspline yaw_traj(yaw_pts, msg->order, msg->yaw_dt);
+  //UniformBspline yaw_traj(yaw_pts, msg->order, msg->yaw_dt);
 
   start_time_ = msg->start_time;
   traj_id_ = msg->traj_id;
@@ -197,7 +197,6 @@ void cmdCallback(const ros::TimerEvent& e)
     acc = traj_[2].evaluateDeBoorT(t_cur);
 
     /*** calculate yaw ***/
-
     Eigen::Vector3d dir = t_cur + time_forward_ <= traj_duration_ ? traj_[0].evaluateDeBoorT(t_cur+time_forward_) - pos : traj_[0].evaluateDeBoorT(traj_duration_) - pos;
     double yaw_temp = dir.norm() > 0.1 ? atan2( dir(1), dir(0) ) : last_yaw_;
     double max_yaw_change = YAW_DOT_MAX_PER_SEC*(time_now-time_last).toSec();

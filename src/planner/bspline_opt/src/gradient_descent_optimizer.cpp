@@ -31,13 +31,11 @@ GradientDescentOptimizer::optimize(Eigen::VectorXd &x_init_optimal, double &opt_
         if (iter % 2)
         {
             x_k = x_kp1 - alpha * grad_kp1;
-        //cout << "x_k" << x_k.transpose() << endl;
             cost_k = objfun_(x_k, grad_k, f_data);
         }
         else
         {
             x_kp1 = x_k - alpha * grad_k;
-        //cout << "x_kp1" << x_kp1.transpose() << endl;
             cost_kp1 = objfun_(x_kp1, grad_kp1, f_data);
         }
 
@@ -50,10 +48,6 @@ GradientDescentOptimizer::optimize(Eigen::VectorXd &x_init_optimal, double &opt_
         {
             return FIND_MIN;
         }
-
-        // cout <<  "iter=" << iter << " grad_k.maxCoeff()=" << grad_k.maxCoeff() << " grad_k.minCoeff()=" << grad_k.minCoeff() << " cost=" << cost_k << endl;
-        // cout.precision(2);
-        // cout << grad_k.transpose() << endl;
     }
 
     return REACH_MAX_ITERATION;

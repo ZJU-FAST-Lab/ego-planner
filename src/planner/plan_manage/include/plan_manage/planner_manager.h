@@ -4,7 +4,7 @@
 #include <stdlib.h>
 
 #include <bspline_opt/bspline_optimizer.h>
-#include <bspline/non_uniform_bspline.h>
+#include <bspline_opt/uniform_bspline.h>
 
 #include <rebound_planner/DataDisp.h>
 
@@ -44,7 +44,7 @@ public:
   void initPlanModules(ros::NodeHandle& nh, PlanningVisualization::Ptr vis = NULL);
 
   bool checkTrajCollision(double& distance);
-  bool checkTrajCollisionInflate(NonUniformBspline &traj);
+  bool checkTrajCollisionInflate(UniformBspline &traj);
 
   PlanParameters pp_;
   LocalTrajData local_data_;
@@ -71,16 +71,12 @@ private:
   Eigen::MatrixXd reparamLocalTraj(double start_t, double& dt, double& duration);
   Eigen::MatrixXd reparamLocalTraj(double start_t, double duration, int seg_num, double& dt);
 
-  void selectBestTraj(NonUniformBspline& traj);
-  void refineTraj(NonUniformBspline& best_traj, double& time_inc);
-  void reparamBspline(NonUniformBspline& bspline, vector<Eigen::Vector3d>& start_end_derivative, double ratio, Eigen::MatrixXd& ctrl_pts, double& dt,
+  void selectBestTraj(UniformBspline& traj);
+  void refineTraj(UniformBspline& best_traj, double& time_inc);
+  void reparamBspline(UniformBspline& bspline, vector<Eigen::Vector3d>& start_end_derivative, double ratio, Eigen::MatrixXd& ctrl_pts, double& dt,
                       double& time_inc);
 
-  // zxzx
-  bool refineTrajAlgo2(NonUniformBspline& traj, vector<Eigen::Vector3d>& start_end_derivative, double ratio, double& ts, Eigen::MatrixXd& optimal_control_points);
-
-  // heading planning
-  void calcNextYaw(const double& last_yaw, double& yaw);
+  bool refineTrajAlgo(UniformBspline& traj, vector<Eigen::Vector3d>& start_end_derivative, double ratio, double& ts, Eigen::MatrixXd& optimal_control_points);
 
   // !SECTION stable
 

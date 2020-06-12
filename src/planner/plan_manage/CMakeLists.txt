@@ -15,7 +15,6 @@ find_package(catkin REQUIRED COMPONENTS
   quadrotor_msgs
   plan_env
   path_searching
-  bspline
   bspline_opt
   traj_utils
   message_generation
@@ -40,7 +39,7 @@ generate_messages(
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES rebound_planner
- CATKIN_DEPENDS plan_env path_searching bspline bspline_opt traj_utils message_runtime
+ CATKIN_DEPENDS plan_env path_searching bspline_opt traj_utils message_runtime
 #  DEPENDS system_lib
 )
 

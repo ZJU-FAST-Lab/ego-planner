@@ -3,7 +3,7 @@
 
 #include <Eigen/Eigen>
 #include <path_searching/dyn_a_star.h>
-#include <bspline/non_uniform_bspline.h>
+#include <bspline_opt/uniform_bspline.h>
 #include <plan_env/sdf_map.h>
 #include <ros/ros.h>
 

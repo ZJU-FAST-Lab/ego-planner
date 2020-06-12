@@ -32,8 +32,7 @@ void ReboReplanFSM::init(ros::NodeHandle& nh) {
   exec_timer_   = nh.createTimer(ros::Duration(0.01), &ReboReplanFSM::execFSMCallback, this);
   safety_timer_ = nh.createTimer(ros::Duration(0.05), &ReboReplanFSM::checkCollisionCallback, this);
 
-  waypoint_sub_ =
-      nh.subscribe("/waypoint_generator/waypoints", 1, &ReboReplanFSM::waypointCallback, this);
+  waypoint_sub_ = nh.subscribe("/waypoint_generator/waypoints", 1, &ReboReplanFSM::waypointCallback, this);
   odom_sub_ = nh.subscribe("/odom_world", 1, &ReboReplanFSM::odometryCallback, this);
 
   replan_pub_  = nh.advertise<std_msgs::Empty>("/planning/replan", 10);
@@ -191,6 +190,21 @@ void ReboReplanFSM::execFSMCallback(const ros::TimerEvent& e) {
       break;
     }
 
+
+    case REPLAN_TRAJ: {
+
+      if (planFromCurrentTraj() )
+      {
+        changeFSMExecState(EXEC_TRAJ, "FSM");
+      }
+      else
+      {
+        changeFSMExecState(REPLAN_TRAJ, "FSM");
+      }
+      
+      break;
+    }
+
     case EXEC_TRAJ: {
       /* determine if need to replan */
       LocalTrajData* info     = &planner_manager_->local_data_;
@@ -220,21 +234,6 @@ void ReboReplanFSM::execFSMCallback(const ros::TimerEvent& e) {
       break;
     }
 
-
-    case REPLAN_TRAJ: {
-
-      if (planFromCurrentTraj() )
-      {
-        changeFSMExecState(EXEC_TRAJ, "FSM");
-      }
-      else
-      {
-        changeFSMExecState(REPLAN_TRAJ, "FSM");
-      }
-      
-      break;
-    }
-
     case EMERGENCY_STOP: {
 
       if ( flag_escape_emergency_ ) // Avoiding repeated calls
@@ -259,15 +258,20 @@ void ReboReplanFSM::execFSMCallback(const ros::TimerEvent& e) {
 
 bool ReboReplanFSM::planFromCurrentTraj()
 {
+
   LocalTrajData* info     = &planner_manager_->local_data_;
   ros::Time      time_now = ros::Time::now();
   double         t_cur    = (time_now - info->start_time_).toSec();
+
+  //cout << "info->velocity_traj_=" << info->velocity_traj_.get_control_points() << endl;
 
   start_pt_  = info->position_traj_.evaluateDeBoorT(t_cur);
   start_vel_ = info->velocity_traj_.evaluateDeBoorT(t_cur);
   start_acc_ = info->acceleration_traj_.evaluateDeBoorT(t_cur);
 
+
   bool success = callReboundReplan(false, false);
+
   if ( !success) 
   {
     success = callReboundReplan(true, false);
@@ -344,16 +348,17 @@ bool ReboReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomP
     bspline.traj_id    = info->traj_id_;
 
     Eigen::MatrixXd pos_pts = info->position_traj_.getControlPoint();
-
-    for (int i = 0; i < pos_pts.rows(); ++i) {
+    bspline.pos_pts.reserve( pos_pts.cols() );
+    for (int i = 0; i < pos_pts.cols(); ++i) {
       geometry_msgs::Point pt;
-      pt.x = pos_pts(i, 0);
-      pt.y = pos_pts(i, 1);
-      pt.z = pos_pts(i, 2);
+      pt.x = pos_pts(0, i);
+      pt.y = pos_pts(1, i);
+      pt.z = pos_pts(2, i);
       bspline.pos_pts.push_back(pt);
     }
 
     Eigen::VectorXd knots = info->position_traj_.getKnot();
+    bspline.knots.reserve(knots.rows()); 
     for (int i = 0; i < knots.rows(); ++i) {
       bspline.knots.push_back(knots(i));
     }
@@ -382,16 +387,17 @@ bool ReboReplanFSM::callEmergencyStop( Eigen::Vector3d stop_pos ) {
   bspline.traj_id    = info->traj_id_;
 
   Eigen::MatrixXd pos_pts = info->position_traj_.getControlPoint();
-
-  for (int i = 0; i < pos_pts.rows(); ++i) {
+  bspline.pos_pts.reserve( pos_pts.cols() );
+  for (int i = 0; i < pos_pts.cols(); ++i) {
     geometry_msgs::Point pt;
-    pt.x = pos_pts(i, 0);
-    pt.y = pos_pts(i, 1);
-    pt.z = pos_pts(i, 2);
+    pt.x = pos_pts(0, i);
+    pt.y = pos_pts(1, i);
+    pt.z = pos_pts(2, i);
     bspline.pos_pts.push_back(pt);
   }
 
   Eigen::VectorXd knots = info->position_traj_.getKnot();
+  bspline.knots.reserve(knots.rows()); 
   for (int i = 0; i < knots.rows(); ++i) {
     bspline.knots.push_back(knots(i));
   }
@@ -429,7 +435,7 @@ void ReboReplanFSM::getLocalTarget()
     }
     else
     {
-      ROS_WARN("the drone goes too far to the stright line.");
+      ROS_WARN("the drone goes too far to the reference line.");
       double t = -b/(2*a);
       local_target_pt_ = M + N*t;
       //local_target_pt_ = start_pt_ + (end_pt_ - start_pt_).normalized() * planning_horizen_;

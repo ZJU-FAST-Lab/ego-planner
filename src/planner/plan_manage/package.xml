@@ -55,7 +55,6 @@
   
   <build_depend>plan_env</build_depend>
   <build_depend>path_searching</build_depend>
-  <build_depend>bspline</build_depend>
   <build_depend>bspline_opt</build_depend>
   <build_depend>traj_utils</build_depend>
 
@@ -68,7 +67,6 @@
 
   <exec_depend>plan_env</exec_depend>
   <exec_depend>path_searching</exec_depend>
-  <exec_depend>bspline</exec_depend>
   <exec_depend>bspline_opt</exec_depend>
   <exec_depend>traj_utils</exec_depend>
   

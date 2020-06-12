@@ -23,8 +23,8 @@ vector<int> pointIdxRadiusSearch;
 vector<float> pointRadiusSquaredDistance;
 
 random_device rd;
-default_random_engine eng(1);
-//default_random_engine eng(rd());
+//default_random_engine eng(4);
+default_random_engine eng(rd());
 uniform_real_distribution<double> rand_x;
 uniform_real_distribution<double> rand_y;
 uniform_real_distribution<double> rand_w;

@@ -3,7 +3,7 @@
 
 #include <Eigen/Eigen>
 #include <algorithm>
-#include <bspline/non_uniform_bspline.h>
+#include <bspline_opt/uniform_bspline.h>
 #include <iostream>
 #include <poly_traj/polynomial_traj.h>
 #include <ros/ros.h>
@@ -71,14 +71,14 @@ public:
                           int id = 0);
 
   // draw a bspline trajectory
-  void drawBspline(NonUniformBspline& bspline, double size, const Eigen::Vector4d& color,
+  void drawBspline(UniformBspline& bspline, double size, const Eigen::Vector4d& color,
                    bool show_ctrl_pts = false, double size2 = 0.1,
                    const Eigen::Vector4d& color2 = Eigen::Vector4d(1, 1, 0, 1), int id1 = 0,
                    int id2 = 0);
 
   // draw a set of bspline trajectories generated in different phases
-  void drawBsplinesPhase1(vector<NonUniformBspline>& bsplines, double size);
-  void drawBsplinesPhase2(vector<NonUniformBspline>& bsplines, double size);
+  void drawBsplinesPhase1(vector<UniformBspline>& bsplines, double size);
+  void drawBsplinesPhase2(vector<UniformBspline>& bsplines, double size);
 
   void drawTopoPathsPhase1(vector<vector<Eigen::Vector3d>>& paths, double line_width);
   void drawTopoPathsPhase2(vector<vector<Eigen::Vector3d>>& paths, double line_width);
@@ -90,8 +90,8 @@ public:
   typedef std::shared_ptr<PlanningVisualization> Ptr;
 
   // SECTION developing
-  void drawYawTraj(NonUniformBspline& pos, NonUniformBspline& yaw, const double& dt);
-  void drawYawPath(NonUniformBspline& pos, const vector<double>& yaw, const double& dt);
+  void drawYawTraj(UniformBspline& pos, UniformBspline& yaw, const double& dt);
+  void drawYawPath(UniformBspline& pos, const vector<double>& yaw, const double& dt);
 
 
   /************************** zxzx display ****************************/

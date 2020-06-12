@@ -5,7 +5,7 @@
 #include <vector>
 #include <ros/ros.h>
 
-#include <bspline/non_uniform_bspline.h>
+#include <bspline_opt/uniform_bspline.h>
 #include <poly_traj/polynomial_traj.h>
 
 using std::vector;
@@ -16,7 +16,7 @@ class GlobalTrajData {
 private:
 public:
   PolynomialTraj global_traj_;
-  vector<NonUniformBspline> local_traj_;
+  vector<UniformBspline> local_traj_;
 
   double global_duration_;
   ros::Time global_start_time_;
@@ -43,7 +43,7 @@ public:
     last_time_inc_ = 0.0;
   }
 
-  void setLocalTraj(NonUniformBspline traj, double local_ts, double local_te, double time_inc) {
+  void setLocalTraj(UniformBspline traj, double local_ts, double local_te, double time_inc) {
     local_traj_.resize(3);
     local_traj_[0] = traj;
     local_traj_[1] = local_traj_[0].getDerivative();
@@ -164,6 +164,7 @@ struct PlanParameters {
   double max_vel_, max_acc_, max_jerk_;  // physical limits
   double ctrl_pt_dist;                   // distance between adjacient B-spline control points
   double feasibility_tolerance_;   // permitted ratio of vel/acc exceeding limits
+  double planning_horizen_;
 
   /* processing time */
   double time_search_ = 0.0;
@@ -179,7 +180,7 @@ struct LocalTrajData {
   double global_time_offset; // This is because when the local traj finished and is going to switch back to the global traj, the global traj time is no longer matches the world time.
   ros::Time start_time_;
   Eigen::Vector3d start_pos_;
-  NonUniformBspline position_traj_, velocity_traj_, acceleration_traj_;
+  UniformBspline position_traj_, velocity_traj_, acceleration_traj_;
 };
 
 }  // namespace rebound_planner

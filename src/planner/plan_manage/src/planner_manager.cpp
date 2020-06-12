@@ -18,6 +18,7 @@ void ReboundPlannerManager::initPlanModules(ros::NodeHandle& nh, PlanningVisuali
   nh.param("manager/max_jerk", pp_.max_jerk_, -1.0);
   nh.param("manager/feasibility_tolerance", pp_.feasibility_tolerance_, 0.0);
   nh.param("manager/control_points_distance", pp_.ctrl_pt_dist, -1.0);
+  nh.param("manager/planning_horizen", pp_.planning_horizen_, 5.0);
 
   local_data_.traj_id_ = 0;
   sdf_map_.reset(new SDFMap);
@@ -32,7 +33,7 @@ void ReboundPlannerManager::initPlanModules(ros::NodeHandle& nh, PlanningVisuali
   visualization_ = vis;
 }
 
-bool ReboundPlannerManager::checkTrajCollisionInflate(NonUniformBspline &traj) {
+bool ReboundPlannerManager::checkTrajCollisionInflate(UniformBspline &traj) {
 
   double tm, tmp;
   traj.getTimeSpan(tm, tmp);
@@ -40,7 +41,7 @@ bool ReboundPlannerManager::checkTrajCollisionInflate(NonUniformBspline &traj) {
   constexpr double t_step = 0.02;
   for ( double t = tm; t<tmp; t+=t_step )
   {
-    if ( sdf_map_->getInflateOccupancy( traj.evaluateDeBoor(t) ) )
+    if ( sdf_map_->getInflateOccupancy( traj.evaluateDeBoorT(t) ) )
     {
       return false;
     }
@@ -84,7 +85,8 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
     point_set.clear();
     start_end_derivatives.clear();
 
-    if ( flag_first_call || flag_polyInit || flag_force_polynomial /*|| ( start_pt - local_target_pt ).norm() < 1.0*/)
+    
+    if ( flag_first_call || flag_polyInit || flag_force_polynomial /*|| ( start_pt - local_target_pt ).norm() < 1.0*/) // Initial path generated from a min-snap traj by order.
     {
       flag_first_call = false;
       flag_force_polynomial = false;
@@ -106,17 +108,16 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
         Eigen::Vector3d vertical_dir = ((start_pt - local_target_pt).cross(horizen_dir)).normalized();
         Eigen::Vector3d random_inserted_pt =  (start_pt + local_target_pt)/2 + 
                                               (((double)rand())/RAND_MAX-0.5)*(start_pt-local_target_pt).norm()*horizen_dir*0.8*(-0.978/(continous_failures_count_+0.989)+0.989) + 
-                                              (((double)rand())/RAND_MAX-0.5)*(start_pt-local_target_pt).norm()*vertical_dir*0.4*(-0.978/(continous_failures_count_+0.989)+0.989);
+                                              (((double)rand())/RAND_MAX-0.5)*(start_pt-local_target_pt).norm()*vertical_dir*0.4*(-0.978/(continous_failures_count_+0.989)+0.989);  
         Eigen::MatrixXd pos(3,3);
-        pos.row(0) = start_pt.transpose();
-        pos.row(1) = random_inserted_pt.transpose();
-        pos.row(2) = local_target_pt.transpose();
+        pos.col(0) = start_pt;
+        pos.col(1) = random_inserted_pt;
+        pos.col(2) = local_target_pt;
         Eigen::VectorXd t(2);
         t(0) = t(1) = time / 2;
         gl_traj = minSnapTraj(pos, start_vel, local_target_vel, start_acc, Eigen::Vector3d::Zero(), t);
       }
       
-
       double t;
       bool flag_too_far;
       ts *= 1.5;  // ts will be divided by 1.5 in the next
@@ -137,7 +138,7 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
           last_pt = pt;
           point_set.push_back( pt );
         }
-      } while ( flag_too_far || point_set.size() < 7 ); // If the start point is very close to end point, this will help
+      } while ( flag_too_far || point_set.size() < 7 ); // To make sure the initial path has enough points.
       t-=ts;
       start_end_derivatives.push_back( gl_traj.evaluateVel(0) );
       start_end_derivatives.push_back( local_target_vel );
@@ -145,7 +146,7 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
       start_end_derivatives.push_back( gl_traj.evaluateAcc(t) );
 
     }
-    else
+    else // Initial path generated from previous trajectory.
     {
 
       double t;
@@ -218,7 +219,7 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
       start_end_derivatives.push_back( local_data_.acceleration_traj_.evaluateDeBoorT(t_cur) );
       start_end_derivatives.push_back( Eigen::Vector3d::Zero() );
 
-      if ( point_set.size() > 50 )
+      if ( point_set.size() > pp_.planning_horizen_ / pp_.ctrl_pt_dist * 3 )  // The initial path is unnormally too long!
       {
         flag_force_polynomial = true;
         flag_regenerate = true;
@@ -234,18 +235,18 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
   Eigen::MatrixXd ctrl_pts;
   //ts = 3.25/(point_set.size()-1);
   //ts *= 1.5;
-  NonUniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, ctrl_pts);
+  UniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, ctrl_pts);
 
-  if ( ctrl_pts.rows() <= 2*bspline_optimizer_rebound_->getOrder() ) // Drone is very close to the goal point
-  {
-    continous_failures_count_ = 0;
-    return true;
-  }
+  // if ( ctrl_pts.cols() <= 2*bspline_optimizer_rebound_->getOrder() ) // Drone is very close to the goal point  
+  // {
+  //   continous_failures_count_ = 0;
+  //   return true;
+  // }
   
   vector<Eigen::Vector3d> raw_cps;
   vector<vector<Eigen::Vector3d>> a_star_pathes;
-  for ( int i=0; i<ctrl_pts.rows(); ++i )
-    raw_cps.push_back( ctrl_pts.row(i).transpose() );
+  for ( int i=0; i<ctrl_pts.cols(); ++i )
+    raw_cps.push_back( ctrl_pts.col(i) );
 
   // cout << "raw_cps.size()=" << raw_cps.size() << endl;
 
@@ -271,9 +272,8 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
   t_opt = ros::Time::now();
 
   /*** STEP 3: REFINE(RE-ALLOCATE TIME) IF NECESSARY ***/
-  NonUniformBspline pos = NonUniformBspline(ctrl_pts, 3, ts);
+  UniformBspline pos = UniformBspline(ctrl_pts, 3, ts);
   pos.setPhysicalLimits(pp_.max_vel_, pp_.max_acc_, pp_.feasibility_tolerance_);
-  double to = pos.getTimeSum();
 
   double ratio;
   bool flag_step_2_success = true;
@@ -282,9 +282,9 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
     cout << "Need to reallocate time." << endl;
 
     Eigen::MatrixXd optimal_control_points;
-    flag_step_2_success = refineTrajAlgo2(pos, start_end_derivatives, ratio, ts, optimal_control_points);
+    flag_step_2_success = refineTrajAlgo(pos, start_end_derivatives, ratio, ts, optimal_control_points);
     if ( flag_step_2_success )
-      pos = NonUniformBspline(optimal_control_points, 3, ts);
+      pos = UniformBspline(optimal_control_points, 3, ts);
   }
   // else
   // {
@@ -296,7 +296,7 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
   //   //   bspline_optimizer_rebound_->ref_pts_.push_back( pos.evaluateDeBoorT(t) );
   //   // flag_step_2_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRefine(ctrl_pts, ts, optimal_control_points);
   //   // if ( flag_step_2_success )
-  //   //   pos = NonUniformBspline(optimal_control_points, 3, ts) ;
+  //   //   pos = UniformBspline(optimal_control_points, 3, ts) ;
   // }
 
   // cout << "ctrl_pts=" << endl;
@@ -318,11 +318,6 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
     return false;
   }
 
-  double tn = pos.getTimeSum();
-
-  //cout << "[rebo replan]: Reallocate ratio: " << tn / to << endl;
-  if (tn / to > 3.0) ROS_ERROR("reallocate error.");
-
   t_refine = ros::Time::now();
 
   // save planned results
@@ -334,10 +329,6 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
   cout << "total time:\033[42m" << (t_refine-t_start).toSec() << "\033[0m,init:" << (t_init-t_start).toSec() << ",optimize:" << (t_opt-t_init).toSec()
        << ",adjust:" << (t_refine-t_opt).toSec() << endl;
 
-  // pp_.time_search_   = t_search;
-  // pp_.time_optimize_ = t_opt;
-  // pp_.time_adjust_   = t_adjust;
-
   visualization_->displayOptimalList( local_data_.position_traj_.get_control_points(), vis_id );
   //vis_id += 10;
 
@@ -348,12 +339,12 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
 
 bool ReboundPlannerManager::EmergencyStop(Eigen::Vector3d stop_pos)
 {
-  Eigen::MatrixXd control_points(6,3);
+  Eigen::MatrixXd control_points(3,6);
   for ( int i=0; i<6; i++ )
   {
-    control_points.row(i) = stop_pos.transpose();
+    control_points.col(i) = stop_pos;
   }
-  NonUniformBspline bspline_container = NonUniformBspline(control_points, 3, 1.0);
+  UniformBspline bspline_container = UniformBspline(control_points, 3, 1.0);
   local_data_.position_traj_ = bspline_container;
   local_data_.start_time_ = ros::Time::now();
   updateTrajInfo();
@@ -394,22 +385,23 @@ bool ReboundPlannerManager::planGlobalTraj(const Eigen::Vector3d& start_pos, con
 
   // write position matrix
   int             pt_num = inter_points.size();
-  Eigen::MatrixXd pos(pt_num, 3);
-  for (int i = 0; i < pt_num; ++i) pos.row(i) = inter_points[i];
+  Eigen::MatrixXd pos(3, pt_num);
+  for (int i = 0; i < pt_num; ++i) 
+    pos.col(i) = inter_points[i];
 
   Eigen::Vector3d zero(0, 0, 0);
   Eigen::VectorXd time(pt_num - 1);
   for (int i = 0; i < pt_num - 1; ++i) {
-    time(i) = (pos.row(i + 1) - pos.row(i)).norm() / (pp_.max_vel_);
+    time(i) = (pos.col(i + 1) - pos.col(i)).norm() / (pp_.max_vel_);
   }
 
   time(0) *= 2.0;
   time(time.rows() - 1) *= 2.0;
 
   PolynomialTraj gl_traj;
-  if ( pos.rows() >= 3 )
+  if ( pos.cols() >= 3 )
     gl_traj =  minSnapTraj(pos, start_vel, end_vel, start_acc, end_acc, time);
-  else if ( pos.rows() == 2 )
+  else if ( pos.cols() == 2 )
     gl_traj = one_segment_traj_gen(start_pos, start_vel, start_acc, end_pos, end_vel, end_acc, time(0));
   else
     return false;
@@ -420,7 +412,7 @@ bool ReboundPlannerManager::planGlobalTraj(const Eigen::Vector3d& start_pos, con
   return true;
 }
 
-bool ReboundPlannerManager::refineTrajAlgo2(NonUniformBspline& traj, vector<Eigen::Vector3d>& start_end_derivative, double ratio, double& ts, Eigen::MatrixXd& optimal_control_points) {
+bool ReboundPlannerManager::refineTrajAlgo(UniformBspline& traj, vector<Eigen::Vector3d>& start_end_derivative, double ratio, double& ts, Eigen::MatrixXd& optimal_control_points) {
   double    t_inc;
 
   Eigen::MatrixXd ctrl_pts;      // = traj.getControlPoint()
@@ -428,9 +420,9 @@ bool ReboundPlannerManager::refineTrajAlgo2(NonUniformBspline& traj, vector<Eige
   // std::cout << "ratio: " << ratio << std::endl;
   reparamBspline(traj, start_end_derivative, ratio, ctrl_pts, ts, t_inc);
 
-  traj = NonUniformBspline(ctrl_pts, 3, ts);
+  traj = UniformBspline(ctrl_pts, 3, ts);
   
-  double t_step = traj.getTimeSum() / (ctrl_pts.rows()-3);
+  double t_step = traj.getTimeSum() / (ctrl_pts.cols()-3);
   bspline_optimizer_rebound_->ref_pts_.clear();
   for ( double t=0; t<traj.getTimeSum()+1e-4; t+=t_step )
     bspline_optimizer_rebound_->ref_pts_.push_back( traj.evaluateDeBoorT(t) );
@@ -448,10 +440,10 @@ void ReboundPlannerManager::updateTrajInfo() {
   local_data_.traj_id_ += 1;
 }
 
-void ReboundPlannerManager::reparamBspline(NonUniformBspline& bspline, vector<Eigen::Vector3d>& start_end_derivative, double ratio,
+void ReboundPlannerManager::reparamBspline(UniformBspline& bspline, vector<Eigen::Vector3d>& start_end_derivative, double ratio,
                                         Eigen::MatrixXd& ctrl_pts, double& dt, double& time_inc) {
   double time_origin = bspline.getTimeSum();
-  int    seg_num     = bspline.getControlPoint().rows() - 3;
+  int    seg_num     = bspline.getControlPoint().cols() - 3;
   // double length = bspline.getLength(0.1);
   // int seg_num = ceil(length / pp_.ctrl_pt_dist);
 
@@ -464,8 +456,7 @@ void ReboundPlannerManager::reparamBspline(NonUniformBspline& bspline, vector<Ei
   for (double time = 0.0; time <= duration + 1e-4; time += dt) {
     point_set.push_back(bspline.evaluateDeBoorT(time));
   }
-  NonUniformBspline::parameterizeToBspline(dt, point_set, start_end_derivative, ctrl_pts);
-  // ROS_WARN("prev: %d, new: %d", prev_num, ctrl_pts.rows());
+  UniformBspline::parameterizeToBspline(dt, point_set, start_end_derivative, ctrl_pts);
 }
 
 }  // namespace rebound_planner
