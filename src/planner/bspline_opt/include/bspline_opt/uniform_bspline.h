@@ -47,7 +47,7 @@ public:
   // compute position / derivative
 
   Eigen::VectorXd   evaluateDeBoor(const double& u);   // use u \in [up, u_mp]
-  Eigen::VectorXd   evaluateDeBoorT(const double& t);  // use t \in [0, duration]
+  inline Eigen::VectorXd   evaluateDeBoorT(const double& t) {return evaluateDeBoor(t + u_(p_));}  // use t \in [0, duration]
   UniformBspline getDerivative();
 
   // 3D B-spline interpolation of points in point_set, with boundary vel&acc

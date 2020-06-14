@@ -291,7 +291,7 @@ bool ReboReplanFSM::planFromCurrentTraj()
 
 void ReboReplanFSM::checkCollisionCallback(const ros::TimerEvent& e) {
   LocalTrajData* info = &planner_manager_->local_data_;
-  auto map = planner_manager_->sdf_map_;
+  auto map = planner_manager_->grid_map_;
 
   if ( exec_state_ == WAIT_TARGET )
     return;

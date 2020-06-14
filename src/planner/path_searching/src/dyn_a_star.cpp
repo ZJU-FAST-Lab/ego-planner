@@ -11,7 +11,7 @@ AStar::~AStar()
                 delete GridNodeMap_[i][j][k];
 }
 
-void AStar::initGridMap( SDFMap::Ptr occ_map, const Eigen::Vector3i pool_size )
+void AStar::initGridMap( GridMap::Ptr occ_map, const Eigen::Vector3i pool_size )
 {   
     POOL_SIZE_ = pool_size;
     CENTER_IDX_ = pool_size / 2;
@@ -30,7 +30,7 @@ void AStar::initGridMap( SDFMap::Ptr occ_map, const Eigen::Vector3i pool_size )
         }
     }
 
-    sdf_map_ = occ_map;
+    grid_map_ = occ_map;
 }
 
 double AStar::getDiagHeu(GridNodePtr node1, GridNodePtr node2)

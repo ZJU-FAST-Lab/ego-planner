@@ -17,49 +17,38 @@ void BsplineOptimizer::setParam(ros::NodeHandle& nh) {
   nh.param("optimization/order", order_, 3);
 }
 
-void BsplineOptimizer::setEnvironment(const SDFMap::Ptr& env) {
-  this->sdf_map_ = env;
+void BsplineOptimizer::setEnvironment(const GridMap::Ptr& env) {
+  this->grid_map_ = env;
 }
 
 void BsplineOptimizer::setControlPoints(const Eigen::MatrixXd& points) {
-  cps_.points.clear();
-  cps_.points.reserve(points.cols());
-  for ( int i=0; i<points.cols(); i++ )
-  {
-    cps_.points.push_back( points.col(i) );
-  }
+  cps_.points = points;
 }
 
 void BsplineOptimizer::setBsplineInterval(const double& ts) { bspline_interval_ = ts; }
 
-std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(std::vector<Eigen::Vector3d> &init_points, bool flag_first_init /*= true*/)
+std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(Eigen::MatrixXd& init_points, bool flag_first_init /*= true*/)
 {
   if ( flag_first_init )
   {
-    
     cps_.clearance = dist0_;
-    cps_.resize( init_points.size() );
-
+    cps_.resize( init_points.cols() );
     cps_.points = init_points;
   }
 
   /*** Segment the initial trajectory according to obstacles ***/
   constexpr int ENOUGH_INTERVAL = 2;
-  double step_size = sdf_map_->getResolution() / ( (init_points[0] - init_points.back()).norm() / (init_points.size()-1) ) / 2;
-  //cout << "step_size = " << step_size << endl;
+  double step_size = grid_map_->getResolution() / ( (init_points.col(0) - init_points.rightCols(1)).norm() / (init_points.cols()-1) ) / 2;
   int in_id, out_id;
   vector<std::pair<int,int>> segment_ids;
   int same_occ_times = ENOUGH_INTERVAL + 1;
   bool occ, last_occ = false;
   bool flag_got_start = false, flag_got_end = false, flag_got_end_maybe = false;
-  for ( int i=order_; i<=(int)init_points.size()-order_; ++i )
+  for ( int i=order_; i<=(int)init_points.cols()-order_; ++i )
   {
     for ( double a=1.0; a>=0.0; a-=step_size )
     {
-      occ = sdf_map_->getInflateOccupancy(a * init_points[i-1] + (1-a) * init_points[i]);
-
-      // cout << "occ = " << occ << "  p = " << (a * init_points[i-1] + (1-a) * init_points[i]).transpose() << endl;
-      // cout << "i=" << i <<endl;
+      occ = grid_map_->getInflateOccupancy(a * init_points.col(i-1) + (1-a) * init_points.col(i));
 
       if ( occ && ! last_occ)
       {
@@ -82,7 +71,7 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
         ++ same_occ_times; 
       }
 
-      if ( flag_got_end_maybe && ( same_occ_times > ENOUGH_INTERVAL || ( i == (int)init_points.size()-order_ ) ) )
+      if ( flag_got_end_maybe && ( same_occ_times > ENOUGH_INTERVAL || ( i == (int)init_points.cols()-order_ ) ) )
       {
         flag_got_end_maybe = false;
         flag_got_end = true;
@@ -105,7 +94,7 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
   for ( size_t i=0; i<segment_ids.size(); ++i )
   {
     //cout << "in=" << in.transpose() << " out=" << out.transpose() << endl;
-    Eigen::Vector3d in( init_points[segment_ids[i].first] ), out( init_points[segment_ids[i].second] );
+    Eigen::Vector3d in( init_points.col(segment_ids[i].first) ), out( init_points.col(segment_ids[i].second) );
     if ( a_star_->AstarSearch( /*(in-out).norm()/10+0.05*/0.1 , in, out) )
     {
       a_star_pathes.push_back( a_star_->getPath() );
@@ -115,18 +104,7 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
       ROS_ERROR("a star error, force return!");
       return a_star_pathes;
     }
-  }
-
-  // for ( int j=0; j<segment_ids.size(); ++j )
-  // {
-  //   cout << "------------ " << segment_ids[j].first << " " << segment_ids[j].second <<  endl;
-  //   cout.precision(3);
-  //   cout << "in=" << cps_[segment_ids[j].first].point.transpose() << " out=" << cps_[segment_ids[j].second].point.transpose() << endl;
-  //   for ( int k=0; k<a_star_pathes[j].size(); ++k )
-  //   {
-  //     cout << "a_star_pathes[j][k]=" << a_star_pathes[j][k].transpose() << endl;
-  //   }
-  // }    
+  } 
 
   /*** calculate bounds ***/
   int id_low_bound, id_up_bound;
@@ -143,13 +121,13 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
       }
       else
       {
-        id_up_bound = init_points.size() - order_ - 1;
+        id_up_bound = init_points.cols() - order_ - 1;
       }
     }
     else if ( i == segment_ids.size() - 1 ) // last segment, i != 0 here
     {
       id_low_bound = (int)(((segment_ids[i].first + segment_ids[i-1].second)+1.0f) / 2);   // id_low_bound : +1.0f ceil()
-      id_up_bound = init_points.size() - order_ - 1;
+      id_up_bound = init_points.cols() - order_ - 1;
     }
     else
     {
@@ -169,7 +147,7 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
   /*** Adjust segment length ***/
   vector<std::pair<int,int>> final_segment_ids( segment_ids.size() );
   constexpr double MINIMUM_PERCENT = 0.0;  // Each segment is guaranteed to have sufficient points to generate sufficient thrust
-  int minimum_points = round(init_points.size() * MINIMUM_PERCENT), num_points;
+  int minimum_points = round(init_points.cols() * MINIMUM_PERCENT), num_points;
   for (size_t i=0; i<segment_ids.size(); i++)
   {
     /*** Adjust segment length ***/
@@ -207,9 +185,9 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
     int got_intersection_id = -1;
     for ( int j=segment_ids[i].first+1; j<segment_ids[i].second; ++j )
     {
-      Eigen::Vector3d ctrl_pts_law(cps_.points[j+1] - cps_.points[j-1]), intersection_point;
+      Eigen::Vector3d ctrl_pts_law(cps_.points.col(j+1) - cps_.points.col(j-1)), intersection_point;
       int Astar_id = a_star_pathes[i].size() / 2, last_Astar_id; // Let "Astar_id = id_of_the_most_far_away_Astar_point" will be better, but it needs more computation
-      double val = (a_star_pathes[i][Astar_id] - cps_.points[j]).dot( ctrl_pts_law ), last_val = val;
+      double val = (a_star_pathes[i][Astar_id] - cps_.points.col(j)).dot( ctrl_pts_law ), last_val = val;
       while ( Astar_id >=0 && Astar_id < (int)a_star_pathes[i].size() )
       {
         last_Astar_id = Astar_id;
@@ -219,14 +197,14 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
         else
           ++ Astar_id;
         
-        val = (a_star_pathes[i][Astar_id] - cps_.points[j]).dot( ctrl_pts_law );
+        val = (a_star_pathes[i][Astar_id] - cps_.points.col(j)).dot( ctrl_pts_law );
         
         if ( val * last_val <= 0 && ( abs(val) > 0 || abs(last_val) > 0 ) ) // val = last_val = 0.0 is not allowed
         {
           intersection_point = 
             a_star_pathes[i][Astar_id] + 
             ( ( a_star_pathes[i][Astar_id] - a_star_pathes[i][last_Astar_id] ) * 
-              ( ctrl_pts_law.dot( cps_.points[j] - a_star_pathes[i][Astar_id] ) / ctrl_pts_law.dot( a_star_pathes[i][Astar_id] -  a_star_pathes[i][last_Astar_id] ) ) // = t
+              ( ctrl_pts_law.dot( cps_.points.col(j) - a_star_pathes[i][Astar_id] ) / ctrl_pts_law.dot( a_star_pathes[i][Astar_id] -  a_star_pathes[i][last_Astar_id] ) ) // = t
             );
 
           //cout << "i=" << i << " j=" << j << " Astar_id=" << Astar_id << " last_Astar_id=" << last_Astar_id << " intersection_point = " << intersection_point.transpose() << endl;
@@ -239,19 +217,19 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
       if ( got_intersection_id >= 0 )
       {
         cps_.flag_temp[j] = true;
-        double length = (intersection_point - cps_.points[j]).norm();
+        double length = (intersection_point - cps_.points.col(j)).norm();
         if ( length > 1e-5 )
         {
-          for ( double a=length; a>=0.0; a-=sdf_map_->getResolution() )
+          for ( double a=length; a>=0.0; a-=grid_map_->getResolution() )
           {
-            occ =  sdf_map_->getInflateOccupancy((a/length)*intersection_point + (1-a/length)*cps_.points[j]);
+            occ =  grid_map_->getInflateOccupancy((a/length)*intersection_point + (1-a/length)*cps_.points.col(j));
       
-            if ( occ || a < sdf_map_->getResolution() )
+            if ( occ || a < grid_map_->getResolution() )
             {
               if ( occ )
-                a+=sdf_map_->getResolution();
-              cps_.base_point[j].push_back( (a/length)*intersection_point + (1-a/length)*cps_.points[j] );
-              cps_.direction[j].push_back( (intersection_point - cps_.points[j]).normalized() );
+                a+=grid_map_->getResolution();
+              cps_.base_point[j].push_back( (a/length)*intersection_point + (1-a/length)*cps_.points.col(j) );
+              cps_.direction[j].push_back( (intersection_point - cps_.points.col(j)).normalized() );
               break;
             }
           }
@@ -262,8 +240,8 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
     /* Corner case: the segment length is too short. Here the control points may outside the A* path, leading to opposite gradient direction. So I have to take special care of it */
     if ( segment_ids[i].second - segment_ids[i].first == 1 ) 
     {
-      Eigen::Vector3d ctrl_pts_law(cps_.points[segment_ids[i].second] - cps_.points[segment_ids[i].first]), intersection_point;
-      Eigen::Vector3d middle_point = (cps_.points[segment_ids[i].second] + cps_.points[segment_ids[i].first]) / 2;
+      Eigen::Vector3d ctrl_pts_law(cps_.points.col(segment_ids[i].second) - cps_.points.col(segment_ids[i].first)), intersection_point;
+      Eigen::Vector3d middle_point = (cps_.points.col(segment_ids[i].second) + cps_.points.col(segment_ids[i].first)) / 2;
       int Astar_id = a_star_pathes[i].size() / 2, last_Astar_id; // Let "Astar_id = id_of_the_most_far_away_Astar_point" will be better, but it needs more computation
       double val = (a_star_pathes[i][Astar_id] - middle_point).dot( ctrl_pts_law ), last_val = val;
       while ( Astar_id >=0 && Astar_id < (int)a_star_pathes[i].size() )
@@ -286,7 +264,7 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
             );
 
           cps_.flag_temp[segment_ids[i].first] = true;
-          cps_.base_point[segment_ids[i].first].push_back( cps_.points[segment_ids[i].first] );
+          cps_.base_point[segment_ids[i].first].push_back( cps_.points.col(segment_ids[i].first) );
           cps_.direction[segment_ids[i].first].push_back( (intersection_point - middle_point).normalized() );
 
           got_intersection_id = segment_ids[i].first;
@@ -332,7 +310,7 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(st
 }
 
 
-double BsplineOptimizer:: costFunctionRebound(const Eigen::VectorXd& x, Eigen::VectorXd& grad, void* func_data)
+double BsplineOptimizer::costFunctionRebound(const Eigen::VectorXd& x, Eigen::VectorXd& grad, void* func_data)
 {
   BsplineOptimizer* opt = reinterpret_cast<BsplineOptimizer*>(func_data);
 
@@ -340,8 +318,8 @@ double BsplineOptimizer:: costFunctionRebound(const Eigen::VectorXd& x, Eigen::V
   opt->combineCostRebound(x, grad, cost);
 
   /* save the min cost result */
-  opt->min_cost_ = cost;
-  opt->best_variable_ = x;
+  // opt->min_cost_ = cost;
+  // opt->best_variable_ = x;
 
   // early termination
   if ( opt->flag_continue_to_optimize_ )
@@ -368,26 +346,25 @@ double BsplineOptimizer::costFunctionRefine(const Eigen::VectorXd& x, Eigen::Vec
   opt->combineCostRefine(x, grad, cost);
 
   /* save the min cost result */
-  opt->min_cost_ = cost;
-  opt->best_variable_ = x;
+  // opt->min_cost_ = cost;
+  // opt->best_variable_ = x;
 
   opt->iter_num_ += 1;
   return cost;
 }
 
-void BsplineOptimizer::calcDistanceCostRebound(const vector<Eigen::Vector3d>& q, double& cost,
-                                        vector<Eigen::Vector3d>& gradient, int iter_num, double smoothness_cost)
+void BsplineOptimizer::calcDistanceCostRebound(const Eigen::MatrixXd& q, double& cost,
+                                        Eigen::MatrixXd& gradient, int iter_num, double smoothness_cost)
 {
   //time_satrt = ros::Time::now();
 
   cost = 0.0;
-  std::fill(gradient.begin(), gradient.end(), Eigen::Vector3d(0, 0, 0));
 
   //ROS_WARN("iter_num=%d", iter_num);
 
   double dist;
   Eigen::Vector3d dist_grad;
-  int end_idx = q.size() - order_;
+  int end_idx = q.cols() - order_;
 
   flag_continue_to_optimize_ = false;
   if ( iter_num > 3 && smoothness_cost / ( cps_.size - 2*order_) < 0.1 ) // 0.1 is an experimental value that indicates the trajectory is smooth enough, leftover shit!!!
@@ -395,27 +372,12 @@ void BsplineOptimizer::calcDistanceCostRebound(const vector<Eigen::Vector3d>& q,
     flag_continue_to_optimize_ = check_collision_and_rebound();
   }
 
-
-  // cout << "iter_num = " << iter_num << endl;
-  // for ( int i=0; i<=cps_.size()-1; ++i )
-  // {
-  //   cout << "--------------" <<endl;
-  //   cout.precision(3);
-  //   cout << "i=" << i << " point = " << cps_[i].point.transpose() << endl;
-  //   for ( int j=0; j<cps_[i].direction.size(); ++j )
-  //   {
-  //     cout.precision(3);
-  //     cout << "dir = " << cps_[i].direction[j].transpose() << " colli = " << cps_[i].base_point[j].transpose() << endl;
-  //   }
-  // }
-  // cout <<endl;
-
   /*** calculate distance cost and gradient ***/
   for ( auto i=order_; i<end_idx; ++i )
   {
     for ( size_t j=0; j<cps_.direction[i].size(); ++j )
     {
-      dist = (cps_.points[i] - cps_.base_point[i][j]).dot(cps_.direction[i][j]);
+      dist = (cps_.points.col(i) - cps_.base_point[i][j]).dot(cps_.direction[i][j]);
       dist_grad = cps_.direction[i][j];
       if (dist < cps_.clearance)
       {
@@ -424,53 +386,34 @@ void BsplineOptimizer::calcDistanceCostRebound(const vector<Eigen::Vector3d>& q,
           // linear if the distance is too far.
           // cost += pow(dist - cps_[i].clearance, 2) - pow(dist + cps_[i].clearance, 2);
           cost += -4 * cps_.clearance * dist;  // == pow(dist - cps_[i].clearance, 2) - pow(dist + cps_[i].clearance, 2)
-          gradient[i] += -4 * cps_.clearance * dist_grad;
+          gradient.col(i) += -4 * cps_.clearance * dist_grad;
           //cout << "run to here! i=" << i << " dist=" << dist << endl;
         }
         else
         {
           cost += pow(dist - cps_.clearance, 2);
-          gradient[i] += 2.0 * (dist - cps_.clearance) * dist_grad;
+          gradient.col(i) += 2.0 * (dist - cps_.clearance) * dist_grad;
         }
         
-        // if ( iter_num <= 2 )
-        // {
-        //   cout << "[new xxx] iter_num=" << iter_num << " i=" << i << " cps_[i].direction.size()=" << cps_[i].direction.size() << " cost=" << cost << " gradient[i]" << gradient[i].transpose() << endl; 
-        // }
       }
     }
   }
 
-  // time_end = ros::Time::now();
-  // cout << "time=" << (time_end - time_satrt).toSec()*1000000 << endl;
-
 }
 
-void BsplineOptimizer::calcFitnessCost(const vector<Eigen::Vector3d>& q, double& cost, vector<Eigen::Vector3d>& gradient)
+void BsplineOptimizer::calcFitnessCost(const Eigen::MatrixXd& q, double& cost, Eigen::MatrixXd& gradient)
 {
   //time_satrt = ros::Time::now();
 
   cost = 0.0;
-  std::fill(gradient.begin(), gradient.end(), Eigen::Vector3d(0, 0, 0));
 
-  int end_idx = q.size() - order_;
-
-  // // def: f = x^2
-  // for ( auto i=order_-1; i<end_idx+1; ++i )
-  // {
-  //   Eigen::Vector3d temp = (q[i-1]+4*q[i]+q[i+1])/6.0 - ref_pts_[i-1];
-  //   cost += temp.squaredNorm();
-
-  //   gradient[i-1] +=   temp/3.0;
-  //   gradient[i]   += 4*temp/3.0;
-  //   gradient[i+1] +=   temp/3.0;
-  // }
+  int end_idx = q.cols() - order_;
 
   // def: f = |x*v|^2/a^2 + |x×v|^2/b^2
   double a2 = 25, b2 = 1;
   for ( auto i=order_-1; i<end_idx+1; ++i )
   {
-    Eigen::Vector3d x = (q[i-1]+4*q[i]+q[i+1])/6.0 - ref_pts_[i-1];
+    Eigen::Vector3d x = (q.col(i-1)+4*q.col(i)+q.col(i+1))/6.0 - ref_pts_[i-1];
     Eigen::Vector3d v = (ref_pts_[i]-ref_pts_[i-2]).normalized();
 
     double xdotv = x.dot(v);
@@ -483,139 +426,120 @@ void BsplineOptimizer::calcFitnessCost(const vector<Eigen::Vector3d>& q, double&
     m << 0,-v(2),v(1), v(2),0,-v(0), -v(1),v(0),0;
     Eigen::Vector3d df_dx = 2*xdotv/a2*v + 2/b2*m*xcrossv;
 
-    gradient[i-1] += df_dx/6;
-    gradient[i] += 4*df_dx/6;
-    gradient[i+1] += df_dx/6;
+    gradient.col(i-1) += df_dx/6;
+    gradient.col(i) += 4*df_dx/6;
+    gradient.col(i+1) += df_dx/6;
   }
 
 }
 
 
-void BsplineOptimizer::calcSmoothnessCost(const vector<Eigen::Vector3d>& q, double& cost,
-                                          vector<Eigen::Vector3d>& gradient, bool falg_use_jerk/* = true*/) {
+void BsplineOptimizer::calcSmoothnessCost(const Eigen::MatrixXd& q, double& cost,
+                                          Eigen::MatrixXd& gradient, bool falg_use_jerk/* = true*/) {
   
   cost = 0.0;
-  Eigen::Vector3d zero(0, 0, 0);
-  std::fill(gradient.begin(), gradient.end(), zero);
 
   if ( falg_use_jerk )
   {
     Eigen::Vector3d jerk, temp_j;
 
-    // for (int i = 0; i < q.size(); i++)
-    //   cout << "i=" << i << "@" << q[i].transpose() << endl;
-
-    for (int i = 0; i < q.size() - 3; i++) {
+    for (int i = 0; i < q.cols() - 3; i++) {
       /* evaluate jerk */
-      jerk = q[i + 3] - 3 * q[i + 2] + 3 * q[i + 1] - q[i];
+      jerk = q.col(i + 3) - 3 * q.col(i + 2) + 3 * q.col(i + 1) - q.col(i);
       cost += jerk.squaredNorm();
       temp_j = 2.0 * jerk;
       /* jerk gradient */
-      gradient[i + 0] += -temp_j;
-      gradient[i + 1] += 3.0 * temp_j;
-      gradient[i + 2] += -3.0 * temp_j;
-      gradient[i + 3] += temp_j;
+      gradient.col(i + 0) += -temp_j;
+      gradient.col(i + 1) += 3.0 * temp_j;
+      gradient.col(i + 2) += -3.0 * temp_j;
+      gradient.col(i + 3) += temp_j;
 
-      // cout << "i=" << i << " jerk^2=" << jerk.squaredNorm()*1000 << endl;
     }
-
-    // cout << endl;
   }
   else
   {    
     Eigen::Vector3d acc, temp_acc;
 
-    for (int i = 0; i < q.size() - 2; i++) {
-      /* evaluate jerk */
-      acc = q[i + 2] - 2 * q[i + 1] + q[i];
+    for (int i = 0; i < q.cols() - 2; i++) {
+      /* evaluate acc */
+      acc = q.col(i + 2) - 2 * q.col(i + 1) + q.col(i);
       cost += acc.squaredNorm();
       temp_acc = 2.0 * acc;
-      /* jerk gradient */
-      gradient[i + 0] += temp_acc;
-      gradient[i + 1] += -2.0 * temp_acc;
-      gradient[i + 2] += temp_acc;
+      /* acc gradient */
+      gradient.col(i + 0) += temp_acc;
+      gradient.col(i + 1) += -2.0 * temp_acc;
+      gradient.col(i + 2) += temp_acc;
     }
   }
   
 }
 
-void BsplineOptimizer::calcFeasibilityCost(const vector<Eigen::Vector3d>& q, double& cost,
-                                           vector<Eigen::Vector3d>& gradient) {
+void BsplineOptimizer::calcFeasibilityCost(const Eigen::MatrixXd& q, double& cost,
+                                           Eigen::MatrixXd& gradient) {
   cost = 0.0;
-  Eigen::Vector3d zero(0, 0, 0);
-  std::fill(gradient.begin(), gradient.end(), zero);
 
   /* abbreviation */
-  double ts, vm2, am2, ts_inv2, ts_inv4;
-  vm2 = max_vel_ * max_vel_;
-  am2 = max_acc_ * max_acc_;
-
+  double ts, ts_inv2;
   ts      = bspline_interval_;
   ts_inv2 = 1 / ts / ts;
-  ts_inv4 = ts_inv2 * ts_inv2;
 
   /* velocity feasibility */
-  for (int i = 0; i < q.size() - 1; i++) {
-    Eigen::Vector3d vi = (q[i + 1] - q[i])/ts;
+  for (int i = 0; i < q.cols() - 1; i++) {
+    Eigen::Vector3d vi = (q.col(i + 1) - q.col(i))/ts;
 
     //cout << "temp_v * vi=" ;
     for (int j = 0; j < 3; j++) {
       if ( vi(j) > max_vel_ )
       {
-        // cout << "fuck VEL" << endl;
-        // cout << vi(j) << endl;
         cost += pow( vi(j)-max_vel_, 2 );
 
-        gradient[i+0](j) += -2*(vi(j)-max_vel_)/ts;
-        gradient[i+1](j) += 2*(vi(j)-max_vel_)/ts;
+        gradient(j, i+0) += -2*(vi(j)-max_vel_)/ts;
+        gradient(j, i+1) += 2*(vi(j)-max_vel_)/ts;
       }
       else if ( vi(j) < -max_vel_ )
       {
         cost += pow( vi(j)+max_vel_, 2 );
 
-        gradient[i+0](j) += -2*(vi(j)+max_vel_)/ts;
-        gradient[i+1](j) += 2*(vi(j)+max_vel_)/ts;
+        gradient(j, i+0) += -2*(vi(j)+max_vel_)/ts;
+        gradient(j, i+1) += 2*(vi(j)+max_vel_)/ts;
       }
       else
       {
-        /* code */
+        /* nothing happened */
       }
-      //cout << 4.0 * vd * ts_inv2 * vi(j) << " ";
     }
-    //cout << endl;
   }
 
   /* acceleration feasibility */
-  for (int i = 0; i < q.size() - 2; i++) {
-    Eigen::Vector3d ai = (q[i + 2] - 2 * q[i + 1] + q[i])*ts_inv2;
+  for (int i = 0; i < q.cols() - 2; i++) {
+    Eigen::Vector3d ai = (q.col(i + 2) - 2 * q.col(i + 1) + q.col(i))*ts_inv2;
 
     //cout << "temp_a * ai=" ;
     for (int j = 0; j < 3; j++) 
     {
       if ( ai(j) > max_acc_ )
       {
-        // cout << "fuck ACC" << endl;
-        // cout << ai(j) << endl;
         cost += pow( ai(j)-max_acc_, 2 );
 
-        gradient[i + 0](j) += 2*(ai(j)-max_acc_)*ts_inv2;
-        gradient[i + 1](j) += -4*(ai(j)-max_acc_)*ts_inv2;
-        gradient[i + 2](j) += 2*(ai(j)-max_acc_)*ts_inv2;
+        double val = 2*(ai(j)-max_acc_)*ts_inv2;
+        gradient(j, i+0) += val;
+        gradient(j, i+1) += -2*val;
+        gradient(j, i+2) += val;
       }
       else if ( ai(j) < -max_acc_ )
       {
         cost += pow( ai(j)+max_acc_, 2 );
 
-        gradient[i + 0](j) += 2*(ai(j)+max_acc_)*ts_inv2;
-        gradient[i + 1](j) += -4*(ai(j)+max_acc_)*ts_inv2;
-        gradient[i + 2](j) += 2*(ai(j)+max_acc_)*ts_inv2;
+        double val =  2*(ai(j)+max_acc_)*ts_inv2;
+        gradient(j, i+0) += val;
+        gradient(j, i+1) += -2*val;
+        gradient(j, i+2) += val;
       }
       else
       {
-        /* code */
+        /* nothing happened */
       }
     }
-    //cout << endl;
   }
 
 }
@@ -634,7 +558,7 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
   for ( int i=order_-1; i<=end_idx; ++i )
   {
 
-    bool occ = sdf_map_->getInflateOccupancy(cps_.points[i]);
+    bool occ = grid_map_->getInflateOccupancy(cps_.points.col(i));
 
     /*** check if the new collision will be valid ***/
     if ( occ )
@@ -642,27 +566,22 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
       for ( size_t k=0; k<cps_.direction[i].size(); ++k )
       {
         cout.precision(2);
-        //cout << "Test_02" << " i=" << i << " k=" << k << " direction[k]=" << cps_[i].direction[k].transpose() << " base_point[k]=" << cps_[i].base_point[k].transpose() << " point=" << cps_[i].point.transpose() << " dot=" << ( cps_[i].point - cps_[i].base_point[k] ).dot(cps_[i].direction[k]) << endl;
-        //if ( dir.dot(cps_[j].direction[k]) > 1e-5 ) // the angle of two directions is smaller than 90 degree. 
-        if ( ( cps_.points[i] - cps_.base_point[i][k] ).dot(cps_.direction[i][k]) < 1 * sdf_map_->getResolution() ) // current point is outside any of the collision_points. 
+        if ( ( cps_.points.col(i) - cps_.base_point[i][k] ).dot(cps_.direction[i][k]) < 1 * grid_map_->getResolution() ) // current point is outside any of the collision_points. 
         {
           occ = false;
-          //cout << "Test_00" << " flag_new_obs=" << flag_new_obs << " j=" << j << " k=" << k << " dir=" << dir.transpose() << " cps_[j].direction[k]=" << cps_[j].direction[k].transpose() << " dot=" << ( cps_[j].point - cps_[j].base_point[k] ).dot(cps_[j].direction[k]) << endl;
           break;
         }
       }
-      //cout << "flag_new_obs_valid = " << flag_new_obs_valid << " iter = " << iter_num << endl;
     }
 
     if ( occ )
     {
       flag_new_obs_valid = true;
-      // cout << "hit new obs, cp_id = " << i << " iter=" << iter_num_ << endl;
 
       int j;
       for ( j=i-1; j>=0; --j )
       {
-        occ = sdf_map_->getInflateOccupancy(cps_.points[j]);
+        occ = grid_map_->getInflateOccupancy(cps_.points.col(j));
         if ( !occ )
         {
           in_id = j;
@@ -677,7 +596,7 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
 
       for ( j=i+1; j<cps_.size; ++j )
       {
-        occ = sdf_map_->getInflateOccupancy(cps_.points[j]);
+        occ = grid_map_->getInflateOccupancy(cps_.points.col(j));
         if ( !occ )
         {
           out_id = j;
@@ -703,7 +622,7 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
     for ( size_t i=0; i<segment_ids.size(); ++i )
     {
       /*** a star search ***/
-      Eigen::Vector3d in( cps_.points[segment_ids[i].first] ), out( cps_.points[segment_ids[i].second] );
+      Eigen::Vector3d in( cps_.points.col(segment_ids[i].first) ), out( cps_.points.col(segment_ids[i].second) );
       if ( a_star_->AstarSearch( /*(in-out).norm()/10+0.05*/0.1, in, out) )
       {
         a_star_pathes.push_back( a_star_->getPath() );
@@ -717,24 +636,6 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
 
     }
 
-    // if (flag_record_intermediate_state_)
-    // {
-    //   for ( auto pts : a_star_pathes )
-    //   {
-    //     a_star_pathes_log_.push_back(pts);
-    //   }
-    // }
-
-
-    // for ( int j=0; j<segment_ids.size(); ++j )
-    // {
-    //   cout << "------------" << endl << segment_ids[j].first << " " << segment_ids[j].second << endl;
-    //   for ( int k=0; k<a_star_pathes[j].size(); ++k )
-    //   {
-    //     cout << "a_star_pathes[j][k]=" << a_star_pathes[j][k].transpose() << endl;
-    //   }
-    // }
-
     /*** Assign parameters to each segment ***/
     for (size_t i=0; i<segment_ids.size(); ++i)
     {
@@ -742,17 +643,13 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
       for ( int j=segment_ids[i].first; j <= segment_ids[i].second; ++j )
         cps_.flag_temp[j] = false;
 
-      // for ( auto x : segment_ids )
-      // {
-      //   cout << "first=" << x.first << " second=" << x.second << endl;
-      // }
       // step 2
       int got_intersection_id = -1;
       for ( int j=segment_ids[i].first+1; j<segment_ids[i].second; ++j )
       {
-        Eigen::Vector3d ctrl_pts_law(cps_.points[j+1] - cps_.points[j-1]), intersection_point;
+        Eigen::Vector3d ctrl_pts_law(cps_.points.col(j+1) - cps_.points.col(j-1)), intersection_point;
         int Astar_id = a_star_pathes[i].size() / 2, last_Astar_id; // Let "Astar_id = id_of_the_most_far_away_Astar_point" will be better, but it needs more computation
-        double val = (a_star_pathes[i][Astar_id] - cps_.points[j]).dot( ctrl_pts_law ), last_val = val;
+        double val = (a_star_pathes[i][Astar_id] - cps_.points.col(j)).dot( ctrl_pts_law ), last_val = val;
         while ( Astar_id >=0 && Astar_id < (int)a_star_pathes[i].size() )
         {
           last_Astar_id = Astar_id;
@@ -762,17 +659,15 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
           else
             ++ Astar_id;
           
-          val = (a_star_pathes[i][Astar_id] - cps_.points[j]).dot( ctrl_pts_law );
+          val = (a_star_pathes[i][Astar_id] - cps_.points.col(j)).dot( ctrl_pts_law );
           
           if ( val * last_val <= 0 && ( abs(val) > 0 || abs(last_val) > 0 ) ) // val = last_val = 0.0 is not allowed
           {
             intersection_point = 
               a_star_pathes[i][Astar_id] + 
               ( ( a_star_pathes[i][Astar_id] - a_star_pathes[i][last_Astar_id] ) * 
-                ( ctrl_pts_law.dot( cps_.points[j] - a_star_pathes[i][Astar_id] ) / ctrl_pts_law.dot( a_star_pathes[i][Astar_id] -  a_star_pathes[i][last_Astar_id] ) ) // = t
+                ( ctrl_pts_law.dot( cps_.points.col(j) - a_star_pathes[i][Astar_id] ) / ctrl_pts_law.dot( a_star_pathes[i][Astar_id] -  a_star_pathes[i][last_Astar_id] ) ) // = t
               );
-
-            //cout << "i=" << i << " j=" << j << " Astar_id=" << Astar_id << " last_Astar_id=" << last_Astar_id << " intersection_point = " << intersection_point.transpose() << endl;
 
             got_intersection_id = j;
             break;
@@ -782,19 +677,19 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
         if ( got_intersection_id >= 0 )
         {
           cps_.flag_temp[j] = true;
-          double length = (intersection_point - cps_.points[j]).norm();
+          double length = (intersection_point - cps_.points.col(j)).norm();
           if ( length > 1e-5 )
           {
-            for ( double a=length; a>=0.0; a-=sdf_map_->getResolution() )
+            for ( double a=length; a>=0.0; a-=grid_map_->getResolution() )
             {
-              bool occ = sdf_map_->getInflateOccupancy((a/length)*intersection_point + (1-a/length)*cps_.points[j]);
+              bool occ = grid_map_->getInflateOccupancy((a/length)*intersection_point + (1-a/length)*cps_.points.col(j));
         
-              if ( occ || a < sdf_map_->getResolution() )
+              if ( occ || a < grid_map_->getResolution() )
               {
                 if ( occ )
-                  a+=sdf_map_->getResolution();
-                cps_.base_point[j].push_back( (a/length)*intersection_point + (1-a/length)*cps_.points[j] );
-                cps_.direction[j].push_back( (intersection_point - cps_.points[j]).normalized() );
+                  a+=grid_map_->getResolution();
+                cps_.base_point[j].push_back( (a/length)*intersection_point + (1-a/length)*cps_.points.col(j) );
+                cps_.direction[j].push_back( (intersection_point - cps_.points.col(j)).normalized() );
                 break;
               }
             }
@@ -833,19 +728,13 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
   return false;
 }
 
-bool BsplineOptimizer::BsplineOptimizeTrajRebound(const Eigen::MatrixXd init_points /*leftover shit*/, Eigen::MatrixXd& optimal_points, double ts)
+bool BsplineOptimizer::BsplineOptimizeTrajRebound(Eigen::MatrixXd& optimal_points, double ts)
 {
-  //setControlPoints(init_points);
   setBsplineInterval(ts);
-  //setTerminateCond(max_num_id, max_time_id);
 
   bool flag_success =  rebound_optimize();
 
-  optimal_points.resize(3, cps_.size);
-  for ( size_t i=0; i<cps_.size; i++ )
-  {
-    optimal_points.col(i) = cps_.points[i];
-  }
+  optimal_points = cps_.points;
 
   return flag_success;
 }
@@ -856,15 +745,10 @@ bool BsplineOptimizer::BsplineOptimizeTrajRefine(const Eigen::MatrixXd& init_poi
 
   setControlPoints(init_points);
   setBsplineInterval(ts);
-  //setTerminateCond(max_num_id, max_time_id);
   
   bool flag_success =  refine_optimize();
 
-  optimal_points.resize(3, cps_.points.size());
-  for ( size_t i=0; i<cps_.points.size(); i++ )
-  {
-    optimal_points.col(i) = cps_.points[i];
-  }
+  optimal_points = cps_.points;
 
   return flag_success;
 }
@@ -903,11 +787,7 @@ bool BsplineOptimizer::rebound_optimize()
     success = false;
 
     Eigen::VectorXd q(variable_num_);
-    for (size_t i = start_id; i < end_id; ++i)
-    {
-      for (int j = 0; j < 3; j++)
-        q(3 * (i - start_id) + j) = cps_.points[i](j);
-    }
+    memcpy( q.data(), cps_.points.data() + 3*order_, variable_num_*sizeof(q(0)) );
 
     /* ---------- optimize ---------- */
     t1 = ros::Time::now();
@@ -921,32 +801,20 @@ bool BsplineOptimizer::rebound_optimize()
     {
       flag_rebound = false;
 
-      for (size_t i = start_id; i < end_id; ++i)
-      {
-        for (int j = 0; j < 3; j++)
-          cps_.points[i](j) = best_variable_[3 * (i - start_id) + j];
-      }
-
-      // check collision
-      Eigen::MatrixXd control_points(3, cps_.size);
-      for ( int i=0; i<cps_.size; ++i )
-      {
-        control_points.col(i) = cps_.points[i];
-      }
-      UniformBspline traj =  UniformBspline(control_points, 3, bspline_interval_);
+      UniformBspline traj =  UniformBspline(cps_.points, 3, bspline_interval_);
       double tm, tmp;
       traj.getTimeSpan(tm, tmp);
       constexpr double t_step = 0.02;
       for ( double t = tm; t<tmp; t+=t_step )
       {
-        flag_occ = sdf_map_->getInflateOccupancy( traj.evaluateDeBoorT(t) );
+        flag_occ = grid_map_->getInflateOccupancy( traj.evaluateDeBoorT(t) );
         if ( flag_occ )
         {
           //cout << "hit_obs, t=" << t << " P=" << traj.evaluateDeBoorT(t).transpose() << endl;
 
           if ( t <= bspline_interval_ ) // First 3 control points in obstacles!
           {
-            cout << cps_.points[1].transpose() << "\n"  << cps_.points[2].transpose() << "\n"  << cps_.points[3].transpose() << "\n" << cps_.points[4].transpose() << endl;
+            cout << cps_.points.col(1).transpose() << "\n"  << cps_.points.col(2).transpose() << "\n"  << cps_.points.col(3).transpose() << "\n" << cps_.points.col(4).transpose() << endl;
             ROS_ERROR("First 3 control points in obstacles! return false, t=%f",t);
             return false;
           }
@@ -961,14 +829,6 @@ bool BsplineOptimizer::rebound_optimize()
         }
       }
 
-      // cout << "first_step=" << endl;
-      // cout << "tm=" << tm << " tmp=" << tmp << endl;
-      // cout << "cps_.size()=" << cps_.size << endl;
-      // for ( double t = tm; t<tmp; t+=t_step )
-      // {
-      //   cout << traj.evaluateDeBoorT(t).transpose() << endl;
-      // }
-
       if ( !flag_occ )
       {
         printf("\033[32miter(+1)=%d,time(ms)=%5.3f,total_t(ms)=%5.3f,cost=%5.3f\n\033[0m", iter_num_, time_ms, total_time_ms, final_cost);
@@ -977,12 +837,7 @@ bool BsplineOptimizer::rebound_optimize()
       else // restart
       {
         restart_nums++;
-        vector<Eigen::Vector3d> control_points(cps_.size);
-        for ( size_t i=0; i<cps_.size; i++ )
-        {
-          control_points[i] = cps_.points[i];
-        }
-        initControlPoints(control_points, false);
+        initControlPoints(cps_.points, false);
         lambda2_ *= 2;
                             
 
@@ -1012,7 +867,7 @@ bool BsplineOptimizer::refine_optimize()
   /* ---------- initialize solver ---------- */
   iter_num_ = 0;
   int start_id = order_;
-  int end_id = this->cps_.points.size() - order_;
+  int end_id = this->cps_.points.cols() - order_;
   variable_num_ = 3 * (end_id - start_id);
 
   // cout << "variable_num_" << variable_num_ << endl;
@@ -1027,7 +882,7 @@ bool BsplineOptimizer::refine_optimize()
   double final_cost;
   for (size_t i = start_id; i < end_id; ++i)
   {
-    q.segment( 3 * (i - start_id), 3) = cps_.points[i];
+    q.segment( 3 * (i - start_id), 3) = cps_.points.col(i);
   }
 
   double origin_lambda4 = lambda4_;
@@ -1036,36 +891,15 @@ bool BsplineOptimizer::refine_optimize()
   do
   {
     auto result = opt.optimize(q, final_cost);
-    // cout << "result=" << result << endl;
 
-    // cout << "cps_.points.size()=" << cps_.points.size() << " end_id=" << end_id << endl;
-    // for (int i=0; i<cps_.points.size(); i++)
-    //   cout << cps_.points[i].transpose() << endl;
-
-    /* ---------- get results ---------- */
-    Eigen::MatrixXd control_points(3, cps_.points.size());
-    for ( int i=0; i<order_; i++ )
-    {
-      control_points.col(i) = cps_.points[i];
-    }
-    for (size_t i = start_id; i < end_id; ++i)
-    {
-      for (int j = 0; j < 3; j++)
-        control_points(j,i) = best_variable_(3*(i-start_id) + j);
-    }
-    for ( int i=end_id; i<cps_.points.size(); i++ )
-    {
-      control_points.col(i) = cps_.points[i];
-    }
-
-    UniformBspline traj =  UniformBspline(control_points, 3, bspline_interval_);
+    UniformBspline traj =  UniformBspline(cps_.points, 3, bspline_interval_);
     double tm, tmp;
     traj.getTimeSpan(tm, tmp);
 
     constexpr double t_step = 0.02;
     for ( double t = tm; t<tmp; t+=t_step )
     {
-      if ( sdf_map_->getInflateOccupancy( traj.evaluateDeBoorT(t) ) )
+      if ( grid_map_->getInflateOccupancy( traj.evaluateDeBoorT(t) ) )
       {
         // cout << "Refined traj hit_obs, t=" << t << " P=" << traj.evaluateDeBoorT(t).transpose() << endl;
 
@@ -1080,29 +914,10 @@ bool BsplineOptimizer::refine_optimize()
       }
     }
 
-
-
-    // cout << "second_step=" << endl;
-    // for ( double t = tm; t<tmp; t+=t_step )
-    // {
-    //   cout << traj.evaluateDeBoorT(t).transpose() << endl;
-    // }
-
-
     if ( !flag_safe ) lambda4_*=2;
     
     iter_count++;
   } while ( !flag_safe && iter_count <= 0 );
-
-  // if ( iter_count > 1 && iter_count <=3 )
-  // {
-  //   ROS_ERROR("Refine iter_count > 1 && iter_count <=3");
-  // }
-  // if ( iter_count > 3 )
-  // {
-  //   cout << "iter_count=" << iter_count << endl;
-  //   ROS_ERROR("Refine iter_count > 3");
-  // }
   
   lambda4_ = origin_lambda4;
 
@@ -1113,101 +928,46 @@ bool BsplineOptimizer::refine_optimize()
 
 void BsplineOptimizer::combineCostRebound(const Eigen::VectorXd& x, Eigen::VectorXd& grad, double& f_combine)
 {
-  /* ---------- convert to control point vector ---------- */
-  // vector<Eigen::Vector3d> q;
-  // q.reserve( cps_.size );
 
-  // /* first p points */
-  // for (int i = 0; i < order_; i++)
-  //   q.push_back(cps_.points[i]);
-
-  /* optimized control points */
-  for (int i = 0; i < variable_num_ / 3; i++)
-  {
-    cps_.points[i+order_] = x.segment(3*i, 3);
-  }
-
-  // /* last p points */
-  // for (int i = 0; i < order_; i++)
-  //   q.push_back(cps_.points[cps_.size - order_ + i]);
+  memcpy( cps_.points.data() + 3*order_, x.data(), x.size()*sizeof(x(0)) );
 
   for ( size_t i=order_; i<cps_.size-order_; ++i )
   {
-    cps_.occupancy[i] = sdf_map_->getInflateOccupancy(cps_.points[i]);
+    cps_.occupancy[i] = grid_map_->getInflateOccupancy(cps_.points.col(i));
   }
-
-  // for ( int i=0; i<cps_.size(); i++ )
-  //   cout << cps_[i].point.transpose() << endl;
-  // cout << endl;
 
   /* ---------- evaluate cost and gradient ---------- */
   double f_smoothness, f_distance, f_feasibility;
 
-  vector<Eigen::Vector3d> g_smoothness, g_distance, g_feasibility;
-  g_smoothness.resize(cps_.size);
-  g_distance.resize(cps_.size);
-  g_feasibility.resize(cps_.size);
-
-  //time_satrt = ros::Time::now();
-
-  // for ( int i=0; i<cps_.points.size(); i++ )
-  //   cout << cps_.points[i].transpose() << endl;
+  Eigen::MatrixXd g_smoothness = Eigen::MatrixXd::Zero(3, cps_.size);
+  Eigen::MatrixXd g_distance = Eigen::MatrixXd::Zero(3, cps_.size);
+  Eigen::MatrixXd g_feasibility = Eigen::MatrixXd::Zero(3, cps_.size);
 
   calcSmoothnessCost(cps_.points, f_smoothness, g_smoothness);
   calcDistanceCostRebound(cps_.points, f_distance, g_distance, iter_num_, f_smoothness);
   calcFeasibilityCost(cps_.points, f_feasibility, g_feasibility);
 
-  // for ( auto e : g_smoothness )
-  //   cout << e.transpose() << endl;
-  // for ( auto e : g_distance )
-  //   cout << e.transpose() << endl;
-  // for ( auto e : g_feasibility )
-  //   cout << e.transpose() << endl;
-
   f_combine = lambda1_ * f_smoothness + lambda2_ * f_distance + lambda3_ * f_feasibility;
   //printf("origin %f %f %f %f\n", f_smoothness, f_distance, f_feasibility, f_combine);
 
-
+  Eigen::MatrixXd grad_3D = lambda1_ * g_smoothness + lambda2_ * g_distance + lambda3_ * g_feasibility;
   grad.resize(variable_num_);
-  for (int i = 0; i < variable_num_ / 3; i++)
-  {
-    
-    for (int j = 0; j < 3; j++)
-    {
-      /* the first p points is static here */
-      grad(3 * i + j) = lambda1_ * g_smoothness[i + order_](j) + lambda2_ * g_distance[i + order_](j) +
-                        lambda3_ * g_feasibility[i + order_](j);
-
-    }
-    //cout << "g_smoothness=" << g_smoothness[i + order_].transpose() << " g_distance=" << g_distance[i + order_].transpose() << " g_feasibility=" << g_feasibility[i + order_].transpose() << endl;
-  }
+  memcpy( grad.data(), grad_3D.data() + 3*order_, grad.size()*sizeof(grad(0)) );
 
   // cout << grad.transpose() << endl;
 }
 
 void BsplineOptimizer::combineCostRefine(const Eigen::VectorXd& x, Eigen::VectorXd& grad, double& f_combine)
 {
-  /* ---------- convert to control point vector ---------- */
-  //vector<Eigen::Vector3d> q(cps_.points.size());
 
-  // /* first p points */
-  // for (int i = 0; i < order_; i++)
-  //   q[i] = control_points_.row(i).transpose();
-
-  /* optimized control points */
-  for (int i = 0; i < variable_num_ / 3; i++)
-  {
-    Eigen::Vector3d qi(x[3 * i], x[3 * i + 1], x[3 * i + 2]);
-    cps_.points[i+order_] = qi;
-  }
+  memcpy( cps_.points.data() + 3*order_, x.data(), x.size()*sizeof(x(0)) );
 
   /* ---------- evaluate cost and gradient ---------- */
   double f_smoothness, f_fitness, f_feasibility;
 
-  vector<Eigen::Vector3d> g_smoothness, g_fitness, g_feasibility;
-  g_smoothness.resize(cps_.points.size());
-  g_fitness.resize(cps_.points.size());
-  g_feasibility.resize(cps_.points.size());
+  Eigen::MatrixXd g_smoothness = Eigen::MatrixXd::Zero(3, cps_.points.cols());
+  Eigen::MatrixXd g_fitness = Eigen::MatrixXd::Zero(3, cps_.points.cols());
+  Eigen::MatrixXd g_feasibility = Eigen::MatrixXd::Zero(3, cps_.points.cols());
 
   //time_satrt = ros::Time::now();
 
@@ -1219,19 +979,10 @@ void BsplineOptimizer::combineCostRefine(const Eigen::VectorXd& x, Eigen::Vector
   f_combine = lambda1_ * f_smoothness + lambda4_ * f_fitness + lambda3_ * f_feasibility;
   // printf("origin %f %f %f %f\n", f_smoothness, f_fitness, f_feasibility, f_combine);
 
+  Eigen::MatrixXd grad_3D = lambda1_ * g_smoothness + lambda4_ * g_fitness + lambda3_ * g_feasibility;
   grad.resize(variable_num_);
-  for (int i = 0; i < variable_num_ / 3; i++)
-  {
-    
-    for (int j = 0; j < 3; j++)
-    {
-      /* the first p points is static here */
-      grad[3 * i + j] = lambda1_ * g_smoothness[i + order_](j) + lambda4_ * g_fitness[i + order_](j) +
-                        lambda3_ * g_feasibility[i + order_](j);
+  memcpy( grad.data(), grad_3D.data() + 3*order_, grad.size()*sizeof(grad(0)) );
 
-    }
-    //cout << "g_smoothness=" << g_smoothness[i + order_].transpose() << " g_distance=" << g_distance[i + order_].transpose() << " g_feasibility=" << g_feasibility[i + order_].transpose() << endl;
-  }
 }
 
 

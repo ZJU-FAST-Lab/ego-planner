@@ -77,9 +77,9 @@ Eigen::VectorXd UniformBspline::evaluateDeBoor(const double& u) {
   return d[p_];
 }
 
-Eigen::VectorXd UniformBspline::evaluateDeBoorT(const double& t) {
-  return evaluateDeBoor(t + u_(p_));
-}
+// Eigen::VectorXd UniformBspline::evaluateDeBoorT(const double& t) {
+//   return evaluateDeBoor(t + u_(p_));
+// }
 
 Eigen::MatrixXd UniformBspline::getDerivativeControlPoints() {
   // The derivative of a b-spline is also a b-spline, its order become p_-1

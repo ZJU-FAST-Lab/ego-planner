@@ -37,7 +37,7 @@ link_directories(${PCL_LIBRARY_DIRS})
 set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS} -O3 -Wall")
 
 add_library( plan_env 
-    src/sdf_map.cpp 
+    src/grid_map.cpp 
     src/raycast.cpp
     )
 target_link_libraries( plan_env

@@ -8,7 +8,7 @@
 
 #include <rebound_planner/DataDisp.h>
 
-#include <plan_env/sdf_map.h>
+#include <plan_env/grid_map.h>
 
 #include <plan_manage/plan_container.hpp>
 
@@ -49,7 +49,7 @@ public:
   PlanParameters pp_;
   LocalTrajData local_data_;
   GlobalTrajData global_data_;
-  SDFMap::Ptr sdf_map_;
+  GridMap::Ptr grid_map_;
 
 private:
   /* main planning algorithms & modules */

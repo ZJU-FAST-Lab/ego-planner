@@ -32,11 +32,13 @@ GradientDescentOptimizer::optimize(Eigen::VectorXd &x_init_optimal, double &opt_
         {
             x_k = x_kp1 - alpha * grad_kp1;
             cost_k = objfun_(x_k, grad_k, f_data);
+            if ( cost_min > cost_k ) cost_min = cost_k;
         }
         else
         {
             x_kp1 = x_k - alpha * grad_k;
             cost_kp1 = objfun_(x_kp1, grad_kp1, f_data);
+            if ( cost_min > cost_kp1 ) cost_min = cost_kp1;
         }
 
         if ( cost_k > 1e20 || cost_kp1 > 1e20 )
@@ -46,10 +48,12 @@ GradientDescentOptimizer::optimize(Eigen::VectorXd &x_init_optimal, double &opt_
 
         if ( min_grad_ > 1e-10 && abs( grad_k.maxCoeff() ) < min_grad_ && abs( grad_k.minCoeff() ) < min_grad_ )
         {
+            opt_f = cost_min;
             return FIND_MIN;
         }
     }
 
+    opt_f = cost_min;
     return REACH_MAX_ITERATION;
 }
 

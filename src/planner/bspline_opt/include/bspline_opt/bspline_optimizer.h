@@ -4,7 +4,7 @@
 #include <Eigen/Eigen>
 #include <path_searching/dyn_a_star.h>
 #include <bspline_opt/uniform_bspline.h>
-#include <plan_env/sdf_map.h>
+#include <plan_env/grid_map.h>
 #include <ros/ros.h>
 
 // Gradient and elasitc band optimization
@@ -20,7 +20,7 @@ public:
 
   double clearance;
   int size;
-  std::vector<Eigen::Vector3d> points;
+  Eigen::MatrixXd points;
   std::vector<std::vector<Eigen::Vector3d>> base_point; // The point at the statrt of the direction vector (collision point)
   std::vector<std::vector<Eigen::Vector3d>> direction; // Direction vector, must be normalized.
   std::vector<bool> flag_temp; // A flag that used in many places. Initialize it everytime before using it.
@@ -34,12 +34,12 @@ public:
     direction.clear();
     flag_temp.clear();
     occupancy.clear();
-    points.clear();
+
+    points.resize(3, size_set);
     base_point.resize(size);
     direction.resize(size);
     flag_temp.resize(size);
     occupancy.resize(size);
-    points.resize(size);
   }
 };
 
@@ -51,7 +51,7 @@ public:
   ~BsplineOptimizer() {}
 
   /* main API */
-  void            setEnvironment(const SDFMap::Ptr& env);
+  void            setEnvironment(const GridMap::Ptr& env);
   void            setParam(ros::NodeHandle& nh);
   Eigen::MatrixXd BsplineOptimizeTraj(const Eigen::MatrixXd& points, const double& ts,
                                       const int& cost_function, int max_num_id, int max_time_id);
@@ -76,14 +76,14 @@ public:
   AStar::Ptr a_star_;
   std::vector<Eigen::Vector3d> ref_pts_;
 
-  std::vector<std::vector<Eigen::Vector3d>> initControlPoints(std::vector<Eigen::Vector3d> &init_points, bool flag_first_init = true);
-  bool BsplineOptimizeTrajRebound(const Eigen::MatrixXd init_points, Eigen::MatrixXd& optimal_points, double ts);
+  std::vector<std::vector<Eigen::Vector3d>> initControlPoints(Eigen::MatrixXd& init_points, bool flag_first_init = true);
+  bool BsplineOptimizeTrajRebound(Eigen::MatrixXd& optimal_points, double ts); // must be called after initControlPoints()
   bool BsplineOptimizeTrajRefine(const Eigen::MatrixXd& init_points, const double ts, Eigen::MatrixXd& optimal_points);
 
   inline int getOrder(void) { return order_; }
 
 private:
-  SDFMap::Ptr sdf_map_;
+  GridMap::Ptr grid_map_;
 
   bool flag_continue_to_optimize_{false};
 
@@ -118,16 +118,6 @@ private:
   Eigen::VectorXd     best_variable_;  //
   double              min_cost_;       //
 
-  // struct ControlPoint
-  // {
-  //   Eigen::Vector3d point;
-  //   std::vector<Eigen::Vector3d> base_point; // The point at the statrt of the direction vector (collision point)
-  //   std::vector<Eigen::Vector3d> direction; // Direction vector, must be normalized.
-  //   double clearance;
-  //   bool flag_temp; // A flag that used in many places. Initialize it everytime before using it.
-  //   bool occupancy;
-  // };
-  // std::vector<ControlPoint> cps_;
   ControlPoints cps_;
 
   /* cost function */
@@ -137,12 +127,12 @@ private:
   void          combineCost(const std::vector<double>& x, vector<double>& grad, double& cost);
 
   // q contains all control points
-  void calcSmoothnessCost(const vector<Eigen::Vector3d>& q, double& cost,
-                          vector<Eigen::Vector3d>& gradient, bool falg_use_jerk = true);
-  void calcFeasibilityCost(const vector<Eigen::Vector3d>& q, double& cost,
-                           vector<Eigen::Vector3d>& gradient);
-  void calcDistanceCostRebound(const vector<Eigen::Vector3d>& q, double& cost, vector<Eigen::Vector3d>& gradient, int iter_num, double smoothness_cost);
-  void calcFitnessCost(const vector<Eigen::Vector3d>& q, double& cost, vector<Eigen::Vector3d>& gradient);
+  void calcSmoothnessCost(const Eigen::MatrixXd& q, double& cost,
+                          Eigen::MatrixXd& gradient, bool falg_use_jerk = true);
+  void calcFeasibilityCost(const Eigen::MatrixXd& q, double& cost,
+                           Eigen::MatrixXd& gradient);
+  void calcDistanceCostRebound(const Eigen::MatrixXd& q, double& cost, Eigen::MatrixXd& gradient, int iter_num, double smoothness_cost);
+  void calcFitnessCost(const Eigen::MatrixXd& q, double& cost, Eigen::MatrixXd& gradient);
   bool check_collision_and_rebound(void);
 
   static double costFunctionRebound(const Eigen::VectorXd& x, Eigen::VectorXd& grad, void* func_data);

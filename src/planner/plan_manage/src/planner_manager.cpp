@@ -21,14 +21,14 @@ void ReboundPlannerManager::initPlanModules(ros::NodeHandle& nh, PlanningVisuali
   nh.param("manager/planning_horizen", pp_.planning_horizen_, 5.0);
 
   local_data_.traj_id_ = 0;
-  sdf_map_.reset(new SDFMap);
-  sdf_map_->initMap(nh);
+  grid_map_.reset(new GridMap);
+  grid_map_->initMap(nh);
 
   bspline_optimizer_rebound_.reset(new BsplineOptimizer);
   bspline_optimizer_rebound_->setParam(nh);
-  bspline_optimizer_rebound_->setEnvironment(sdf_map_);
+  bspline_optimizer_rebound_->setEnvironment(grid_map_);
   bspline_optimizer_rebound_->a_star_.reset( new AStar );
-  bspline_optimizer_rebound_->a_star_->initGridMap( sdf_map_, Eigen::Vector3i(100,100,100) );
+  bspline_optimizer_rebound_->a_star_->initGridMap( grid_map_, Eigen::Vector3i(100,100,100) );
 
   visualization_ = vis;
 }
@@ -41,7 +41,7 @@ bool ReboundPlannerManager::checkTrajCollisionInflate(UniformBspline &traj) {
   constexpr double t_step = 0.02;
   for ( double t = tm; t<tmp; t+=t_step )
   {
-    if ( sdf_map_->getInflateOccupancy( traj.evaluateDeBoorT(t) ) )
+    if ( grid_map_->getInflateOccupancy( traj.evaluateDeBoorT(t) ) )
     {
       return false;
     }
@@ -76,7 +76,7 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
   ros::Time t_start = ros::Time::now(), t_init, t_opt, t_refine;
 
   /*** STEP 1: INIT ***/
-  double ts = pp_.ctrl_pt_dist / pp_.max_vel_*1.0; // Leftover shit!!!
+  double ts = pp_.ctrl_pt_dist / pp_.max_vel_*1.1; // Leftover shit!!! 
   vector<Eigen::Vector3d> point_set, start_end_derivatives; 
   static bool flag_first_call = true, flag_force_polynomial = false;
   bool flag_regenerate = false;
@@ -243,14 +243,8 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
   //   return true;
   // }
   
-  vector<Eigen::Vector3d> raw_cps;
   vector<vector<Eigen::Vector3d>> a_star_pathes;
-  for ( int i=0; i<ctrl_pts.cols(); ++i )
-    raw_cps.push_back( ctrl_pts.col(i) );
-
-  // cout << "raw_cps.size()=" << raw_cps.size() << endl;
-
-  a_star_pathes = bspline_optimizer_rebound_->initControlPoints( raw_cps, true );
+  a_star_pathes = bspline_optimizer_rebound_->initControlPoints( ctrl_pts, true );
 
   static int vis_id=0;
   visualization_->displayInitList(point_set, 0.2, 0);
@@ -259,7 +253,7 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
   t_init = ros::Time::now();
   
   /*** STEP 2: OPTIMIZE ***/
-  bool flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ctrl_pts, ts);
+  bool flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts);
   cout << "first_optimize_step_success=" << flag_step_1_success << endl;
   if ( !flag_step_1_success )
   {
