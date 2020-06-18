@@ -3,15 +3,10 @@
 
 #include <plan_manage/rebo_replan_fsm.h>
 
-#include <plan_manage/backward.hpp>
-namespace backward {
-backward::SignalHandling sh;
-}
-
 using namespace rebound_planner;
 
 int main(int argc, char** argv) {
-  ros::init(argc, argv, "fast_planner_node");
+  ros::init(argc, argv, "rebound_planner_node");
   ros::NodeHandle nh("~");
 
   ReboReplanFSM rebo_replan;

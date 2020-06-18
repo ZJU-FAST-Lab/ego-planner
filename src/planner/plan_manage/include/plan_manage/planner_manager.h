@@ -14,7 +14,7 @@
 
 #include <ros/ros.h>
 
-#include <traj_utils/planning_visualization.h>
+#include <plan_manage/planning_visualization.h>
 
 namespace rebound_planner {
 
@@ -59,7 +59,7 @@ private:
 
   int continous_failures_count_{0};
 
-  void updateTrajInfo();
+  void updateTrajInfo(const UniformBspline& position_traj, const ros::Time time_now );
 
   // topology guided optimization
 

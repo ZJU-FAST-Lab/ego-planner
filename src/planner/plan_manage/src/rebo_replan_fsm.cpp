@@ -35,8 +35,6 @@ void ReboReplanFSM::init(ros::NodeHandle& nh) {
   waypoint_sub_ = nh.subscribe("/waypoint_generator/waypoints", 1, &ReboReplanFSM::waypointCallback, this);
   odom_sub_ = nh.subscribe("/odom_world", 1, &ReboReplanFSM::odometryCallback, this);
 
-  replan_pub_  = nh.advertise<std_msgs::Empty>("/planning/replan", 10);
-  new_pub_     = nh.advertise<std_msgs::Empty>("/planning/new", 10);
   bspline_pub_ = nh.advertise<rebound_planner::Bspline>("/planning/bspline", 10);
   data_disp_pub_ = nh.advertise<rebound_planner::DataDisp>("/planning/data_display", 100);
 }
@@ -68,9 +66,6 @@ void ReboReplanFSM::waypointCallback(const nav_msgs::PathConstPtr& msg) {
     for ( double t=0; t<planner_manager_->global_data_.global_duration_; t+=1 )
       gloabl_traj.push_back( planner_manager_->global_data_.global_traj_.evaluate(t) );
 
-    visualization_->displayInitList(gloabl_traj, 0.1, 1234);
-
-    visualization_->drawGoal(end_pt_, 0.3, Eigen::Vector4d(1, 0, 0, 1.0));
     end_vel_.setZero();
     have_target_ = true;
     have_new_target_ = true;
@@ -80,6 +75,9 @@ void ReboReplanFSM::waypointCallback(const nav_msgs::PathConstPtr& msg) {
       changeFSMExecState(GEN_NEW_TRAJ, "TRIG");
     else if (exec_state_ == EXEC_TRAJ)
       changeFSMExecState(REPLAN_TRAJ, "TRIG");
+
+    visualization_->displayGoalPoint(end_pt_, Eigen::Vector4d(1, 0, 0, 1), 0.3, 0);
+    visualization_->displayGlobalPathList(gloabl_traj, 0.1, 0);
   }
   else
   {
@@ -365,9 +363,7 @@ bool ReboReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomP
 
     bspline_pub_.publish(bspline);
 
-    /* visulization */
-    visualization_->drawBspline(info->position_traj_, 0.1, Eigen::Vector4d(1.0, 0, 0.0, 1), false, 0.2,
-                                Eigen::Vector4d(1, 0, 0, 1));
+    visualization_->displayOptimalList( info->position_traj_.get_control_points(), 0 );
 
   }
 
@@ -403,10 +399,6 @@ bool ReboReplanFSM::callEmergencyStop( Eigen::Vector3d stop_pos ) {
   }
 
   bspline_pub_.publish(bspline);
-
-  /* visulization */
-  visualization_->drawBspline(info->position_traj_, 0.1, Eigen::Vector4d(1.0, 0, 0.0, 1), false, 0.2,
-                              Eigen::Vector4d(1, 0, 0, 1));
 
   return true;
 }

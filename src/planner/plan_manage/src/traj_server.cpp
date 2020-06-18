@@ -6,13 +6,9 @@
 #include "visualization_msgs/Marker.h"
 #include <ros/ros.h>
 
-ros::Publisher cmd_vis_pub, pos_cmd_pub, traj_pub;
-
-nav_msgs::Odometry odom;
+ros::Publisher pos_cmd_pub;
 
 quadrotor_msgs::PositionCommand cmd;
-// double pos_gain[3] = {5.7, 5.7, 6.2};
-// double vel_gain[3] = {3.4, 3.4, 4.0};
 double pos_gain[3] = { 5.7, 5.7, 6.2 };
 double vel_gain[3] = { 3.4, 3.4, 4.0 };
 
@@ -27,78 +23,6 @@ int traj_id_;
 // yaw control
 double last_yaw_, last_yaw_dot_;
 double time_forward_;
-
-vector<Eigen::Vector3d> traj_cmd_, traj_real_;
-
-void displayTrajWithColor(vector<Eigen::Vector3d> path, double resolution, Eigen::Vector4d color,
-                          int id) {
-  visualization_msgs::Marker mk;
-  mk.header.frame_id = "world";
-  mk.header.stamp = ros::Time::now();
-  mk.type = visualization_msgs::Marker::SPHERE_LIST;
-  mk.action = visualization_msgs::Marker::DELETE;
-  mk.id = id;
-
-  traj_pub.publish(mk);
-
-  mk.action = visualization_msgs::Marker::ADD;
-  mk.pose.orientation.x = 0.0;
-  mk.pose.orientation.y = 0.0;
-  mk.pose.orientation.z = 0.0;
-  mk.pose.orientation.w = 1.0;
-
-  mk.color.r = color(0);
-  mk.color.g = color(1);
-  mk.color.b = color(2);
-  mk.color.a = color(3);
-
-  mk.scale.x = resolution;
-  mk.scale.y = resolution;
-  mk.scale.z = resolution;
-
-  geometry_msgs::Point pt;
-  for (int i = 0; i < int(path.size()); i++) {
-    pt.x = path[i](0);
-    pt.y = path[i](1);
-    pt.z = path[i](2);
-    mk.points.push_back(pt);
-  }
-  traj_pub.publish(mk);
-  ros::Duration(0.001).sleep();
-}
-
-void drawCmd(const Eigen::Vector3d& pos, const Eigen::Vector3d& vec, const int& id,
-             const Eigen::Vector4d& color) {
-  visualization_msgs::Marker mk_state;
-  mk_state.header.frame_id = "world";
-  mk_state.header.stamp = ros::Time::now();
-  mk_state.id = id;
-  mk_state.type = visualization_msgs::Marker::ARROW;
-  mk_state.action = visualization_msgs::Marker::ADD;
-
-  mk_state.pose.orientation.w = 1.0;
-  mk_state.scale.x = 0.1;
-  mk_state.scale.y = 0.2;
-  mk_state.scale.z = 0.3;
-
-  geometry_msgs::Point pt;
-  pt.x = pos(0);
-  pt.y = pos(1);
-  pt.z = pos(2);
-  mk_state.points.push_back(pt);
-
-  pt.x = pos(0) + vec(0);
-  pt.y = pos(1) + vec(1);
-  pt.z = pos(2) + vec(2);
-  mk_state.points.push_back(pt);
-
-  mk_state.color.r = color(0);
-  mk_state.color.g = color(1);
-  mk_state.color.b = color(2);
-  mk_state.color.a = color(3);
-
-  cmd_vis_pub.publish(mk_state);
-}
 
 void bsplineCallback(rebound_planner::BsplineConstPtr msg) {
   // parse pos traj
@@ -135,44 +59,10 @@ void bsplineCallback(rebound_planner::BsplineConstPtr msg) {
   traj_.push_back(pos_traj);
   traj_.push_back(traj_[0].getDerivative());
   traj_.push_back(traj_[1].getDerivative());
-  // traj_.push_back(yaw_traj);
-  // traj_.push_back(yaw_traj.getDerivative());
 
   traj_duration_ = traj_[0].getTimeSum();
 
   receive_traj_ = true;
-}
-
-void replanCallback(std_msgs::Empty msg) {
-  /* reset duration */
-  const double time_out = 0.01;
-  ros::Time time_now = ros::Time::now();
-  double t_stop = (time_now - start_time_).toSec() + time_out;
-  traj_duration_ = min(t_stop, traj_duration_);
-}
-
-void newCallback(std_msgs::Empty msg) {
-  traj_cmd_.clear();
-  traj_real_.clear();
-}
-
-void odomCallbck(const nav_msgs::Odometry& msg) {
-  if (msg.child_frame_id == "X" || msg.child_frame_id == "O") return;
-
-  odom = msg;
-
-  traj_real_.push_back(
-      Eigen::Vector3d(odom.pose.pose.position.x, odom.pose.pose.position.y, odom.pose.pose.position.z));
-
-  if (traj_real_.size() > 10000) traj_real_.erase(traj_real_.begin(), traj_real_.begin() + 1000);
-}
-
-void visCallback(const ros::TimerEvent& e) {
-  // displayTrajWithColor(traj_real_, 0.03, Eigen::Vector4d(0.925, 0.054, 0.964,
-  // 1),
-  //                      1);
-
-  displayTrajWithColor(traj_cmd_, 0.05, Eigen::Vector4d(0, 1, 0, 1), 2);
 }
 
 void cmdCallback(const ros::TimerEvent& e) 
@@ -319,12 +209,6 @@ void cmdCallback(const ros::TimerEvent& e)
   last_yaw_ = cmd.yaw;
 
   pos_cmd_pub.publish(cmd);
-
-  Eigen::Vector3d dir(cos(yaw), sin(yaw), 0.0);
-  drawCmd(pos, 2 * dir, 2, Eigen::Vector4d(1, 1, 0, 0.7));
-
-  traj_cmd_.push_back(pos);
-  if (traj_cmd_.size() > 10000) traj_cmd_.erase(traj_cmd_.begin(), traj_cmd_.begin() + 1000);
 }
 
 int main(int argc, char** argv) {
@@ -333,16 +217,10 @@ int main(int argc, char** argv) {
   ros::NodeHandle nh("~");
 
   ros::Subscriber bspline_sub = node.subscribe("planning/bspline", 10, bsplineCallback);
-  ros::Subscriber replan_sub = node.subscribe("planning/replan", 10, replanCallback);
-  ros::Subscriber new_sub = node.subscribe("planning/new", 10, newCallback);
-  ros::Subscriber odom_sub = node.subscribe("/odom_world", 50, odomCallbck);
 
-  cmd_vis_pub = node.advertise<visualization_msgs::Marker>("planning/position_cmd_vis", 10);
   pos_cmd_pub = node.advertise<quadrotor_msgs::PositionCommand>("/position_cmd", 50);
-  traj_pub = node.advertise<visualization_msgs::Marker>("planning/travel_traj", 10);
 
   ros::Timer cmd_timer = node.createTimer(ros::Duration(0.01), cmdCallback);
-  ros::Timer vis_timer = node.createTimer(ros::Duration(0.25), visCallback);
 
   /* control parameter */
   cmd.kx[0] = pos_gain[0];

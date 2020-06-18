@@ -85,7 +85,12 @@ public:
 private:
   GridMap::Ptr grid_map_;
 
-  bool flag_continue_to_optimize_{false};
+  enum FORCE_STOP_OPTIMIZE_TYPE
+  {
+    DONT_STOP,
+    STOP_FOR_REBOUND,
+    STOP_FOR_ERROR
+  } force_stop_type_;
 
   // main input
   // Eigen::MatrixXd control_points_;     // B-spline control points, N x dim
@@ -135,8 +140,8 @@ private:
   void calcFitnessCost(const Eigen::MatrixXd& q, double& cost, Eigen::MatrixXd& gradient);
   bool check_collision_and_rebound(void);
 
-  static double costFunctionRebound(const Eigen::VectorXd& x, Eigen::VectorXd& grad, void* func_data);
-  static double costFunctionRefine(const Eigen::VectorXd& x, Eigen::VectorXd& grad, void* func_data);
+  static double costFunctionRebound(const Eigen::VectorXd& x, Eigen::VectorXd& grad, bool& force_return, void* func_data);
+  static double costFunctionRefine(const Eigen::VectorXd& x, Eigen::VectorXd& grad, bool& force_return, void* func_data);
   // static double costFunctionRebound_nlopt(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
   // static double costFunctionRefine_nlopt(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
 

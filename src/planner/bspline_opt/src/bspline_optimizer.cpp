@@ -310,44 +310,28 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(Ei
 }
 
 
-double BsplineOptimizer::costFunctionRebound(const Eigen::VectorXd& x, Eigen::VectorXd& grad, void* func_data)
+double BsplineOptimizer::costFunctionRebound(const Eigen::VectorXd& x, Eigen::VectorXd& grad, bool& force_return, void* func_data)
 {
   BsplineOptimizer* opt = reinterpret_cast<BsplineOptimizer*>(func_data);
 
   double cost;
   opt->combineCostRebound(x, grad, cost);
 
-  /* save the min cost result */
-  // opt->min_cost_ = cost;
-  // opt->best_variable_ = x;
-
   // early termination
-  if ( opt->flag_continue_to_optimize_ )
-  {
-    cost = std::numeric_limits<double>::max();
-    // for ( size_t i=0; i<grad.size(); i++)
-    // {
-    //   grad[i] = std::numeric_limits<double>::max();
-    // }
-  }
-
-  // cout << "opt->flag_continue_to_optimize_=" << opt->flag_continue_to_optimize_ << endl;
-  // cout << "cost=" << cost <<endl;
+  force_return = ( opt->force_stop_type_ == STOP_FOR_ERROR || opt->force_stop_type_ == STOP_FOR_REBOUND );
 
   opt->iter_num_ += 1;
   return cost;
 }
 
-double BsplineOptimizer::costFunctionRefine(const Eigen::VectorXd& x, Eigen::VectorXd& grad, void* func_data)
+double BsplineOptimizer::costFunctionRefine(const Eigen::VectorXd& x, Eigen::VectorXd& grad, bool& force_return, void* func_data)
 {
   BsplineOptimizer* opt = reinterpret_cast<BsplineOptimizer*>(func_data);
 
   double cost;
   opt->combineCostRefine(x, grad, cost);
 
-  /* save the min cost result */
-  // opt->min_cost_ = cost;
-  // opt->best_variable_ = x;
+  force_return = false;
 
   opt->iter_num_ += 1;
   return cost;
@@ -366,10 +350,10 @@ void BsplineOptimizer::calcDistanceCostRebound(const Eigen::MatrixXd& q, double&
   Eigen::Vector3d dist_grad;
   int end_idx = q.cols() - order_;
 
-  flag_continue_to_optimize_ = false;
-  if ( iter_num > 3 && smoothness_cost / ( cps_.size - 2*order_) < 0.1 ) // 0.1 is an experimental value that indicates the trajectory is smooth enough, leftover shit!!!
+  force_stop_type_ = DONT_STOP;
+  if ( iter_num > 3 && smoothness_cost / ( cps_.size - 2*order_) < 0.1 ) // 0.1 is an experimental value that indicates the trajectory is smooth enough.
   {
-    flag_continue_to_optimize_ = check_collision_and_rebound();
+    check_collision_and_rebound();
   }
 
   /*** calculate distance cost and gradient ***/
@@ -606,7 +590,9 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
       if ( j >= cps_.size ) // fail to get the obs free point
       {
         ROS_WARN( "WARN! terminal point of the current trajectory is in obstacle, skip this planning." );
-        return 0;
+
+        force_stop_type_ = STOP_FOR_ERROR;
+        return false;
       }
 
       i = j+1;
@@ -722,6 +708,7 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
         ROS_WARN("Failed to generate direction!");
     }
 
+    force_stop_type_ = STOP_FOR_REBOUND;
     return true;
   }
 
@@ -774,7 +761,7 @@ bool BsplineOptimizer::rebound_optimize()
 
   ros::Time t0 = ros::Time::now(), t1, t2;
   int restart_nums = 0, rebound_times = 0;;
-  bool flag_rebound, flag_occ, success;
+  bool flag_force_return, flag_occ, success;
   double original_lambda2 = lambda2_;
   constexpr int MAX_RESART_NUMS_SET = 3;
   do
@@ -782,7 +769,7 @@ bool BsplineOptimizer::rebound_optimize()
     /* ---------- prepare ---------- */
     min_cost_ = std::numeric_limits<double>::max();
     iter_num_ = 0;
-    flag_rebound = false;
+    flag_force_return = false;
     flag_occ = false;
     success = false;
 
@@ -799,7 +786,7 @@ bool BsplineOptimizer::rebound_optimize()
     /* ---------- success temporary, check collision again ---------- */
     if ( result == GradientDescentOptimizer::FIND_MIN ||  result == GradientDescentOptimizer::REACH_MAX_ITERATION )
     {
-      flag_rebound = false;
+      flag_force_return = false;
 
       UniformBspline traj =  UniformBspline(cps_.points, 3, bspline_interval_);
       double tm, tmp;
@@ -847,13 +834,13 @@ bool BsplineOptimizer::rebound_optimize()
     }
     else if ( result == GradientDescentOptimizer::RETURN_BY_ORDER )
     {
-      flag_rebound = true;
+      flag_force_return = true;
       rebound_times ++;
       cout << "iter=" << iter_num_ << ",time(ms)=" << time_ms << ",rebound." << endl;
     }
 
   } while ( (flag_occ && restart_nums < MAX_RESART_NUMS_SET) || 
-            (flag_rebound && rebound_times <= 100) 
+            (flag_force_return && force_stop_type_ == STOP_FOR_REBOUND && rebound_times <= 20) 
           );
 
   lambda2_ = original_lambda2;

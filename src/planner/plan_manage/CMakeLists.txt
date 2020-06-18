@@ -56,6 +56,7 @@ add_executable(rebound_planner_node
   src/rebound_planner_node.cpp 
   src/rebo_replan_fsm.cpp
   src/planner_manager.cpp
+  src/planning_visualization.cpp
   )
 target_link_libraries(rebound_planner_node 
   ${catkin_LIBRARIES}
