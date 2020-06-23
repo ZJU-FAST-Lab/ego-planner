@@ -315,7 +315,6 @@ inline int GridMap::getOccupancy(Eigen::Vector3d pos) {
 
 inline int GridMap::getInflateOccupancy(Eigen::Vector3d pos) {
   if (!isInMap(pos)) return -1;
-  if ( (md_.camera_pos_ - pos).norm() > 5 ) return 0; // Leftover shit !!!
 
   Eigen::Vector3i id;
   posToIndex(pos, id);

@@ -41,10 +41,11 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(Ei
   double step_size = grid_map_->getResolution() / ( (init_points.col(0) - init_points.rightCols(1)).norm() / (init_points.cols()-1) ) / 2;
   int in_id, out_id;
   vector<std::pair<int,int>> segment_ids;
-  int same_occ_times = ENOUGH_INTERVAL + 1;
+  int same_occ_state_times = ENOUGH_INTERVAL + 1;
   bool occ, last_occ = false;
   bool flag_got_start = false, flag_got_end = false, flag_got_end_maybe = false;
-  for ( int i=order_; i<=(int)init_points.cols()-order_; ++i )
+  int i_end = (int)init_points.cols() - order_ - ((int)init_points.cols()-2*order_)/3; // only check closed 2/3 points.
+  for ( int i=order_; i<=i_end; ++i )
   {
     for ( double a=1.0; a>=0.0; a-=step_size )
     {
@@ -52,26 +53,26 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(Ei
 
       if ( occ && ! last_occ)
       {
-        if ( same_occ_times > ENOUGH_INTERVAL || i == order_ )
+        if ( same_occ_state_times > ENOUGH_INTERVAL || i == order_ )
         {
           in_id = i-1;
           flag_got_start = true;
         }
-        same_occ_times = 0;
+        same_occ_state_times = 0;
         flag_got_end_maybe = false;  // terminate in advance
       }
       else if( !occ && last_occ )
       {
         out_id = i;
         flag_got_end_maybe = true;
-        same_occ_times = 0;
+        same_occ_state_times = 0;
       }
       else
       {
-        ++ same_occ_times; 
+        ++ same_occ_state_times; 
       }
 
-      if ( flag_got_end_maybe && ( same_occ_times > ENOUGH_INTERVAL || ( i == (int)init_points.cols()-order_ ) ) )
+      if ( flag_got_end_maybe && ( same_occ_state_times > ENOUGH_INTERVAL || ( i == (int)init_points.cols()-order_ ) ) )
       {
         flag_got_end_maybe = false;
         flag_got_end = true;
@@ -174,7 +175,7 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(Ei
     //cout << "final:" << "i = " << i << " first = " << final_segment_ids[i].first << " second = " << final_segment_ids[i].second << endl;
   }
 
-  /*** Assign parameters to each segment ***/
+  /*** Assign data to each segment ***/
   for (size_t i=0; i<segment_ids.size(); i++)
   {
     // step 1
@@ -539,7 +540,8 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
   int in_id, out_id;
   vector<std::pair<int,int>> segment_ids;
   bool flag_new_obs_valid = false;
-  for ( int i=order_-1; i<=end_idx; ++i )
+  int i_end = end_idx - (end_idx-order_)/3;
+  for ( int i=order_-1; i<=i_end; ++i )
   {
 
     bool occ = grid_map_->getInflateOccupancy(cps_.points.col(i));
@@ -552,7 +554,7 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
         cout.precision(2);
         if ( ( cps_.points.col(i) - cps_.base_point[i][k] ).dot(cps_.direction[i][k]) < 1 * grid_map_->getResolution() ) // current point is outside any of the collision_points. 
         {
-          occ = false;
+          occ = false;  // Not really takes effect, just for better hunman understanding.
           break;
         }
       }
@@ -581,6 +583,7 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
       for ( j=i+1; j<cps_.size; ++j )
       {
         occ = grid_map_->getInflateOccupancy(cps_.points.col(j));
+        
         if ( !occ )
         {
           out_id = j;
@@ -753,7 +756,7 @@ bool BsplineOptimizer::rebound_optimize()
 
   GradientDescentOptimizer opt(variable_num_, BsplineOptimizer::costFunctionRebound, this);
 
-  opt.set_maxeval(200);
+  opt.set_maxeval(100);
   opt.set_min_grad(1e-2);
 
   /* ---------- init variables ---------- */
@@ -791,8 +794,8 @@ bool BsplineOptimizer::rebound_optimize()
       UniformBspline traj =  UniformBspline(cps_.points, 3, bspline_interval_);
       double tm, tmp;
       traj.getTimeSpan(tm, tmp);
-      constexpr double t_step = 0.02;
-      for ( double t = tm; t<tmp; t+=t_step )
+      double t_step = (tmp - tm) / ( (traj.evaluateDeBoorT(tmp) - traj.evaluateDeBoorT(tm)).norm() / grid_map_->getResolution() );
+      for ( double t = tm; t<tmp*2/3; t+=t_step ) // Only check the closest 2/3 partition of the whole trajectory.
       {
         flag_occ = grid_map_->getInflateOccupancy( traj.evaluateDeBoorT(t) );
         if ( flag_occ )
@@ -803,12 +806,6 @@ bool BsplineOptimizer::rebound_optimize()
           {
             cout << cps_.points.col(1).transpose() << "\n"  << cps_.points.col(2).transpose() << "\n"  << cps_.points.col(3).transpose() << "\n" << cps_.points.col(4).transpose() << endl;
             ROS_ERROR("First 3 control points in obstacles! return false, t=%f",t);
-            return false;
-          }
-          else if ( t > tmp-bspline_interval_ ) // Last 3 control points in obstacles!
-          {
-            cout << "P=" << traj.evaluateDeBoorT(t).transpose() << endl;
-            ROS_ERROR("Last 3 control points in obstacles! return false, t=%f",t);
             return false;
           }
 
@@ -882,9 +879,8 @@ bool BsplineOptimizer::refine_optimize()
     UniformBspline traj =  UniformBspline(cps_.points, 3, bspline_interval_);
     double tm, tmp;
     traj.getTimeSpan(tm, tmp);
-
-    constexpr double t_step = 0.02;
-    for ( double t = tm; t<tmp; t+=t_step )
+    double t_step = (tmp - tm) / ( (traj.evaluateDeBoorT(tmp) - traj.evaluateDeBoorT(tm)).norm() / grid_map_->getResolution() ); // Step size is defined as the maximum size that can passes throgth every gird.
+    for ( double t = tm; t<tmp*2/3; t+=t_step )
     {
       if ( grid_map_->getInflateOccupancy( traj.evaluateDeBoorT(t) ) )
       {
@@ -918,10 +914,11 @@ void BsplineOptimizer::combineCostRebound(const Eigen::VectorXd& x, Eigen::Vecto
 
   memcpy( cps_.points.data() + 3*order_, x.data(), x.size()*sizeof(x(0)) );
 
-  for ( size_t i=order_; i<cps_.size-order_; ++i )
-  {
-    cps_.occupancy[i] = grid_map_->getInflateOccupancy(cps_.points.col(i));
-  }
+  // int i_end = cps_.size - order_ - (cps_.size - 2*order_)/3;
+  // for ( size_t i=order_; i<i_end; ++i )
+  // {
+  //   cps_.occupancy[i] = grid_map_->getInflateOccupancy(cps_.points.col(i));
+  // }
 
   /* ---------- evaluate cost and gradient ---------- */
   double f_smoothness, f_distance, f_feasibility;

@@ -297,8 +297,12 @@ void ReboReplanFSM::checkCollisionCallback(const ros::TimerEvent& e) {
   /* ---------- check trajectory ---------- */
   constexpr double time_step = 0.01;
   double t_cur = ( ros::Time::now() - info->start_time_ ).toSec();
-  for ( double t=t_cur; t<info->duration_; t+=time_step )
+  double t_2_3 = info->duration_*2/3; 
+  for ( double t=t_cur; t<info->duration_; t+=time_step ) 
   {
+    if ( t_cur < t_2_3 && t >= t_2_3 ) // If t_cur < t_2_3, only the first 2/3 partition of the trajectory is considered valid and will get checked.
+      break;
+
     if ( map->getInflateOccupancy( info->position_traj_.evaluateDeBoorT(t) ) )
     {
       if ( planFromCurrentTraj() )  // Make a chance
@@ -323,6 +327,7 @@ void ReboReplanFSM::checkCollisionCallback(const ros::TimerEvent& e) {
       break;
     } 
   }
+  
 }
 
 bool ReboReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj) {

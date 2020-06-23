@@ -38,8 +38,9 @@ bool ReboundPlannerManager::checkTrajCollisionInflate(UniformBspline &traj) {
   double tm, tmp;
   traj.getTimeSpan(tm, tmp);
 
-  constexpr double t_step = 0.02;
-  for ( double t = tm; t<tmp; t+=t_step )
+  //constexpr double t_step = 0.02;
+  double t_step = (tmp - tm) / ( (traj.evaluateDeBoorT(tmp) - traj.evaluateDeBoorT(tm)).norm() / grid_map_->getResolution() ); // Step size is defined as the maximum size that can passes throgth every gird.
+  for ( double t = tm; t<tmp*2/3; t+=t_step )
   {
     if ( grid_map_->getInflateOccupancy( traj.evaluateDeBoorT(t) ) )
     {
@@ -74,7 +75,7 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
   ros::Time t_start = ros::Time::now(), t_init, t_opt, t_refine;
 
   /*** STEP 1: INIT ***/
-  double ts = pp_.ctrl_pt_dist / pp_.max_vel_*1.1; // Leftover shit!!! 
+  double ts = pp_.ctrl_pt_dist / pp_.max_vel_ * 1.2; // pp_.ctrl_pt_dist / pp_.max_vel_ is too tense, and will surely exceed the acc/vel limits
   vector<Eigen::Vector3d> point_set, start_end_derivatives; 
   static bool flag_first_call = true, flag_force_polynomial = false;
   bool flag_regenerate = false;
@@ -268,7 +269,7 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
 
   if ( !flag_step_2_success )
   {
-    printf("\033[33mThis refined trajectory hits obstacles. It doesn't matter if appeares occasionally. But if keeps appearing, Increase parameter \"lambda_collision\".\n\033[0m");
+    printf("\033[33mThis refined trajectory hits obstacles. It doesn't matter if appeares occasionally. But if continously appearing, Increase parameter \"lambda_fitness\".\n\033[0m");
     continous_failures_count_++;
     return false;
   }
