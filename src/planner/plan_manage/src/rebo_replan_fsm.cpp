@@ -314,7 +314,7 @@ void ReboReplanFSM::checkCollisionCallback(const ros::TimerEvent& e) {
       {
         if ( t-t_cur < 0.8 ) // 0.8s of emergency time
         {
-          ROS_ERROR("Got no time to avoid obstacles. emergency stop! time=%f",t-t_cur);
+          ROS_ERROR("Suddenly discovered obstacles. emergency stop! time=%f",t-t_cur);
           changeFSMExecState(EMERGENCY_STOP, "SAFETY");
         }
         else

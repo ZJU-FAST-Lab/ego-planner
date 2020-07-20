@@ -28,7 +28,7 @@ Panels:
     Experimental: false
     Name: Time
     SyncMode: 0
-    SyncSource: depth
+    SyncSource: simulation_map
 Toolbars:
   toolButtonStyle: 2
 Visualization Manager:
@@ -66,7 +66,7 @@ Visualization Manager:
           Marker Topic: /rebound_planner_node/goal_point
           Name: goal_point
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Class: rviz/Marker
@@ -74,7 +74,7 @@ Visualization Manager:
           Marker Topic: /rebound_planner_node/global_list
           Name: global_path
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Class: rviz/Marker
@@ -82,7 +82,7 @@ Visualization Manager:
           Marker Topic: /rebound_planner_node/optimal_list
           Name: optimal_traj
           Namespaces:
-            {}
+            "": true
           Queue Size: 100
           Value: true
         - Class: rviz/Marker
@@ -268,25 +268,25 @@ Visualization Manager:
   Views:
     Current:
       Class: rviz/ThirdPersonFollower
-      Distance: 26.9921284
+      Distance: 10.8721771
       Enable Stereo Rendering:
         Stereo Eye Separation: 0.0599999987
         Stereo Focal Distance: 1
         Swap Stereo Eyes: false
         Value: false
       Focal Point:
-        X: -14.6119061
-        Y: 1.73702252
-        Z: 0.0561478809
+        X: 0.976848602
+        Y: -0.0725723505
+        Z: 0.0561488345
       Focal Shape Fixed Size: true
       Focal Shape Size: 0.0500000007
       Invert Z Axis: false
       Name: Current View
       Near Clip Distance: 0.00999999978
-      Pitch: 0.814796627
-      Target Frame: world
+      Pitch: 0.89479655
+      Target Frame: base
       Value: ThirdPersonFollower (rviz)
-      Yaw: 3.14044213
+      Yaw: 3.13044167
     Saved:
       - Class: rviz/ThirdPersonFollower
         Distance: 17.4853859

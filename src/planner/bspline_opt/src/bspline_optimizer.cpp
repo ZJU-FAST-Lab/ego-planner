@@ -264,11 +264,14 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(Ei
               ( ctrl_pts_law.dot( middle_point - a_star_pathes[i][Astar_id] ) / ctrl_pts_law.dot( a_star_pathes[i][Astar_id] -  a_star_pathes[i][last_Astar_id] ) ) // = t
             );
 
-          cps_.flag_temp[segment_ids[i].first] = true;
-          cps_.base_point[segment_ids[i].first].push_back( cps_.points.col(segment_ids[i].first) );
-          cps_.direction[segment_ids[i].first].push_back( (intersection_point - middle_point).normalized() );
+          if ( (intersection_point - middle_point).norm() > 0.01 ) // 1cm.
+          {
+            cps_.flag_temp[segment_ids[i].first] = true;
+            cps_.base_point[segment_ids[i].first].push_back( cps_.points.col(segment_ids[i].first) );
+            cps_.direction[segment_ids[i].first].push_back( (intersection_point - middle_point).normalized() );
 
-          got_intersection_id = segment_ids[i].first;
+            got_intersection_id = segment_ids[i].first;
+          }
           break;
         }
       }
@@ -293,16 +296,8 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(Ei
     }
     else
     {
-      ROS_ERROR("Failed to generate direction! segment_id=%d", i);
-      
-      // cout << "↓↓↓↓↓↓↓↓↓↓↓↓ " << final_segment_ids[i].first << " " << final_segment_ids[i].second << endl;
-      // cout.precision(3);
-      // cout << "in=" << cps_[final_segment_ids[i].first].point.transpose() << " out=" << cps_[final_segment_ids[i].second].point.transpose() << endl;
-      // for ( size_t k=0; k<a_star_pathes[i].size(); ++k )
-      // {
-      //   cout << "a_star_pathes[i][k]=" << a_star_pathes[i][k].transpose() << endl;
-      // }
-      // cout << "↑↑↑↑↑↑↑↑↑↑↑↑" << endl;
+      // Just ignore, it does not matter ^_^.
+      // ROS_ERROR("Failed to generate direction! segment_id=%d", i);
     }
 
   }
@@ -341,15 +336,10 @@ double BsplineOptimizer::costFunctionRefine(const Eigen::VectorXd& x, Eigen::Vec
 void BsplineOptimizer::calcDistanceCostRebound(const Eigen::MatrixXd& q, double& cost,
                                         Eigen::MatrixXd& gradient, int iter_num, double smoothness_cost)
 {
-  //time_satrt = ros::Time::now();
-
   cost = 0.0;
-
-  //ROS_WARN("iter_num=%d", iter_num);
-
-  double dist;
-  Eigen::Vector3d dist_grad;
   int end_idx = q.cols() - order_;
+  double demarcation = cps_.clearance;
+  double a = 3*demarcation, b = -3*pow(demarcation, 2), c = pow(demarcation, 3);
 
   force_stop_type_ = DONT_STOP;
   if ( iter_num > 3 && smoothness_cost / ( cps_.size - 2*order_) < 0.1 ) // 0.1 is an experimental value that indicates the trajectory is smooth enough.
@@ -362,24 +352,23 @@ void BsplineOptimizer::calcDistanceCostRebound(const Eigen::MatrixXd& q, double&
   {
     for ( size_t j=0; j<cps_.direction[i].size(); ++j )
     {
-      dist = (cps_.points.col(i) - cps_.base_point[i][j]).dot(cps_.direction[i][j]);
-      dist_grad = cps_.direction[i][j];
-      if (dist < cps_.clearance)
+      double dist = (cps_.points.col(i) - cps_.base_point[i][j]).dot(cps_.direction[i][j]);
+      double dist_err = cps_.clearance - dist;
+      Eigen::Vector3d dist_grad = cps_.direction[i][j];
+      
+      if (dist_err < 0)
       {
-        if ( dist < -cps_.clearance )
-        {
-          // linear if the distance is too far.
-          // cost += pow(dist - cps_[i].clearance, 2) - pow(dist + cps_[i].clearance, 2);
-          cost += -4 * cps_.clearance * dist;  // == pow(dist - cps_[i].clearance, 2) - pow(dist + cps_[i].clearance, 2)
-          gradient.col(i) += -4 * cps_.clearance * dist_grad;
-          //cout << "run to here! i=" << i << " dist=" << dist << endl;
-        }
-        else
-        {
-          cost += pow(dist - cps_.clearance, 2);
-          gradient.col(i) += 2.0 * (dist - cps_.clearance) * dist_grad;
-        }
-        
+        /* do nothing */
+      }
+      else if ( dist_err < demarcation )
+      {
+        cost += pow(dist_err, 3);
+        gradient.col(i) += -3.0*dist_err*dist_err * dist_grad;
+      }
+      else
+      {
+        cost += a*dist_err*dist_err + b*dist_err + c;
+        gradient.col(i) += -(2.0*a*dist_err+b) * dist_grad;
       }
     }
   }
@@ -388,7 +377,6 @@ void BsplineOptimizer::calcDistanceCostRebound(const Eigen::MatrixXd& q, double&
 
 void BsplineOptimizer::calcFitnessCost(const Eigen::MatrixXd& q, double& cost, Eigen::MatrixXd& gradient)
 {
-  //time_satrt = ros::Time::now();
 
   cost = 0.0;
 
@@ -462,6 +450,9 @@ void BsplineOptimizer::calcSmoothnessCost(const Eigen::MatrixXd& q, double& cost
 void BsplineOptimizer::calcFeasibilityCost(const Eigen::MatrixXd& q, double& cost,
                                            Eigen::MatrixXd& gradient) {
   cost = 0.0;
+  double demarcation = 1.0; // 1m/s, 1m/s/s
+  double ar = 3*demarcation, br = -3*pow(demarcation, 2), cr = pow(demarcation, 3);
+  double al = ar, bl = -br, cl = cr;
 
   /* abbreviation */
   double ts, ts_inv2;
@@ -469,24 +460,47 @@ void BsplineOptimizer::calcFeasibilityCost(const Eigen::MatrixXd& q, double& cos
   ts_inv2 = 1 / ts / ts;
 
   /* velocity feasibility */
-  for (int i = 0; i < q.cols() - 1; i++) {
+  for (int i = 0; i < q.cols() - 1; i++) 
+  {
     Eigen::Vector3d vi = (q.col(i + 1) - q.col(i))/ts;
 
-    //cout << "temp_v * vi=" ;
-    for (int j = 0; j < 3; j++) {
-      if ( vi(j) > max_vel_ )
+    for (int j = 0; j < 3; j++) 
+    {
+      if ( vi(j) > max_vel_+demarcation )
       {
-        cost += pow( vi(j)-max_vel_, 2 );
+        double diff = vi(j) - max_vel_;
+        cost += ar*diff*diff + br*diff + cr;
 
-        gradient(j, i+0) += -2*(vi(j)-max_vel_)/ts;
-        gradient(j, i+1) += 2*(vi(j)-max_vel_)/ts;
+        double grad = (2.0*ar*diff+br)/ts;
+        gradient(j, i+0) += -grad;
+        gradient(j, i+1) += grad;
+      }
+      else if ( vi(j) > max_vel_ )
+      {
+        double diff = vi(j) - max_vel_;
+        cost += pow( diff, 3 );
+
+        double grad = 3*diff*diff/ts;
+        gradient(j, i+0) += -grad;
+        gradient(j, i+1) += grad;
+      }
+      else if ( vi(j) < -(max_vel_+demarcation) )
+      {
+        double diff = vi(j) + max_vel_;
+        cost += al*diff*diff + bl*diff + cl;
+
+        double grad = (2.0*al*diff+bl)/ts;
+        gradient(j, i+0) += -grad;
+        gradient(j, i+1) += grad;
       }
       else if ( vi(j) < -max_vel_ )
       {
-        cost += pow( vi(j)+max_vel_, 2 );
+        double diff = vi(j) + max_vel_;
+        cost += -pow( diff, 3 );
 
-        gradient(j, i+0) += -2*(vi(j)+max_vel_)/ts;
-        gradient(j, i+1) += 2*(vi(j)+max_vel_)/ts;
+        double grad = -3*diff*diff/ts;
+        gradient(j, i+0) += -grad;
+        gradient(j, i+1) += grad;
       }
       else
       {
@@ -496,29 +510,51 @@ void BsplineOptimizer::calcFeasibilityCost(const Eigen::MatrixXd& q, double& cos
   }
 
   /* acceleration feasibility */
-  for (int i = 0; i < q.cols() - 2; i++) {
+  for (int i = 0; i < q.cols() - 2; i++) 
+  {
     Eigen::Vector3d ai = (q.col(i + 2) - 2 * q.col(i + 1) + q.col(i))*ts_inv2;
 
-    //cout << "temp_a * ai=" ;
     for (int j = 0; j < 3; j++) 
     {
-      if ( ai(j) > max_acc_ )
+      if ( ai(j) > max_acc_+demarcation )
       {
-        cost += pow( ai(j)-max_acc_, 2 );
+        double diff = ai(j) - max_acc_;
+        cost += ar*diff*diff + br*diff + cr;
 
-        double val = 2*(ai(j)-max_acc_)*ts_inv2;
-        gradient(j, i+0) += val;
-        gradient(j, i+1) += -2*val;
-        gradient(j, i+2) += val;
+        double grad = (2.0*ar*diff+br)*ts_inv2;
+        gradient(j, i+0) += grad;
+        gradient(j, i+1) += -2*grad;
+        gradient(j, i+2) += grad;
+      }
+      else if ( ai(j) > max_acc_ )
+      {
+        double diff = ai(j) - max_acc_;
+        cost += pow( diff, 3 );
+
+        double grad = 3*diff*diff*ts_inv2;
+        gradient(j, i+0) += grad;
+        gradient(j, i+1) += -2*grad;
+        gradient(j, i+2) += grad;
+      }
+      else if ( ai(j) < -(max_acc_+demarcation) )
+      {
+        double diff = ai(j) + max_acc_;
+        cost += al*diff*diff + bl*diff + cl;
+
+        double grad = (2.0*al*diff+bl)*ts_inv2;
+        gradient(j, i+0) += grad;
+        gradient(j, i+1) += -2*grad;
+        gradient(j, i+2) += grad;
       }
       else if ( ai(j) < -max_acc_ )
       {
-        cost += pow( ai(j)+max_acc_, 2 );
+        double diff = ai(j) + max_acc_;
+        cost += -pow( diff, 3 );
 
-        double val =  2*(ai(j)+max_acc_)*ts_inv2;
-        gradient(j, i+0) += val;
-        gradient(j, i+1) += -2*val;
-        gradient(j, i+2) += val;
+        double grad = -3*diff*diff*ts_inv2;
+        gradient(j, i+0) += grad;
+        gradient(j, i+1) += -2*grad;
+        gradient(j, i+2) += grad;
       }
       else
       {
@@ -552,7 +588,7 @@ bool BsplineOptimizer::check_collision_and_rebound(void)
       for ( size_t k=0; k<cps_.direction[i].size(); ++k )
       {
         cout.precision(2);
-        if ( ( cps_.points.col(i) - cps_.base_point[i][k] ).dot(cps_.direction[i][k]) < 1 * grid_map_->getResolution() ) // current point is outside any of the collision_points. 
+        if ( ( cps_.points.col(i) - cps_.base_point[i][k] ).dot(cps_.direction[i][k]) < 1 * grid_map_->getResolution() ) // current point is outside all the collision_points. 
         {
           occ = false;  // Not really takes effect, just for better hunman understanding.
           break;
@@ -756,7 +792,7 @@ bool BsplineOptimizer::rebound_optimize()
 
   GradientDescentOptimizer opt(variable_num_, BsplineOptimizer::costFunctionRebound, this);
 
-  opt.set_maxeval(100);
+  opt.set_maxeval(150);
   opt.set_min_grad(1e-2);
 
   /* ---------- init variables ---------- */
@@ -858,6 +894,7 @@ bool BsplineOptimizer::refine_optimize()
 
   GradientDescentOptimizer opt(variable_num_, BsplineOptimizer::costFunctionRefine, this);
 
+  opt.set_maxiter(100);
   opt.set_maxeval(100);
   opt.set_min_grad(1e-2);
 

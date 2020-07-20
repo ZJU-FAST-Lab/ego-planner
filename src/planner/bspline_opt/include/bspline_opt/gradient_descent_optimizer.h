@@ -30,7 +30,8 @@ public:
     f_data_ = f_data;
   };
 
-  void set_maxeval(int iter_limit){ iter_limit_ = iter_limit; }
+  void set_maxiter(int limit){ iter_limit_ = limit; }
+  void set_maxeval(int limit){ invoke_limit_ = limit; }
   void set_xtol_rel(double xtol_rel){ xtol_rel_ = xtol_rel; }
   void set_xtol_abs(double xtol_abs){ xtol_abs_ = xtol_abs; }
   void set_min_grad(double min_grad){ min_grad_ = min_grad; }
@@ -40,8 +41,9 @@ public:
   
 private:
 
-  int variable_num_;
-  int iter_limit_;
+  int variable_num_{0};
+  int iter_limit_{1e10};
+  int invoke_limit_{1e10};
   double xtol_rel_;
   double xtol_abs_;
   double min_grad_;

@@ -75,7 +75,7 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
   ros::Time t_start = ros::Time::now(), t_init, t_opt, t_refine;
 
   /*** STEP 1: INIT ***/
-  double ts = pp_.ctrl_pt_dist / pp_.max_vel_ * 1.2; // pp_.ctrl_pt_dist / pp_.max_vel_ is too tense, and will surely exceed the acc/vel limits
+  double ts = pp_.ctrl_pt_dist / pp_.max_vel_ * 1.1; // pp_.ctrl_pt_dist / pp_.max_vel_ is too tense, and will surely exceed the acc/vel limits
   vector<Eigen::Vector3d> point_set, start_end_derivatives; 
   static bool flag_first_call = true, flag_force_polynomial = false;
   bool flag_regenerate = false;

@@ -108,9 +108,10 @@ void GridMap::initMap(ros::NodeHandle& nh) {
   }
 
   // use odometry and point cloud
-
   indep_cloud_sub_ =
       node_.subscribe<sensor_msgs::PointCloud2>("/grid_map/cloud", 10, &GridMap::cloudCallback, this);
+  indep_odom_sub_ =
+      node_.subscribe<nav_msgs::Odometry>("/grid_map/odom", 10, &GridMap::odomCallback, this);
 
   occ_timer_ = node_.createTimer(ros::Duration(0.05), &GridMap::updateOccupancyCallback, this);
   vis_timer_ = node_.createTimer(ros::Duration(0.05), &GridMap::visCallback, this);
@@ -628,6 +629,15 @@ void GridMap::depthPoseCallback(const sensor_msgs::ImageConstPtr& img,
     md_.occ_need_update_ = false;
   }
 }
+void GridMap::odomCallback(const nav_msgs::OdometryConstPtr& odom) {
+  if (md_.has_first_depth_) return;
+
+  md_.camera_pos_(0) = odom->pose.pose.position.x;
+  md_.camera_pos_(1) = odom->pose.pose.position.y;
+  md_.camera_pos_(2) = odom->pose.pose.position.z;
+
+  md_.has_odom_ = true;
+}
 
 void GridMap::cloudCallback(const sensor_msgs::PointCloud2ConstPtr& img) {
 
@@ -637,7 +647,7 @@ void GridMap::cloudCallback(const sensor_msgs::PointCloud2ConstPtr& img) {
   md_.has_cloud_ = true;
 
   if (!md_.has_odom_) {
-    // std::cout << "no odom!" << std::endl;
+    std::cout << "no odom!" << std::endl;
     return;
   }
 
