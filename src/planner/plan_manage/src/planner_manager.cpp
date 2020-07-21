@@ -72,7 +72,8 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
     return false;
   }
 
-  ros::Time t_start = ros::Time::now(), t_init, t_opt, t_refine;
+  ros::Time t_start = ros::Time::now();
+  ros::Duration t_init, t_opt, t_refine;
 
   /*** STEP 1: INIT ***/
   double ts = pp_.ctrl_pt_dist / pp_.max_vel_ * 1.1; // pp_.ctrl_pt_dist / pp_.max_vel_ is too tense, and will surely exceed the acc/vel limits
@@ -232,11 +233,13 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
   vector<vector<Eigen::Vector3d>> a_star_pathes;
   a_star_pathes = bspline_optimizer_rebound_->initControlPoints( ctrl_pts, true );
 
+  t_init = ros::Time::now() - t_start;
+
   static int vis_id=0;
   visualization_->displayInitPathList(point_set, 0.2, 0);
   visualization_->displayAStarList(a_star_pathes,vis_id);
 
-  t_init = ros::Time::now();
+  t_start = ros::Time::now();
   
   /*** STEP 2: OPTIMIZE ***/
   bool flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts);
@@ -249,7 +252,8 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
   } 
   //visualization_->displayOptimalList( ctrl_pts, vis_id );
 
-  t_opt = ros::Time::now();
+  t_opt = ros::Time::now() - t_start;
+  t_start = ros::Time::now();
 
   /*** STEP 3: REFINE(RE-ALLOCATE TIME) IF NECESSARY ***/
   UniformBspline pos = UniformBspline(ctrl_pts, 3, ts);
@@ -274,13 +278,13 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
     return false;
   }
 
-  t_refine = ros::Time::now();
+  t_refine = ros::Time::now() - t_start;
 
   // save planned results
   updateTrajInfo(pos, ros::Time::now());
 
-  cout << "total time:\033[42m" << (t_refine-t_start).toSec() << "\033[0m,init:" << (t_init-t_start).toSec() << ",optimize:" << (t_opt-t_init).toSec()
-       << ",adjust:" << (t_refine-t_opt).toSec() << endl;
+  cout << "total time:\033[42m" << (t_init+t_opt+t_refine).toSec() << "\033[0m,init:" << t_init.toSec() << ",optimize:" << t_opt.toSec()
+       << ",refine:" << t_refine.toSec() << endl;
 
   //visualization_->displayOptimalList( local_data_.position_traj_.get_control_points(), vis_id );
   //vis_id += 10;
@@ -299,6 +303,83 @@ bool ReboundPlannerManager::EmergencyStop(Eigen::Vector3d stop_pos)
   }
 
   updateTrajInfo( UniformBspline(control_points, 3, 1.0), ros::Time::now() );
+
+  return true;
+}
+
+
+bool ReboundPlannerManager::planGlobalTrajWaypoints(const Eigen::Vector3d& start_pos, const Eigen::Vector3d& start_vel, const Eigen::Vector3d& start_acc,
+                                        const std::vector<Eigen::Vector3d>& waypoints, const Eigen::Vector3d& end_vel, const Eigen::Vector3d& end_acc) 
+{
+
+  // generate global reference trajectory
+
+  vector<Eigen::Vector3d> points;
+  points.push_back( start_pos );
+
+  for ( int wp_i = 0; wp_i < waypoints.size(); wp_i++ )
+  {
+    points.push_back( waypoints[wp_i] );
+  }
+
+  double total_len = 0;
+  total_len += (start_pos - waypoints[0]).norm();
+  for ( int i=0; i<waypoints.size()-1; i++ )
+  {
+    total_len += (waypoints[i+1] - waypoints[i]).norm();
+  }
+
+  // insert intermediate points if too far
+  vector<Eigen::Vector3d> inter_points;
+  double dist_thresh = max( total_len / 8, 4.0 ); 
+ 
+  for (int i = 0; i < points.size() - 1; ++i) {
+    inter_points.push_back(points.at(i));
+    double dist = (points.at(i + 1) - points.at(i)).norm();
+
+    if (dist > dist_thresh) {
+      int id_num = floor(dist / dist_thresh) + 1;
+
+      for (int j = 1; j < id_num; ++j) {
+        Eigen::Vector3d inter_pt =
+            points.at(i) * (1.0 - double(j) / id_num) + points.at(i + 1) * double(j) / id_num;
+        inter_points.push_back(inter_pt);
+      }
+    }
+  }
+
+  inter_points.push_back(points.back());
+
+  // for ( int i=0; i<inter_points.size(); i++ )
+  // {
+  //   cout << inter_points[i].transpose() << endl;
+  // }
+
+  // write position matrix
+  int             pt_num = inter_points.size();
+  Eigen::MatrixXd pos(3, pt_num);
+  for (int i = 0; i < pt_num; ++i) 
+    pos.col(i) = inter_points[i];
+
+  Eigen::Vector3d zero(0, 0, 0);
+  Eigen::VectorXd time(pt_num - 1);
+  for (int i = 0; i < pt_num - 1; ++i) {
+    time(i) = (pos.col(i + 1) - pos.col(i)).norm() / (pp_.max_vel_);
+  }
+
+  time(0) *= 2.0;
+  time(time.rows() - 1) *= 2.0;
+
+  PolynomialTraj gl_traj;
+  if ( pos.cols() >= 3 )
+    gl_traj =  minSnapTraj(pos, start_vel, end_vel, start_acc, end_acc, time);
+  else if ( pos.cols() == 2 )
+    gl_traj = one_segment_traj_gen(start_pos, start_vel, start_acc, pos.col(1), end_vel, end_acc, time(0));
+  else
+    return false;
+
+  auto time_now = ros::Time::now();
+  global_data_.setGlobalTraj(gl_traj, time_now);
 
   return true;
 }

@@ -783,7 +783,7 @@ namespace lbfgs
                 vec2norm(&gnorm, g, n);
                 if (cd->proc_progress(cd->instance, x, g, fx, xnorm, gnorm, *stp, cd->n, 0, 0))
                 {
-                    return -1;
+                    return LBFGSERR_CANCELED;
                 }
             }
 

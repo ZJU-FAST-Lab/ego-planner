@@ -106,7 +106,7 @@
     <param name="optimization/lambda_smooth" value="1.0" type="double"/>
     <param name="optimization/lambda_collision" value="0.8" type="double"/>
     <param name="optimization/lambda_feasibility" value="0.1" type="double"/>
-    <param name="optimization/lambda_fitness" value="0.2" type="double"/>
+    <param name="optimization/lambda_fitness" value="1.0" type="double"/>
     <param name="optimization/dist0" value="0.7" type="double"/>
     <param name="optimization/max_vel" value="$(arg max_vel)" type="double"/>
     <param name="optimization/max_acc" value="$(arg max_acc)" type="double"/>

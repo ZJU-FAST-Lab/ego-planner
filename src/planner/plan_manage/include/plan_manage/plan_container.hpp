@@ -23,6 +23,7 @@ public:
   double local_start_time_, local_end_time_;
   double time_increase_;
   double last_time_inc_;
+  double last_progress_time_;
 
   GlobalTrajData(/* args */) {}
 
@@ -41,6 +42,7 @@ public:
     local_end_time_ = -1;
     time_increase_ = 0.0;
     last_time_inc_ = 0.0;
+    last_progress_time_ = 0.0;
   }
 
   void setLocalTraj(UniformBspline traj, double local_ts, double local_te, double time_inc) {

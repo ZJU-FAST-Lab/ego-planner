@@ -16,7 +16,7 @@ PlanningVisualization::PlanningVisualization(ros::NodeHandle& nh) {
 
 // // real ids used: {id, id+1000}
 void PlanningVisualization::displayMarkerList(ros::Publisher& pub, const vector<Eigen::Vector3d>& list, double scale,
-                                              Eigen::Vector4d color, int id)
+                                              Eigen::Vector4d color, int id, bool disp_spheres /*= true*/)
 {
   visualization_msgs::Marker sphere, line_strip;
   sphere.header.frame_id = line_strip.header.frame_id = "world";
@@ -42,10 +42,17 @@ void PlanningVisualization::displayMarkerList(ros::Publisher& pub, const vector<
     pt.x = list[i](0);
     pt.y = list[i](1);
     pt.z = list[i](2);
-    sphere.points.push_back(pt);
+    if ( disp_spheres )
+    {
+      sphere.points.push_back(pt);
+    }
     line_strip.points.push_back(pt);
   }
-  pub.publish(sphere);
+  
+  if ( disp_spheres )
+  {
+    pub.publish(sphere);
+  }
   pub.publish(line_strip);
 }
 
@@ -158,7 +165,7 @@ void PlanningVisualization::displayGlobalPathList(vector<Eigen::Vector3d> init_p
     return;
 
     Eigen::Vector4d color(0,0.5,0.5,1);
-    displayMarkerList(global_list_pub, init_pts, scale, color, id);
+    displayMarkerList(global_list_pub, init_pts, scale, color, id, false);
 }
 
 void PlanningVisualization::displayInitPathList(vector<Eigen::Vector3d> init_pts, const double scale, int id)
@@ -199,13 +206,6 @@ void PlanningVisualization::displayAStarList( std::vector<std::vector<Eigen::Vec
 
   Eigen::Vector4d color = Eigen::Vector4d(0.5 + ((double)rand() / RAND_MAX / 2), 0.5 + ((double)rand() / RAND_MAX / 2), 0, 1); // make the A star pathes different every time.
   double scale = 0.05 + (double)rand() / RAND_MAX / 10;
-
-  // for ( int i=0; i<10; i++ )
-  // {
-  //   //Eigen::Vector4d color(1,1,0,0);
-  //   displayMarkerList(a_star_list_pub, list, scale, color, id+i);
-  // }
-
 
   for ( auto block : a_star_paths)
   {

@@ -45,7 +45,7 @@
   <node pkg="mockamap" type="mockamap_node" name="mockamap_node" output="screen">  
       <remap from="/mock_map" to="/map_generator/global_cloud"/>
 
-      <param name="seed" type="int" value="124"/>
+      <param name="seed" type="int" value="127"/>
       <param name="update_freq" type="double" value="0.5"/>
 
       <!--  box edge length, unit meter-->

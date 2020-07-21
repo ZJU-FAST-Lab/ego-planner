@@ -43,20 +43,20 @@
     <arg name="flight_type" value="2" />
     
     <!-- global waypoints -->
-    <!-- If flight_type is set to 2, the drone will travel these waypoints one by one -->
-    <arg name="point_num" value="2" />
+    <!-- It generates a piecewise min-snap traj passing all waypoints -->
+    <arg name="point_num" value="3" />
 
-    <arg name="point0_x" value="19.0" />
-    <arg name="point0_y" value="0.0" />
+    <arg name="point0_x" value="18.0" />
+    <arg name="point0_y" value="8.0" />
     <arg name="point0_z" value="1.0" />
 
     <!-- set more waypoints if you need -->
-    <arg name="point1_x" value="-19.0" />
-    <arg name="point1_y" value="0.0" />
+    <arg name="point1_x" value="18.0" />
+    <arg name="point1_y" value="-8.0" />
     <arg name="point1_z" value="1.0" />
 
-    <arg name="point2_x" value="0.0" />
-    <arg name="point2_y" value="19.0" />
+    <arg name="point2_x" value="-19.0" />
+    <arg name="point2_y" value="0.0" />
     <arg name="point2_z" value="1.0" />
     
   </include>

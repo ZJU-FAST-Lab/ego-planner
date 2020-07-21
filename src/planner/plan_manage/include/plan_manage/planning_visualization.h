@@ -34,8 +34,7 @@ public:
 
   typedef std::shared_ptr<PlanningVisualization> Ptr;
 
-  void displayMarkerList(ros::Publisher& pub, const vector<Eigen::Vector3d>& list, double scale,
-                                                Eigen::Vector4d color, int id);
+  void displayMarkerList(ros::Publisher& pub, const vector<Eigen::Vector3d>& list, double scale, Eigen::Vector4d color, int id, bool disp_spheres = true);
   void generatePathDisplayArray(visualization_msgs::MarkerArray &array, 
     const vector<Eigen::Vector3d>& list, double scale, Eigen::Vector4d color, int id);
   void generateArrowDisplayArray(visualization_msgs::MarkerArray &array, 

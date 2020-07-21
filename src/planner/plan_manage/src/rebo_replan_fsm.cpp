@@ -44,27 +44,46 @@ void ReboReplanFSM::waypointCallback(const nav_msgs::PathConstPtr& msg) {
 
   cout << "Triggered!" << endl;
   trigger_ = true;
-
-  if (target_type_ == TARGET_TYPE::MANUAL_TARGET) {
-    end_pt_ << msg->poses[0].pose.position.x, msg->poses[0].pose.position.y, 1.0;
-
-  } else if (target_type_ == TARGET_TYPE::PRESET_TARGET) {
-    end_pt_(0)  = waypoints_[current_wp_][0];
-    end_pt_(1)  = waypoints_[current_wp_][1];
-    end_pt_(2)  = waypoints_[current_wp_][2];
-    current_wp_ = (current_wp_ + 1) % waypoint_num_;
-  }
-
   init_pt_ = odom_pos_;
 
-  bool success = planner_manager_->planGlobalTraj( odom_pos_, odom_vel_, Eigen::Vector3d::Zero(), end_pt_, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero() );
+  bool success;
+  if (target_type_ == TARGET_TYPE::MANUAL_TARGET) 
+  {
+    end_pt_ << msg->poses[0].pose.position.x, msg->poses[0].pose.position.y, 1.0;
+    success = planner_manager_->planGlobalTraj( odom_pos_, odom_vel_, Eigen::Vector3d::Zero(), end_pt_, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero() );
+    
+    visualization_->displayGoalPoint(end_pt_, Eigen::Vector4d(0, 0.5, 0.5, 1), 0.3, 0);
+  } 
+  else if (target_type_ == TARGET_TYPE::PRESET_TARGET) 
+  {
+    std::vector<Eigen::Vector3d> wps(waypoint_num_);
+    for ( int i=0; i<waypoint_num_; i++ )
+    {
+      wps[i](0) = waypoints_[i][0];
+      wps[i](1) = waypoints_[i][1];
+      wps[i](2) = waypoints_[i][2];
+
+      end_pt_ = wps.back();
+    }
+    success = planner_manager_->planGlobalTrajWaypoints( odom_pos_, odom_vel_, Eigen::Vector3d::Zero(), wps, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero() );
+    
+    for (size_t i = 0; i < waypoint_num_; i++)
+    {
+      visualization_->displayGoalPoint(wps[i], Eigen::Vector4d(0, 0.5, 0.5, 1), 0.3, i);
+    }
+  }
+
   if ( success )
   {
 
     /*** display ***/
-    vector<Eigen::Vector3d> gloabl_traj;
-    for ( double t=0; t<planner_manager_->global_data_.global_duration_; t+=1 )
-      gloabl_traj.push_back( planner_manager_->global_data_.global_traj_.evaluate(t) );
+    constexpr double step_size_t = 0.1;
+    int i_end = floor(planner_manager_->global_data_.global_duration_ / step_size_t);
+    vector<Eigen::Vector3d> gloabl_traj( i_end );
+    for ( int i=0; i<i_end; i++ )
+    {
+      gloabl_traj[i] = planner_manager_->global_data_.global_traj_.evaluate( i*step_size_t );
+    }
 
     end_vel_.setZero();
     have_target_ = true;
@@ -76,7 +95,7 @@ void ReboReplanFSM::waypointCallback(const nav_msgs::PathConstPtr& msg) {
     else if (exec_state_ == EXEC_TRAJ)
       changeFSMExecState(REPLAN_TRAJ, "TRIG");
 
-    visualization_->displayGoalPoint(end_pt_, Eigen::Vector4d(1, 0, 0, 1), 0.3, 0);
+    // visualization_->displayGoalPoint(end_pt_, Eigen::Vector4d(1, 0, 0, 1), 0.3, 0);
     visualization_->displayGlobalPathList(gloabl_traj, 0.1, 0);
   }
   else
@@ -408,35 +427,84 @@ bool ReboReplanFSM::callEmergencyStop( Eigen::Vector3d stop_pos ) {
   return true;
 }
 
+// void ReboReplanFSM::getLocalTarget()
+// {
+//   if ( ( end_pt_ - start_pt_ ).norm() < planning_horizen_ )
+//   {
+//     local_target_pt_ = end_pt_;
+//   }
+//   else
+//   {
+//     //local_target_pt_ = start_pt_ + (end_pt_ - start_pt_).normalized() * planning_horizen_;
+
+//     Eigen::Vector3d M = init_pt_, N = end_pt_ - init_pt_; // line: X = M + N*t
+//     Eigen::Vector3d X0 = start_pt_; double h = planning_horizen_; // sphere: (X-X0)'*(X-X0)=h
+//     double a = N.squaredNorm();
+//     double b = 2*(M-X0).dot(N);
+//     double c = (M-X0).squaredNorm() - h*h;
+//     // cout << "M=" << M.transpose() << " N=" << N.transpose() << " X0=" << X0.transpose() << " h=" << h << endl;
+//     // cout << "a=" << a << " b=" << b << " c=" << c << endl;
+//     if ( b*b-4*a*c > 0 )
+//     {
+//       double t = (-b + sqrt( b*b-4*a*c )) / (2*a);
+//       local_target_pt_ = M + N*t;
+//     }
+//     else
+//     {
+//       ROS_WARN("the drone goes too far to the reference line.");
+//       double t = -b/(2*a);
+//       local_target_pt_ = M + N*t;
+//       //local_target_pt_ = start_pt_ + (end_pt_ - start_pt_).normalized() * planning_horizen_;
+//     }
+//   }
+
+//   if ( ( end_pt_ - local_target_pt_ ).norm() < (planner_manager_->pp_.max_vel_*planner_manager_->pp_.max_vel_)/(2*planner_manager_->pp_.max_acc_) )
+//   {
+//     local_target_vel_ = (end_pt_ - init_pt_).normalized() * planner_manager_->pp_.max_vel_ * (( end_pt_ - local_target_pt_ ).norm() / ((planner_manager_->pp_.max_vel_*planner_manager_->pp_.max_vel_)/(2*planner_manager_->pp_.max_acc_)));
+//   }
+//   else
+//   {
+//     local_target_vel_ = (end_pt_ - init_pt_).normalized() * planner_manager_->pp_.max_vel_; 
+//   }
+  
+// }
+
 void ReboReplanFSM::getLocalTarget()
 {
-  if ( ( end_pt_ - start_pt_ ).norm() < planning_horizen_ )
+  double t;
+
+  double t_step = planning_horizen_ / 20 / planner_manager_->pp_.max_vel_;
+  double dist_min = 9999, dist_min_t = 0.0;
+  for ( t = planner_manager_->global_data_.last_progress_time_; t < planner_manager_->global_data_.global_duration_; t+=t_step )
+  {
+    Eigen::Vector3d pos_t = planner_manager_->global_data_.getPosition( t );
+    double dist = ( pos_t - start_pt_).norm();
+
+    if ( t < planner_manager_->global_data_.last_progress_time_ + 1e-5 && dist > planning_horizen_ )
+    {
+      // todo
+      ROS_ERROR("last_progress_time_ ERROR !!!!!!!!!");
+      ROS_ERROR("last_progress_time_ ERROR !!!!!!!!!");
+      ROS_ERROR("last_progress_time_ ERROR !!!!!!!!!");
+      ROS_ERROR("last_progress_time_ ERROR !!!!!!!!!");
+      ROS_ERROR("last_progress_time_ ERROR !!!!!!!!!");
+      return;
+    }
+    if ( dist < dist_min )
+    {
+      dist_min = dist;
+      dist_min_t = t;
+    }
+    if ( dist >= planning_horizen_ )
+    {
+      local_target_pt_ = pos_t;
+      planner_manager_->global_data_.last_progress_time_ = dist_min_t;
+      break;
+    }
+  }
+  if ( t > planner_manager_->global_data_.global_duration_ ) // Last global point
   {
     local_target_pt_ = end_pt_;
-  }
-  else
-  {
-    //local_target_pt_ = start_pt_ + (end_pt_ - start_pt_).normalized() * planning_horizen_;
-
-    Eigen::Vector3d M = init_pt_, N = end_pt_ - init_pt_; // line: X = M + N*t
-    Eigen::Vector3d X0 = start_pt_; double h = planning_horizen_; // sphere: (X-X0)'*(X-X0)=h
-    double a = N.squaredNorm();
-    double b = 2*(M-X0).dot(N);
-    double c = (M-X0).squaredNorm() - h*h;
-    // cout << "M=" << M.transpose() << " N=" << N.transpose() << " X0=" << X0.transpose() << " h=" << h << endl;
-    // cout << "a=" << a << " b=" << b << " c=" << c << endl;
-    if ( b*b-4*a*c > 0 )
-    {
-      double t = (-b + sqrt( b*b-4*a*c )) / (2*a);
-      local_target_pt_ = M + N*t;
-    }
-    else
-    {
-      ROS_WARN("the drone goes too far to the reference line.");
-      double t = -b/(2*a);
-      local_target_pt_ = M + N*t;
-      //local_target_pt_ = start_pt_ + (end_pt_ - start_pt_).normalized() * planning_horizen_;
-    }
   }
 
   if ( ( end_pt_ - local_target_pt_ ).norm() < (planner_manager_->pp_.max_vel_*planner_manager_->pp_.max_vel_)/(2*planner_manager_->pp_.max_acc_) )
@@ -445,7 +513,7 @@ void ReboReplanFSM::getLocalTarget()
   }
   else
   {
-    local_target_vel_ = (end_pt_ - init_pt_).normalized() * planner_manager_->pp_.max_vel_; 
+    local_target_vel_ = planner_manager_->global_data_.getVelocity(t);
   }
   
 }

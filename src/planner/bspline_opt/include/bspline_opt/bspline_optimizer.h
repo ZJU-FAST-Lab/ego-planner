@@ -6,6 +6,7 @@
 #include <bspline_opt/uniform_bspline.h>
 #include <plan_env/grid_map.h>
 #include <ros/ros.h>
+#include "bspline_opt/lbfgs.hpp"
 
 // Gradient and elasitc band optimization
 
@@ -109,7 +110,7 @@ private:
   /* optimization parameters */
   int    order_;                  // bspline degree
   double lambda1_;                // jerk smoothness weight
-  double lambda2_;                // distance weight
+  double lambda2_, new_lambda2_;  // distance weight
   double lambda3_;                // feasibility weight
   double lambda4_;                // curve fitting
 
@@ -140,8 +141,9 @@ private:
   void calcFitnessCost(const Eigen::MatrixXd& q, double& cost, Eigen::MatrixXd& gradient);
   bool check_collision_and_rebound(void);
 
-  static double costFunctionRebound(const Eigen::VectorXd& x, Eigen::VectorXd& grad, bool& force_return, void* func_data);
-  static double costFunctionRefine(const Eigen::VectorXd& x, Eigen::VectorXd& grad, bool& force_return, void* func_data);
+  static int earlyExit(void *func_data, const double *x, const double *g, const double fx, const double xnorm, const double gnorm, const double step, int n, int k, int ls);
+  static double costFunctionRebound(void* func_data, const double *x, double *grad, const int n);
+  static double costFunctionRefine(void* func_data, const double *x, double *grad, const int n);
   // static double costFunctionRebound_nlopt(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
   // static double costFunctionRefine_nlopt(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
 
@@ -149,8 +151,8 @@ private:
   // bool rebound_optimize_nlopt();
   bool refine_optimize();
   // bool refine_optimize_nlopt();
-  void combineCostRebound(const Eigen::VectorXd& x, Eigen::VectorXd& grad, double& f_combine);
-  void combineCostRefine(const Eigen::VectorXd& x, Eigen::VectorXd& grad, double& f_combine);
+  void combineCostRebound(const double *x, double *grad, double& f_combine, const int n);
+  void combineCostRefine(const double *x, double *grad, double& f_combine, const int n);
 
   /* for benckmark evaluation only */
 public:
