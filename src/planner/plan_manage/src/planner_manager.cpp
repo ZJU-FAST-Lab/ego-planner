@@ -2,7 +2,7 @@
 #include <plan_manage/planner_manager.h>
 #include <thread>
 
-namespace rebound_planner {
+namespace ego_planner {
 
 // SECTION interfaces for setup and query
 
@@ -31,24 +31,6 @@ void ReboundPlannerManager::initPlanModules(ros::NodeHandle& nh, PlanningVisuali
   bspline_optimizer_rebound_->a_star_->initGridMap( grid_map_, Eigen::Vector3i(100,100,100) );
 
   visualization_ = vis;
-}
-
-bool ReboundPlannerManager::checkTrajCollisionInflate(UniformBspline &traj) {
-
-  double tm, tmp;
-  traj.getTimeSpan(tm, tmp);
-
-  //constexpr double t_step = 0.02;
-  double t_step = (tmp - tm) / ( (traj.evaluateDeBoorT(tmp) - traj.evaluateDeBoorT(tm)).norm() / grid_map_->getResolution() ); // Step size is defined as the maximum size that can passes throgth every gird.
-  for ( double t = tm; t<tmp*2/3; t+=t_step )
-  {
-    if ( grid_map_->getInflateOccupancy( traj.evaluateDeBoorT(t) ) )
-    {
-      return false;
-    }
-  }
-
-  return true;
 }
 
 // !SECTION
@@ -84,7 +66,7 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
   {
     point_set.clear();
     start_end_derivatives.clear();
-
+    flag_regenerate = false;
     
     if ( flag_first_call || flag_polyInit || flag_force_polynomial /*|| ( start_pt - local_target_pt ).norm() < 1.0*/) // Initial path generated from a min-snap traj by order.
     {
@@ -100,7 +82,7 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
       
       if ( !flag_randomPolyTraj )
       {
-        gl_traj = one_segment_traj_gen(start_pt, start_vel, start_acc, local_target_pt, local_target_vel, Eigen::Vector3d::Zero(), time);
+        gl_traj = PolynomialTraj::one_segment_traj_gen(start_pt, start_vel, start_acc, local_target_pt, local_target_vel, Eigen::Vector3d::Zero(), time);
       }
       else
       {
@@ -115,7 +97,7 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
         pos.col(2) = local_target_pt;
         Eigen::VectorXd t(2);
         t(0) = t(1) = time / 2;
-        gl_traj = minSnapTraj(pos, start_vel, local_target_vel, start_acc, Eigen::Vector3d::Zero(), t);
+        gl_traj = PolynomialTraj::minSnapTraj(pos, start_vel, local_target_vel, start_acc, Eigen::Vector3d::Zero(), t);
       }
       
       double t;
@@ -168,7 +150,7 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
       double poly_time = (local_data_.position_traj_.evaluateDeBoorT( t ) - local_target_pt).norm() / pp_.max_vel_ * 2;
       if ( poly_time > ts )
       {
-        PolynomialTraj gl_traj = one_segment_traj_gen( local_data_.position_traj_.evaluateDeBoorT( t ), 
+        PolynomialTraj gl_traj = PolynomialTraj::one_segment_traj_gen( local_data_.position_traj_.evaluateDeBoorT( t ), 
                                               local_data_.velocity_traj_.evaluateDeBoorT( t ), 
                                               local_data_.acceleration_traj_.evaluateDeBoorT( t ), 
                                               local_target_pt, local_target_vel, Eigen::Vector3d::Zero(), poly_time );
@@ -191,7 +173,7 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
       
       double sample_length = 0;
       double cps_dist = pp_.ctrl_pt_dist * 1.5; // cps_dist will be divided by 1.5 in the next
-      int id = 0;
+      size_t id = 0;
       do
       {
         cps_dist /= 1.5;
@@ -283,11 +265,7 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
   // save planned results
   updateTrajInfo(pos, ros::Time::now());
 
-  cout << "total time:\033[42m" << (t_init+t_opt+t_refine).toSec() << "\033[0m,init:" << t_init.toSec() << ",optimize:" << t_opt.toSec()
-       << ",refine:" << t_refine.toSec() << endl;
-
-  //visualization_->displayOptimalList( local_data_.position_traj_.get_control_points(), vis_id );
-  //vis_id += 10;
+  cout << "total time:\033[42m" << (t_init+t_opt+t_refine).toSec() << "\033[0m,optimize:" << (t_init + t_opt).toSec() << ",refine:" << t_refine.toSec() << endl;
 
   // success. YoY
   continous_failures_count_ = 0;
@@ -317,14 +295,14 @@ bool ReboundPlannerManager::planGlobalTrajWaypoints(const Eigen::Vector3d& start
   vector<Eigen::Vector3d> points;
   points.push_back( start_pos );
 
-  for ( int wp_i = 0; wp_i < waypoints.size(); wp_i++ )
+  for ( size_t wp_i = 0; wp_i < waypoints.size(); wp_i++ )
   {
     points.push_back( waypoints[wp_i] );
   }
 
   double total_len = 0;
   total_len += (start_pos - waypoints[0]).norm();
-  for ( int i=0; i<waypoints.size()-1; i++ )
+  for ( size_t i=0; i<waypoints.size()-1; i++ )
   {
     total_len += (waypoints[i+1] - waypoints[i]).norm();
   }
@@ -333,7 +311,7 @@ bool ReboundPlannerManager::planGlobalTrajWaypoints(const Eigen::Vector3d& start
   vector<Eigen::Vector3d> inter_points;
   double dist_thresh = max( total_len / 8, 4.0 ); 
  
-  for (int i = 0; i < points.size() - 1; ++i) {
+  for (size_t i = 0; i < points.size() - 1; ++i) {
     inter_points.push_back(points.at(i));
     double dist = (points.at(i + 1) - points.at(i)).norm();
 
@@ -372,9 +350,9 @@ bool ReboundPlannerManager::planGlobalTrajWaypoints(const Eigen::Vector3d& start
 
   PolynomialTraj gl_traj;
   if ( pos.cols() >= 3 )
-    gl_traj =  minSnapTraj(pos, start_vel, end_vel, start_acc, end_acc, time);
+    gl_traj =  PolynomialTraj::minSnapTraj(pos, start_vel, end_vel, start_acc, end_acc, time);
   else if ( pos.cols() == 2 )
-    gl_traj = one_segment_traj_gen(start_pos, start_vel, start_acc, pos.col(1), end_vel, end_acc, time(0));
+    gl_traj = PolynomialTraj::one_segment_traj_gen(start_pos, start_vel, start_acc, pos.col(1), end_vel, end_acc, time(0));
   else
     return false;
 
@@ -398,7 +376,7 @@ bool ReboundPlannerManager::planGlobalTraj(const Eigen::Vector3d& start_pos, con
   vector<Eigen::Vector3d> inter_points;
   const double            dist_thresh = 4.0;
 
-  for (int i = 0; i < points.size() - 1; ++i) {
+  for (size_t i = 0; i < points.size() - 1; ++i) {
     inter_points.push_back(points.at(i));
     double dist = (points.at(i + 1) - points.at(i)).norm();
 
@@ -432,9 +410,9 @@ bool ReboundPlannerManager::planGlobalTraj(const Eigen::Vector3d& start_pos, con
 
   PolynomialTraj gl_traj;
   if ( pos.cols() >= 3 )
-    gl_traj =  minSnapTraj(pos, start_vel, end_vel, start_acc, end_acc, time);
+    gl_traj =  PolynomialTraj::minSnapTraj(pos, start_vel, end_vel, start_acc, end_acc, time);
   else if ( pos.cols() == 2 )
-    gl_traj = one_segment_traj_gen(start_pos, start_vel, start_acc, end_pos, end_vel, end_acc, time(0));
+    gl_traj = PolynomialTraj::one_segment_traj_gen(start_pos, start_vel, start_acc, end_pos, end_vel, end_acc, time(0));
   else
     return false;
 
@@ -493,4 +471,4 @@ void ReboundPlannerManager::reparamBspline(UniformBspline& bspline, vector<Eigen
   UniformBspline::parameterizeToBspline(dt, point_set, start_end_derivative, ctrl_pts);
 }
 
-}  // namespace rebound_planner
+}  // namespace ego_planner

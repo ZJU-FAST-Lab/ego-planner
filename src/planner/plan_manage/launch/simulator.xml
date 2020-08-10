@@ -1,6 +1,6 @@
 <launch>
-  <arg name="init_x" value="-19.0"/>
-  <arg name="init_y" value="-0.0"/>
+  <arg name="init_x" value="5.0"/>
+  <arg name="init_y" value="13.0"/>
   <arg name="init_z" value="1.0"/> 
   <arg name="obj_num" value="1" />
   <arg name="map_size_x_"/>
@@ -52,9 +52,9 @@
       <param name="resolution" type="double" value="0.1"/>
 
       <!-- map size unit meter-->
-      <param name="x_length" type="int" value="40"/>
-      <param name="y_length" type="int" value="20"/>
-      <param name="z_length" type="int" value="3"/>
+      <param name="x_length" value="$(arg map_size_x_)"/>
+      <param name="y_length" value="$(arg map_size_y_)"/>
+      <param name="z_length" value="$(arg map_size_z_)"/>
 
       <param name="type" type="int" value="1"/>
       <!-- 1 perlin noise parameters -->
@@ -68,7 +68,7 @@
                               typical: 0.0 ~ 0.5 -->
 
       <param name="complexity"    type="double" value="0.05"/>
-      <param name="fill"          type="double" value="0.15"/>
+      <param name="fill"          type="double" value="0.12"/>
       <param name="fractal"       type="int"    value="1"/>
       <param name="attenuation"   type="double" value="0.1"/>
   </node>

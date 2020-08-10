@@ -1,14 +1,14 @@
 <launch>
   <!-- size of map, change the size inflate x, y, z according to your application -->
   <arg name="map_size_x" value="40.0"/>
-  <arg name="map_size_y" value="20.0"/>
-  <arg name="map_size_z" value=" 5.0"/>
+  <arg name="map_size_y" value="40.0"/>
+  <arg name="map_size_z" value=" 3.0"/>
 
   <!-- topic of your odometry such as VIO or LIO -->
   <arg name="odom_topic" value="/visual_slam/odom" />
 
   <!-- main algorithm params -->
-  <include file="$(find rebound_planner)/launch/rebo_algorithm.xml">
+  <include file="$(find ego_planner)/launch/advanced_param.xml">
 
     <arg name="map_size_x_" value="$(arg map_size_x)"/>
     <arg name="map_size_y_" value="$(arg map_size_y)"/>
@@ -44,25 +44,33 @@
     
     <!-- global waypoints -->
     <!-- It generates a piecewise min-snap traj passing all waypoints -->
-    <arg name="point_num" value="3" />
+    <arg name="point_num" value="5" />
 
-    <arg name="point0_x" value="18.0" />
-    <arg name="point0_y" value="8.0" />
+    <arg name="point0_x" value="5.0" />
+    <arg name="point0_y" value="-13.0" />
     <arg name="point0_z" value="1.0" />
 
     <!-- set more waypoints if you need -->
-    <arg name="point1_x" value="18.0" />
-    <arg name="point1_y" value="-8.0" />
+    <arg name="point1_x" value="-12.0" />
+    <arg name="point1_y" value="7.0" />
     <arg name="point1_z" value="1.0" />
 
-    <arg name="point2_x" value="-19.0" />
+    <arg name="point2_x" value="12.0" />
     <arg name="point2_y" value="0.0" />
     <arg name="point2_z" value="1.0" />
+
+    <arg name="point3_x" value="-12.0" />
+    <arg name="point3_y" value="-7.0" />
+    <arg name="point3_z" value="1.0" />
+
+    <arg name="point4_x" value="5.0" />
+    <arg name="point4_y" value="13.0" />
+    <arg name="point4_z" value="1.0" />
     
   </include>
 
   <!-- trajectory server -->
-  <node pkg="rebound_planner" name="traj_server" type="traj_server" output="screen">
+  <node pkg="ego_planner" name="traj_server" type="traj_server" output="screen">
     <remap from="/position_cmd" to="planning/pos_cmd"/>
 
     <remap from="/odom_world" to="$(arg odom_topic)"/>
@@ -77,12 +85,12 @@
   </node>
 
   <!-- use simulator -->
-  <include file="$(find rebound_planner)/launch/simulator.xml">
+  <include file="$(find ego_planner)/launch/simulator.xml">
     <arg name="map_size_x_" value="$(arg map_size_x)"/>
     <arg name="map_size_y_" value="$(arg map_size_y)"/>
     <arg name="map_size_z_" value="$(arg map_size_z)"/>
-    <arg name="c_num" value="150"/>
-    <arg name="p_num" value="300"/>
+    <arg name="c_num" value="200"/>
+    <arg name="p_num" value="200"/>
     <arg name="min_dist" value="1.2"/>
 
     <arg name="odometry_topic" value="$(arg odom_topic)" />

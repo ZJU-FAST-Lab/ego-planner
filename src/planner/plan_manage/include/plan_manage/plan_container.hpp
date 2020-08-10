@@ -6,11 +6,11 @@
 #include <ros/ros.h>
 
 #include <bspline_opt/uniform_bspline.h>
-#include <poly_traj/polynomial_traj.h>
+#include <traj_utils/polynomial_traj.h>
 
 using std::vector;
 
-namespace rebound_planner {
+namespace ego_planner {
 
 class GlobalTrajData {
 private:
@@ -185,6 +185,6 @@ struct LocalTrajData {
   UniformBspline position_traj_, velocity_traj_, acceleration_traj_;
 };
 
-}  // namespace rebound_planner
+}  // namespace ego_planner
 
 #endif

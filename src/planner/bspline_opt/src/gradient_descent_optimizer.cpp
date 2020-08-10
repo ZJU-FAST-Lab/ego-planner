@@ -17,7 +17,7 @@ GradientDescentOptimizer::optimize(Eigen::VectorXd &x_init_optimal, double &opt_
     int invoke_count = 2;
     bool force_return;
     Eigen::VectorXd x_k( x_init_optimal ), x_kp1( x_init_optimal.rows() );
-    double cost_km1, cost_k, cost_kp1, cost_min;
+    double cost_k, cost_kp1, cost_min;
     Eigen::VectorXd grad_k( x_init_optimal.rows() ), grad_kp1( x_init_optimal.rows() );
 
     cost_k = objfun_(x_k, grad_k, force_return, f_data);

@@ -2,7 +2,7 @@
 
 using std::cout;
 using std::endl;
-namespace rebound_planner {
+namespace ego_planner {
 PlanningVisualization::PlanningVisualization(ros::NodeHandle& nh) {
   node = nh;
 
@@ -232,4 +232,4 @@ void PlanningVisualization::displayArrowList(ros::Publisher& pub, const vector<E
 }
 
 // PlanningVisualization::
-}  // namespace rebound_planner
+}  // namespace ego_planner

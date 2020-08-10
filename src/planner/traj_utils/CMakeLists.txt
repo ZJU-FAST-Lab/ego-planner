@@ -1,10 +1,13 @@
 cmake_minimum_required(VERSION 2.8.3)
 project(traj_utils)
 
+set(CMAKE_BUILD_TYPE "Release")
+set(CMAKE_CXX_FLAGS "-std=c++11")
+set(CMAKE_CXX_FLAGS_RELEASE "-O3 -Wall -g")
+
 find_package(catkin REQUIRED COMPONENTS
   bspline_opt
   path_searching
-  poly_traj
   roscpp
   std_msgs
   cv_bridge
@@ -16,7 +19,7 @@ find_package(PCL 1.7 REQUIRED)
 catkin_package(
  INCLUDE_DIRS include
  LIBRARIES traj_utils
- CATKIN_DEPENDS path_searching bspline_opt poly_traj
+ CATKIN_DEPENDS path_searching bspline_opt
 #  DEPENDS system_lib
 )
 
@@ -30,10 +33,9 @@ include_directories(
 
 link_directories(${PCL_LIBRARY_DIRS})
 
-set(CMAKE_CXX_FLAGS "-std=c++11 ${CMAKE_CXX_FLAGS} -O3 -Wall")
-
 add_library( traj_utils
     src/planning_visualization.cpp 
+    src/polynomial_traj.cpp 
     )
 target_link_libraries( traj_utils
     ${catkin_LIBRARIES} 

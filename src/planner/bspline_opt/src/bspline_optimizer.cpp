@@ -2,7 +2,7 @@
 #include "bspline_opt/gradient_descent_optimizer.h"
 // using namespace std;
 
-namespace rebound_planner {
+namespace ego_planner {
 
 void BsplineOptimizer::setParam(ros::NodeHandle& nh) {
   nh.param("optimization/lambda_smooth", lambda1_, -1.0);
@@ -589,9 +589,9 @@ void BsplineOptimizer::calcFeasibilityCost(const Eigen::MatrixXd& q, double& cos
 
   cost = 0.0;
   /* abbreviation */
-  double ts, vm2, am2, ts_inv2;
-  vm2 = max_vel_ * max_vel_;
-  am2 = max_acc_ * max_acc_;
+  double ts, /*vm2, am2, */ts_inv2;
+  // vm2 = max_vel_ * max_vel_;
+  // am2 = max_acc_ * max_acc_;
 
   ts      = bspline_interval_;
   ts_inv2 = 1 / ts / ts;
@@ -909,6 +909,7 @@ bool BsplineOptimizer::rebound_optimize()
 
     lbfgs::lbfgs_parameter_t lbfgs_params;
     lbfgs::lbfgs_load_default_parameters(&lbfgs_params);
+    lbfgs_params.mem_size = 16;
     lbfgs_params.max_iterations = 200;
     lbfgs_params.g_epsilon = 0.01;
 
@@ -1006,6 +1007,7 @@ bool BsplineOptimizer::refine_optimize()
   {
     lbfgs::lbfgs_parameter_t lbfgs_params;
     lbfgs::lbfgs_load_default_parameters(&lbfgs_params);
+    lbfgs_params.mem_size = 16;
     lbfgs_params.max_iterations = 200;
     lbfgs_params.g_epsilon = 0.001;
 
@@ -1034,7 +1036,7 @@ bool BsplineOptimizer::refine_optimize()
         // cout << "Refined traj hit_obs, t=" << t << " P=" << traj.evaluateDeBoorT(t).transpose() << endl;
 
         Eigen::MatrixXd ref_pts(ref_pts_.size(), 3);
-        for ( int i=0; i<ref_pts_.size(); i++ )
+        for ( size_t i=0; i<ref_pts_.size(); i++ )
         {
           ref_pts.row(i) = ref_pts_[i].transpose();
         }
@@ -1166,4 +1168,4 @@ void BsplineOptimizer::combineCostRefine(const double *x, double *grad, double& 
 }
 
 
-}  // namespace rebound_planner
+}  // namespace ego_planner

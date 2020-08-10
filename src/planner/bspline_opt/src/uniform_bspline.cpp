@@ -1,7 +1,7 @@
 #include "bspline_opt/uniform_bspline.h"
 #include <ros/ros.h>
 
-namespace rebound_planner {
+namespace ego_planner {
 
 UniformBspline::UniformBspline(const Eigen::MatrixXd& points, const int& order,
                                      const double& interval) {
@@ -325,4 +325,4 @@ void UniformBspline::getMeanAndMaxAcc(double& mean_a, double& max_a) {
   mean_a   = mean_acc;
   max_a    = max_acc;
 }
-}  // namespace rebound_planner
+}  // namespace ego_planner

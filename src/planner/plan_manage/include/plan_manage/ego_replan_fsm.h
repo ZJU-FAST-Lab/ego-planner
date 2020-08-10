@@ -13,14 +13,14 @@
 
 #include <bspline_opt/bspline_optimizer.h>
 #include <plan_env/grid_map.h>
-#include <rebound_planner/Bspline.h>
-#include <rebound_planner/DataDisp.h>
+#include <ego_planner/Bspline.h>
+#include <ego_planner/DataDisp.h>
 #include <plan_manage/planner_manager.h>
 #include <traj_utils/planning_visualization.h>
 
 using std::vector;
 
-namespace rebound_planner {
+namespace ego_planner {
 
 // class Test {
 // private:
@@ -53,7 +53,7 @@ private:
   /* planning utils */
   ReboundPlannerManager::Ptr planner_manager_;
   PlanningVisualization::Ptr visualization_;
-  rebound_planner::DataDisp data_disp_;
+  ego_planner::DataDisp data_disp_;
 
   /* parameters */
   int target_type_;  // 1 mannual select, 2 hard code
@@ -114,6 +114,6 @@ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-}  // namespace rebound_planner
+}  // namespace ego_planner
 
 #endif

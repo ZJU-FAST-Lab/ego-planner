@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 2.8.3)
-project(rebound_planner)
+project(ego_planner)
 
 set(CMAKE_BUILD_TYPE "Release")
 set(CMAKE_CXX_FLAGS "-std=c++11")
@@ -38,7 +38,7 @@ generate_messages(
 # catkin_package(CATKIN_DEPENDS message_runtime)
 catkin_package(
  INCLUDE_DIRS include
- LIBRARIES rebound_planner
+ LIBRARIES ego_planner
  CATKIN_DEPENDS plan_env path_searching bspline_opt traj_utils message_runtime
 #  DEPENDS system_lib
 )
@@ -52,16 +52,16 @@ include_directories(
 )
 
 
-add_executable(rebound_planner_node
-  src/rebound_planner_node.cpp 
-  src/rebo_replan_fsm.cpp
+add_executable(ego_planner_node
+  src/ego_planner_node.cpp 
+  src/ego_replan_fsm.cpp
   src/planner_manager.cpp
-  src/planning_visualization.cpp
+  #src/planning_visualization.cpp
   )
-target_link_libraries(rebound_planner_node 
+target_link_libraries(ego_planner_node 
   ${catkin_LIBRARIES}
   )
-add_dependencies(rebound_planner_node ${${PROJECT_NAME}_EXPORTED_TARGETS})
+add_dependencies(ego_planner_node ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
 add_executable(traj_server src/traj_server.cpp)
 target_link_libraries(traj_server ${catkin_LIBRARIES})

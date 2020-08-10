@@ -5,5 +5,5 @@ devel/
 files/
 README.md
 src/CMakeLists.txt
-rebound_planner_BB.zip
+*.zip
 
