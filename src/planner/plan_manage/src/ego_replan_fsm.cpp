@@ -25,7 +25,7 @@ void ReboReplanFSM::init(ros::NodeHandle& nh) {
 
   /* initialize main modules */
   visualization_.reset(new PlanningVisualization(nh));
-  planner_manager_.reset(new ReboundPlannerManager);
+  planner_manager_.reset(new EGOPlannerManager);
   planner_manager_->initPlanModules(nh, visualization_);
 
   /* callback */

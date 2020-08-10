@@ -60,7 +60,7 @@ public:
   {
     int xm = (x - map.info.origin.position.x) / map.info.resolution;
     int ym = (y - map.info.origin.position.y) / map.info.resolution;
-    if (xm < 0 || xm > map.info.width-1 || ym < 0 || ym > map.info.height-1) 
+    if (xm < 0 || xm > (int)(map.info.width-1) || ym < 0 || ym > (int)(map.info.height-1)) 
       return 0;
     else 
       return map.data[ym*map.info.width+xm];
@@ -80,9 +80,9 @@ public:
       m.info.height     /= binning;
       m.info.resolution *= binning;
       vector<signed char> data(m.info.width * m.info.height);
-      for (int i = 0; i < m.info.height; i++)
+      for (uint32_t i = 0; i < m.info.height; i++)
       {
-        for (int j = 0; j < m.info.width; j++)
+        for (uint32_t j = 0; j < m.info.width; j++)
         {
           int val = -0xff;
           for (int _i = 0; _i < binning; _i++)
@@ -118,9 +118,9 @@ public:
       m.info.height     /= binning;
       m.info.resolution *= binning;
       vector<signed char> data(m.info.width * m.info.height);
-      for (int i = 0; i < m.info.height; i++)
+      for (uint32_t i = 0; i < m.info.height; i++)
       {
-        for (int j = 0; j < m.info.width; j++)
+        for (uint32_t j = 0; j < m.info.width; j++)
         {
           int val = -0xff;
           for (int _i = 0; _i < binning; _i++)

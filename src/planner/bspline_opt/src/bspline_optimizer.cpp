@@ -1158,7 +1158,7 @@ void BsplineOptimizer::combineCostRefine(const double *x, double *grad, double& 
   calcFitnessCost(cps_.points, f_fitness, g_fitness);
   calcFeasibilityCost(cps_.points, f_feasibility, g_feasibility);
 
-  /* ---------- convert to NLopt format...---------- */
+  /* ---------- convert to solver format...---------- */
   f_combine = lambda1_ * f_smoothness + lambda4_ * f_fitness + lambda3_ * f_feasibility;
   // printf("origin %f %f %f %f\n", f_smoothness, f_fitness, f_feasibility, f_combine);
 

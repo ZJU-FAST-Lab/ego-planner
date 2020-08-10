@@ -6,11 +6,11 @@ namespace ego_planner {
 
 // SECTION interfaces for setup and query
 
-ReboundPlannerManager::ReboundPlannerManager() {}
+EGOPlannerManager::EGOPlannerManager() {}
 
-ReboundPlannerManager::~ReboundPlannerManager() { std::cout << "des manager" << std::endl; }
+EGOPlannerManager::~EGOPlannerManager() { std::cout << "des manager" << std::endl; }
 
-void ReboundPlannerManager::initPlanModules(ros::NodeHandle& nh, PlanningVisualization::Ptr vis) {
+void EGOPlannerManager::initPlanModules(ros::NodeHandle& nh, PlanningVisualization::Ptr vis) {
   /* read algorithm parameters */
 
   nh.param("manager/max_vel", pp_.max_vel_, -1.0);
@@ -37,7 +37,7 @@ void ReboundPlannerManager::initPlanModules(ros::NodeHandle& nh, PlanningVisuali
 
 // SECTION rebond replanning
 
-bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vector3d start_vel,
+bool EGOPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vector3d start_vel,
                                            Eigen::Vector3d start_acc, Eigen::Vector3d local_target_pt,
                                            Eigen::Vector3d local_target_vel, bool flag_polyInit, bool flag_randomPolyTraj) {
 
@@ -272,7 +272,7 @@ bool ReboundPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vecto
   return true;
 }
 
-bool ReboundPlannerManager::EmergencyStop(Eigen::Vector3d stop_pos)
+bool EGOPlannerManager::EmergencyStop(Eigen::Vector3d stop_pos)
 {
   Eigen::MatrixXd control_points(3,6);
   for ( int i=0; i<6; i++ )
@@ -286,7 +286,7 @@ bool ReboundPlannerManager::EmergencyStop(Eigen::Vector3d stop_pos)
 }
 
 
-bool ReboundPlannerManager::planGlobalTrajWaypoints(const Eigen::Vector3d& start_pos, const Eigen::Vector3d& start_vel, const Eigen::Vector3d& start_acc,
+bool EGOPlannerManager::planGlobalTrajWaypoints(const Eigen::Vector3d& start_pos, const Eigen::Vector3d& start_vel, const Eigen::Vector3d& start_acc,
                                         const std::vector<Eigen::Vector3d>& waypoints, const Eigen::Vector3d& end_vel, const Eigen::Vector3d& end_acc) 
 {
 
@@ -362,7 +362,7 @@ bool ReboundPlannerManager::planGlobalTrajWaypoints(const Eigen::Vector3d& start
   return true;
 }
 
-bool ReboundPlannerManager::planGlobalTraj(const Eigen::Vector3d& start_pos, const Eigen::Vector3d& start_vel, const Eigen::Vector3d& start_acc,
+bool EGOPlannerManager::planGlobalTraj(const Eigen::Vector3d& start_pos, const Eigen::Vector3d& start_vel, const Eigen::Vector3d& start_acc,
                                         const Eigen::Vector3d& end_pos, const Eigen::Vector3d& end_vel, const Eigen::Vector3d& end_acc) 
 {
 
@@ -422,7 +422,7 @@ bool ReboundPlannerManager::planGlobalTraj(const Eigen::Vector3d& start_pos, con
   return true;
 }
 
-bool ReboundPlannerManager::refineTrajAlgo(UniformBspline& traj, vector<Eigen::Vector3d>& start_end_derivative, double ratio, double& ts, Eigen::MatrixXd& optimal_control_points) {
+bool EGOPlannerManager::refineTrajAlgo(UniformBspline& traj, vector<Eigen::Vector3d>& start_end_derivative, double ratio, double& ts, Eigen::MatrixXd& optimal_control_points) {
   double    t_inc;
 
   Eigen::MatrixXd ctrl_pts;      // = traj.getControlPoint()
@@ -442,7 +442,7 @@ bool ReboundPlannerManager::refineTrajAlgo(UniformBspline& traj, vector<Eigen::V
   return success;
 }
 
-void ReboundPlannerManager::updateTrajInfo(const UniformBspline& position_traj, const ros::Time time_now ) {
+void EGOPlannerManager::updateTrajInfo(const UniformBspline& position_traj, const ros::Time time_now ) {
   local_data_.start_time_        = time_now;
   local_data_.position_traj_     = position_traj;
   local_data_.velocity_traj_     = local_data_.position_traj_.getDerivative();
@@ -452,7 +452,7 @@ void ReboundPlannerManager::updateTrajInfo(const UniformBspline& position_traj, 
   local_data_.traj_id_ += 1;
 }
 
-void ReboundPlannerManager::reparamBspline(UniformBspline& bspline, vector<Eigen::Vector3d>& start_end_derivative, double ratio,
+void EGOPlannerManager::reparamBspline(UniformBspline& bspline, vector<Eigen::Vector3d>& start_end_derivative, double ratio,
                                         Eigen::MatrixXd& ctrl_pts, double& dt, double& time_inc) {
   double time_origin = bspline.getTimeSum();
   int    seg_num     = bspline.getControlPoint().cols() - 3;

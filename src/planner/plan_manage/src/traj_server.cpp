@@ -30,11 +30,11 @@ void bsplineCallback(ego_planner::BsplineConstPtr msg) {
   Eigen::MatrixXd pos_pts(3, msg->pos_pts.size());
 
   Eigen::VectorXd knots(msg->knots.size());
-  for (int i = 0; i < msg->knots.size(); ++i) {
+  for (size_t i = 0; i < msg->knots.size(); ++i) {
     knots(i) = msg->knots[i];
   }
 
-  for (int i = 0; i < msg->pos_pts.size(); ++i) {
+  for (size_t i = 0; i < msg->pos_pts.size(); ++i) {
     pos_pts(0, i) = msg->pos_pts[i].x;
     pos_pts(1, i) = msg->pos_pts[i].y;
     pos_pts(2, i) = msg->pos_pts[i].z;
@@ -73,13 +73,13 @@ void cmdCallback(const ros::TimerEvent& e)
   ros::Time time_now = ros::Time::now();
   double t_cur = (time_now - start_time_).toSec();
 
-  Eigen::Vector3d pos, vel, acc, pos_f;
+  Eigen::Vector3d pos(Eigen::Vector3d::Zero()), vel(Eigen::Vector3d::Zero()), acc(Eigen::Vector3d::Zero()), pos_f;
   double yaw = 0, yawdot = 0;
 
   static ros::Time time_last = ros::Time::now();
   constexpr double PI = 3.1415926;
   constexpr double YAW_DOT_MAX_PER_SEC = PI;
-  constexpr double YAW_DOT_DOT_MAX_PER_SEC = PI;
+  // constexpr double YAW_DOT_DOT_MAX_PER_SEC = PI;
   if (t_cur < traj_duration_ && t_cur >= 0.0) 
   {
     pos = traj_[0].evaluateDeBoorT(t_cur);

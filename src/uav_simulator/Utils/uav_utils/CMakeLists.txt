@@ -2,7 +2,7 @@ cmake_minimum_required(VERSION 2.8.3)
 project(uav_utils)
 
 ## Turn on verbose output
-set(CMAKE_VERBOSE_MAKEFILE "true")
+set(CMAKE_VERBOSE_MAKEFILE "false")
 
 ## Enable C++11
 include(CheckCXXCompilerFlag)

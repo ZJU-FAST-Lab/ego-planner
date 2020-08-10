@@ -40,5 +40,4 @@ add_library( bspline_opt
     )
 target_link_libraries( bspline_opt
     ${catkin_LIBRARIES} 
-    /usr/local/lib/libnlopt.so
     )  

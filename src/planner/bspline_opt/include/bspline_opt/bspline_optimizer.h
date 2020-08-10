@@ -144,13 +144,9 @@ private:
   static int earlyExit(void *func_data, const double *x, const double *g, const double fx, const double xnorm, const double gnorm, const double step, int n, int k, int ls);
   static double costFunctionRebound(void* func_data, const double *x, double *grad, const int n);
   static double costFunctionRefine(void* func_data, const double *x, double *grad, const int n);
-  // static double costFunctionRebound_nlopt(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
-  // static double costFunctionRefine_nlopt(const std::vector<double>& x, std::vector<double>& grad, void* func_data);
 
   bool rebound_optimize();
-  // bool rebound_optimize_nlopt();
   bool refine_optimize();
-  // bool refine_optimize_nlopt();
   void combineCostRebound(const double *x, double *grad, double& f_combine, const int n);
   void combineCostRefine(const double *x, double *grad, double& f_combine, const int n);
 

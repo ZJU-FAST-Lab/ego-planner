@@ -16,11 +16,11 @@ namespace ego_planner {
 // Fast Planner Manager
 // Key algorithms of mapping and planning are called
 
-class ReboundPlannerManager {
+class EGOPlannerManager {
   // SECTION stable
 public:
-  ReboundPlannerManager();
-  ~ReboundPlannerManager();
+  EGOPlannerManager();
+  ~EGOPlannerManager();
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
@@ -62,7 +62,7 @@ private:
   // SECTION developing
 
 public:
-  typedef unique_ptr<ReboundPlannerManager> Ptr;
+  typedef unique_ptr<EGOPlannerManager> Ptr;
 
   // !SECTION
 };
