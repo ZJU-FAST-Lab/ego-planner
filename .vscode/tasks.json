@@ -1,0 +1,18 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "catkin_make", 
+            "type": "shell",  
+            "command": "catkin_make",
+            "args": ["-DCMAKE_BUILD_TYPE=Release"],
+            "group": {"kind":"build","isDefault":true},
+            "presentation": {
+                "reveal": "always"
+            },
+            "problemMatcher": "$msCompile"
+        },
+    ]
+}
+
+// catkin_make -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=Yes
