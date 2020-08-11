@@ -40,7 +40,7 @@
 
     <!-- 1: use 2D Nav Goal to select goal  -->
     <!-- 2: use global waypoints below  -->
-    <arg name="flight_type" value="1" />
+    <arg name="flight_type" value="2" />
     
     <!-- global waypoints -->
     <!-- It generates a piecewise min-snap traj passing all waypoints -->
@@ -95,5 +95,7 @@
 
     <arg name="odometry_topic" value="$(arg odom_topic)" />
   </include>
+
+  <include file="$(find ego_planner)/launch/rviz.launch"/>
 
 </launch>

@@ -471,48 +471,6 @@ bool ReboReplanFSM::callEmergencyStop( Eigen::Vector3d stop_pos ) {
   return true;
 }
 
-// void ReboReplanFSM::getLocalTarget()
-// {
-//   if ( ( end_pt_ - start_pt_ ).norm() < planning_horizen_ )
-//   {
-//     local_target_pt_ = end_pt_;
-//   }
-//   else
-//   {
-//     //local_target_pt_ = start_pt_ + (end_pt_ - start_pt_).normalized() * planning_horizen_;
-
-//     Eigen::Vector3d M = init_pt_, N = end_pt_ - init_pt_; // line: X = M + N*t
-//     Eigen::Vector3d X0 = start_pt_; double h = planning_horizen_; // sphere: (X-X0)'*(X-X0)=h
-//     double a = N.squaredNorm();
-//     double b = 2*(M-X0).dot(N);
-//     double c = (M-X0).squaredNorm() - h*h;
-//     // cout << "M=" << M.transpose() << " N=" << N.transpose() << " X0=" << X0.transpose() << " h=" << h << endl;
-//     // cout << "a=" << a << " b=" << b << " c=" << c << endl;
-//     if ( b*b-4*a*c > 0 )
-//     {
-//       double t = (-b + sqrt( b*b-4*a*c )) / (2*a);
-//       local_target_pt_ = M + N*t;
-//     }
-//     else
-//     {
-//       ROS_WARN("the drone goes too far to the reference line.");
-//       double t = -b/(2*a);
-//       local_target_pt_ = M + N*t;
-//       //local_target_pt_ = start_pt_ + (end_pt_ - start_pt_).normalized() * planning_horizen_;
-//     }
-//   }
-
-//   if ( ( end_pt_ - local_target_pt_ ).norm() < (planner_manager_->pp_.max_vel_*planner_manager_->pp_.max_vel_)/(2*planner_manager_->pp_.max_acc_) )
-//   {
-//     local_target_vel_ = (end_pt_ - init_pt_).normalized() * planner_manager_->pp_.max_vel_ * (( end_pt_ - local_target_pt_ ).norm() / ((planner_manager_->pp_.max_vel_*planner_manager_->pp_.max_vel_)/(2*planner_manager_->pp_.max_acc_)));
-//   }
-//   else
-//   {
-//     local_target_vel_ = (end_pt_ - init_pt_).normalized() * planner_manager_->pp_.max_vel_; 
-//   }
-  
-// }
-
 void ReboReplanFSM::getLocalTarget()
 {
   double t;

@@ -30,12 +30,12 @@ ros::Time trigged_time;
 void load_seg(ros::NodeHandle& nh, int segid, const ros::Time& time_base) {
     std::string seg_str = boost::str(bfmt("seg%d/") % segid);
     double yaw;
-    double time_from_start;
+    double time_of_start = 0.0;
     ROS_INFO("Getting segment %d", segid);
     ROS_ASSERT(nh.getParam(seg_str + "yaw", yaw));
     ROS_ASSERT_MSG((yaw > -3.1499999) && (yaw < 3.14999999), "yaw=%.3f", yaw);
-    ROS_ASSERT(nh.getParam(seg_str + "time_from_start", time_from_start));
-    ROS_ASSERT(time_from_start >= 0.0);
+    ROS_ASSERT(nh.getParam(seg_str + "time_of_start", time_of_start));
+    ROS_ASSERT(time_of_start >= 0.0);
 
     std::vector<double> ptx;
     std::vector<double> pty;
@@ -50,7 +50,7 @@ void load_seg(ros::NodeHandle& nh, int segid, const ros::Time& time_base) {
 
     nav_msgs::Path path_msg;
 
-    path_msg.header.stamp = time_base + ros::Duration(time_from_start);
+    path_msg.header.stamp = time_base + ros::Duration(time_of_start);
 
     double baseyaw = tf::getYaw(odom.pose.pose.orientation);
     
