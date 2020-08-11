@@ -22,27 +22,6 @@ using std::vector;
 
 namespace ego_planner {
 
-// class Test {
-// private:
-//   /* data */
-//   int test_;
-//   std::vector<int> test_vec_;
-//   ros::NodeHandle nh_;
-
-// public:
-//   Test(const int& v) {
-//     test_ = v;
-//   }
-//   Test(ros::NodeHandle& node) {
-//     nh_ = node;
-//   }
-//   ~Test() {
-//   }
-//   void print() {
-//     std::cout << "test: " << test_ << std::endl;
-//   }
-// };
-
 class ReboReplanFSM {
 
 private:

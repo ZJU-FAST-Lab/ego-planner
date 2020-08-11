@@ -56,7 +56,6 @@ add_executable(ego_planner_node
   src/ego_planner_node.cpp 
   src/ego_replan_fsm.cpp
   src/planner_manager.cpp
-  #src/planning_visualization.cpp
   )
 target_link_libraries(ego_planner_node 
   ${catkin_LIBRARIES}

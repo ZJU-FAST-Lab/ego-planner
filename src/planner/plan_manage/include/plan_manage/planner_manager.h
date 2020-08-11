@@ -9,7 +9,7 @@
 #include <plan_env/grid_map.h>
 #include <plan_manage/plan_container.hpp>
 #include <ros/ros.h>
-#include <plan_manage/planning_visualization.h>
+#include <traj_utils/planning_visualization.h>
 
 namespace ego_planner {
 
