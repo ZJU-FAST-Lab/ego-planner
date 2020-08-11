@@ -1,15 +1,16 @@
-# ego_planner
+# EGO-Planner
 
 # Quick Start within 3 Minutes
-In ubuntu 16.04 with ros installed
+In ubuntu 16.04, 18.04 and 20.04 with ros installed, just execute the commands one by one.
 ```
 sudo apt-get install libarmadillo-dev
 git clone https://github.com/bigsuperZZZX/ego_planner.git
-cd ego_planner
+cd ego-planner
 catkin_make
 source devel/setup.bash
 roslaunch ego_planner simple_run.launch
 ```
+If your link to github is slow, you can try the gitee repository [https://gitee.com/iszhouxin/ego_planner](https://gitee.com/iszhouxin/ego_planner). They sync automatically.
 
 
 # Known Issues
