@@ -44,8 +44,8 @@ bool EGOPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vector3d 
   static int count = 0;
   std::cout << endl << "[rebo replan]: -------------------------------------" << count++ << std::endl;
   cout.precision(3);
-  cout << "start: " << start_pt.transpose() << ", " << start_vel.transpose() << ", "
-       << start_acc.transpose() << "\ngoal:" << local_target_pt.transpose() << ", " << local_target_vel.transpose()
+  cout << "start: " << start_pt.transpose() << ", " << start_vel.transpose() << 
+         "\ngoal:" << local_target_pt.transpose() << ", " << local_target_vel.transpose()
        << endl;
 
   if ((start_pt - local_target_pt).norm() < 0.2) {
@@ -58,7 +58,7 @@ bool EGOPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vector3d 
   ros::Duration t_init, t_opt, t_refine;
 
   /*** STEP 1: INIT ***/
-  double ts = pp_.ctrl_pt_dist / pp_.max_vel_ * 1.1; // pp_.ctrl_pt_dist / pp_.max_vel_ is too tense, and will surely exceed the acc/vel limits
+  double ts = (start_pt-local_target_pt).norm() > 0.1 ? pp_.ctrl_pt_dist / pp_.max_vel_ * 1.2 : pp_.ctrl_pt_dist / pp_.max_vel_ * 5; // pp_.ctrl_pt_dist / pp_.max_vel_ is too tense, and will surely exceed the acc/vel limits
   vector<Eigen::Vector3d> point_set, start_end_derivatives; 
   static bool flag_first_call = true, flag_force_polynomial = false;
   bool flag_regenerate = false;
@@ -255,7 +255,7 @@ bool EGOPlannerManager::reboundReplan(Eigen::Vector3d start_pt, Eigen::Vector3d 
 
   if ( !flag_step_2_success )
   {
-    printf("\033[33mThis refined trajectory hits obstacles. It doesn't matter if appeares occasionally. But if continously appearing, Increase parameter \"lambda_fitness\".\n\033[0m");
+    printf("\033[34mThis refined trajectory hits obstacles. It doesn't matter if appeares occasionally. But if continously appearing, Increase parameter \"lambda_fitness\".\n\033[0m");
     continous_failures_count_++;
     return false;
   }

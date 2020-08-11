@@ -304,17 +304,6 @@ std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(Ei
 
   }
 
-
-  // for ( int i=0; i<cps_.size; i++ )
-  // {
-  //   cout << "i=" << i << endl;
-  //   for ( int j=0; j<cps_.direction[i].size(); j++ )
-  //   {
-  //     cout << cps_.direction[i][j].transpose() << endl;
-  //   }
-  //   cout << endl;
-  // }
-
   return a_star_pathes;
 }
 
@@ -943,7 +932,7 @@ bool BsplineOptimizer::rebound_optimize()
           if ( t <= bspline_interval_ ) // First 3 control points in obstacles!
           {
             cout << cps_.points.col(1).transpose() << "\n"  << cps_.points.col(2).transpose() << "\n"  << cps_.points.col(3).transpose() << "\n" << cps_.points.col(4).transpose() << endl;
-            ROS_ERROR("First 3 control points in obstacles! return false, t=%f",t);
+            ROS_WARN("First 3 control points in obstacles! return false, t=%f",t);
             return false;
           }
 
@@ -975,7 +964,7 @@ bool BsplineOptimizer::rebound_optimize()
     }
     else
     {
-      ROS_ERROR("Solver error in planning!, return = %d, %s", result, lbfgs::lbfgs_strerror(result));
+      ROS_WARN("Solver error. Return = %d, %s. Skip this planning.", result, lbfgs::lbfgs_strerror(result));
       // while (ros::ok());
     }
     
@@ -1063,12 +1052,6 @@ void BsplineOptimizer::combineCostRebound(const double *x, double *grad, double&
 
   memcpy( cps_.points.data() + 3*order_, x, n*sizeof(x[0]) );
 
-  // int i_end = cps_.size - order_ - (cps_.size - 2*order_)/3;
-  // for ( size_t i=order_; i<i_end; ++i )
-  // {
-  //   cps_.occupancy[i] = grid_map_->getInflateOccupancy(cps_.points.col(i));
-  // }
-
   /* ---------- evaluate cost and gradient ---------- */
   double f_smoothness, f_distance, f_feasibility;
 
@@ -1080,64 +1063,11 @@ void BsplineOptimizer::combineCostRebound(const double *x, double *grad, double&
   calcDistanceCostRebound(cps_.points, f_distance, g_distance, iter_num_, f_smoothness);
   calcFeasibilityCost(cps_.points, f_feasibility, g_feasibility);
 
-  // for ( int i=0; i<cps_.points.cols(); i++ )
-  // {
-  //   cps_.points.col(i) = Eigen::Vector3d(i*0.45, 0, 0);
-  //   cout << i*0.45 << endl;
-  // }
-  // bspline_interval_ = 0.25;
-  // cout << setprecision(7);
-  // for ( double x=4.05; x<4.95; x+=0.001 )
-  // {
-  //   cps_.points(0,10) = x;
-  //   g_feasibility = Eigen::MatrixXd::Zero(3, cps_.size);
-  //   f_feasibility = 0;
-  //   calcFeasibilityCost(cps_.points, f_feasibility, g_feasibility);
-  //   cout << x << " " << f_feasibility << " " << g_feasibility(0,10) << " " <<  endl;
-  // }
-  // while (ros::ok());
-
   f_combine = lambda1_ * f_smoothness + new_lambda2_ * f_distance + lambda3_ * f_feasibility;
   //printf("origin %f %f %f %f\n", f_smoothness, f_distance, f_feasibility, f_combine);
 
   Eigen::MatrixXd grad_3D = lambda1_ * g_smoothness + new_lambda2_ * g_distance + lambda3_ * g_feasibility;
   memcpy( grad, grad_3D.data() + 3*order_, n*sizeof(grad[0]) );
-
-  // bool flag_err = 0;
-  // for ( int i=0; i<n; i++ )
-  // {
-  //   if ( *(g_smoothness.data()+i+3*order_) > 1e10 || *(g_smoothness.data()+i+3*order_) < -1e10 || isnan(*(g_smoothness.data()+i+3*order_)) ) flag_err = 1;
-  //   if ( *(g_distance.data()+i+3*order_) > 1e10 || *(g_distance.data()+i+3*order_) < -1e10 || isnan(*(g_distance.data()+i+3*order_)) ) flag_err = 1;
-  //   if ( *(g_feasibility.data()+i+3*order_) > 1e10 || *(g_feasibility.data()+i+3*order_) < -1e10 || isnan(*(g_feasibility.data()+i+3*order_)) ) flag_err = 1;
-  // }
-  // if ( flag_err )
-  // {
-  //   cout << "NAN!!!" << endl;
-  
-    // cout<<setprecision(7);
-    // for ( int i=0; i<n; i+=3 )
-    // {
-    //     // cout << *(g_smoothness.data()+i+3*order_) << endl;
-    //     // cout << *(g_distance.data()+i+3*order_) << endl;
-    //     // cout << *(g_feasibility.data()+i+3*order_) << endl;
-    //     cout << *(cps_.points.data() + 3*order_ + i) << " " << *(cps_.points.data() + 3*order_ + i +1) << " " << *(cps_.points.data() + 3*order_ + i+2) <<  endl;
-    // }
-
-    // cout << endl;
-
-    // for ( int i=0; i<n; i+=3 )
-    // {
-    //     // cout << *(g_smoothness.data()+i+3*order_) << endl;
-    //     // cout << *(g_distance.data()+i+3*order_) << endl;
-    //     // cout << *(g_feasibility.data()+i+3*order_) << endl;
-    //     cout << grad[i] << " " << grad[i+1] << " " << grad[i+2] << endl;
-    // }
-
-    // cout << endl;
-    
-  // }
-
-  // cout << grad.transpose() << endl;
 }
 
 void BsplineOptimizer::combineCostRefine(const double *x, double *grad, double& f_combine, const int n)

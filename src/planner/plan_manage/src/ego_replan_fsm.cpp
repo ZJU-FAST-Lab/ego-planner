@@ -32,11 +32,75 @@ void ReboReplanFSM::init(ros::NodeHandle& nh) {
   exec_timer_   = nh.createTimer(ros::Duration(0.01), &ReboReplanFSM::execFSMCallback, this);
   safety_timer_ = nh.createTimer(ros::Duration(0.05), &ReboReplanFSM::checkCollisionCallback, this);
 
-  waypoint_sub_ = nh.subscribe("/waypoint_generator/waypoints", 1, &ReboReplanFSM::waypointCallback, this);
   odom_sub_ = nh.subscribe("/odom_world", 1, &ReboReplanFSM::odometryCallback, this);
 
   bspline_pub_ = nh.advertise<ego_planner::Bspline>("/planning/bspline", 10);
   data_disp_pub_ = nh.advertise<ego_planner::DataDisp>("/planning/data_display", 100);
+
+  if (target_type_ == TARGET_TYPE::MANUAL_TARGET)
+    waypoint_sub_ = nh.subscribe("/waypoint_generator/waypoints", 1, &ReboReplanFSM::waypointCallback, this);
+  else if ( target_type_ == TARGET_TYPE::PRESET_TARGET )
+  {
+    ros::Duration(1.0).sleep();
+    while( ros::ok() && !have_odom_ )
+      ros::spinOnce();
+    planGlobalTrajbyGivenWps();
+  }
+  else
+    cout << "Wrong target_type_ value! target_type_=" << target_type_ << endl;
+  
+}
+
+void ReboReplanFSM::planGlobalTrajbyGivenWps()
+{
+  std::vector<Eigen::Vector3d> wps(waypoint_num_);
+  for ( int i=0; i<waypoint_num_; i++ )
+  {
+    wps[i](0) = waypoints_[i][0];
+    wps[i](1) = waypoints_[i][1];
+    wps[i](2) = waypoints_[i][2];
+
+    end_pt_ = wps.back();
+  }
+  bool success = planner_manager_->planGlobalTrajWaypoints( odom_pos_, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero(), wps, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero() );
+  
+  for (size_t i = 0; i < (size_t)waypoint_num_; i++)
+  {
+    visualization_->displayGoalPoint(wps[i], Eigen::Vector4d(0, 0.5, 0.5, 1), 0.3, i);
+    ros::Duration(0.001).sleep();
+  }
+
+  if ( success )
+  {
+
+    /*** display ***/
+    constexpr double step_size_t = 0.1;
+    int i_end = floor(planner_manager_->global_data_.global_duration_ / step_size_t);
+    std::vector<Eigen::Vector3d> gloabl_traj( i_end );
+    for ( int i=0; i<i_end; i++ )
+    {
+      gloabl_traj[i] = planner_manager_->global_data_.global_traj_.evaluate( i*step_size_t );
+    }
+
+    end_vel_.setZero();
+    have_target_ = true;
+    have_new_target_ = true;
+
+    /*** FSM ***/
+    // if (exec_state_ == WAIT_TARGET)
+    changeFSMExecState(GEN_NEW_TRAJ, "TRIG");
+    // else if (exec_state_ == EXEC_TRAJ)
+    //   changeFSMExecState(REPLAN_TRAJ, "TRIG");
+
+    // visualization_->displayGoalPoint(end_pt_, Eigen::Vector4d(1, 0, 0, 1), 0.3, 0);
+    ros::Duration(0.001).sleep();
+    visualization_->displayGlobalPathList(gloabl_traj, 0.1, 0);
+    ros::Duration(0.001).sleep();
+  }
+  else
+  {
+    ROS_ERROR( "Unable to generate global trajectory!" );
+  }
 }
 
 void ReboReplanFSM::waypointCallback(const nav_msgs::PathConstPtr& msg) {
@@ -47,32 +111,10 @@ void ReboReplanFSM::waypointCallback(const nav_msgs::PathConstPtr& msg) {
   init_pt_ = odom_pos_;
 
   bool success = false;
-  if (target_type_ == TARGET_TYPE::MANUAL_TARGET) 
-  {
-    end_pt_ << msg->poses[0].pose.position.x, msg->poses[0].pose.position.y, 1.0;
-    success = planner_manager_->planGlobalTraj( odom_pos_, odom_vel_, Eigen::Vector3d::Zero(), end_pt_, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero() );
-    
-    visualization_->displayGoalPoint(end_pt_, Eigen::Vector4d(0, 0.5, 0.5, 1), 0.3, 0);
-  } 
-  else if (target_type_ == TARGET_TYPE::PRESET_TARGET) 
-  {
-    std::vector<Eigen::Vector3d> wps(waypoint_num_);
-    for ( int i=0; i<waypoint_num_; i++ )
-    {
-      wps[i](0) = waypoints_[i][0];
-      wps[i](1) = waypoints_[i][1];
-      wps[i](2) = waypoints_[i][2];
-
-      end_pt_ = wps.back();
-    }
-    success = planner_manager_->planGlobalTrajWaypoints( odom_pos_, odom_vel_, Eigen::Vector3d::Zero(), wps, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero() );
-    
-    for (size_t i = 0; i < (size_t)waypoint_num_; i++)
-    {
-      visualization_->displayGoalPoint(wps[i], Eigen::Vector4d(0, 0.5, 0.5, 1), 0.3, i);
-      ros::Duration(0.001).sleep();
-    }
-  }
+  end_pt_ << msg->poses[0].pose.position.x, msg->poses[0].pose.position.y, 1.0;
+  success = planner_manager_->planGlobalTraj( odom_pos_, odom_vel_, Eigen::Vector3d::Zero(), end_pt_, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero() );
+  
+  visualization_->displayGoalPoint(end_pt_, Eigen::Vector4d(0, 0.5, 0.5, 1), 0.3, 0);
 
   if ( success )
   {
@@ -335,12 +377,12 @@ void ReboReplanFSM::checkCollisionCallback(const ros::TimerEvent& e) {
       {
         if ( t-t_cur < 0.8 ) // 0.8s of emergency time
         {
-          ROS_ERROR("Suddenly discovered obstacles. emergency stop! time=%f",t-t_cur);
+          ROS_WARN("Suddenly discovered obstacles. emergency stop! time=%f",t-t_cur);
           changeFSMExecState(EMERGENCY_STOP, "SAFETY");
         }
         else
         {
-          ROS_WARN("current traj in collision, replan.");
+          //ROS_WARN("current traj in collision, replan.");
           changeFSMExecState(REPLAN_TRAJ, "SAFETY");
         }
         return;
@@ -511,11 +553,14 @@ void ReboReplanFSM::getLocalTarget()
 
   if ( ( end_pt_ - local_target_pt_ ).norm() < (planner_manager_->pp_.max_vel_*planner_manager_->pp_.max_vel_)/(2*planner_manager_->pp_.max_acc_) )
   {
-    local_target_vel_ = (end_pt_ - init_pt_).normalized() * planner_manager_->pp_.max_vel_ * (( end_pt_ - local_target_pt_ ).norm() / ((planner_manager_->pp_.max_vel_*planner_manager_->pp_.max_vel_)/(2*planner_manager_->pp_.max_acc_)));
+    // local_target_vel_ = (end_pt_ - init_pt_).normalized() * planner_manager_->pp_.max_vel_ * (( end_pt_ - local_target_pt_ ).norm() / ((planner_manager_->pp_.max_vel_*planner_manager_->pp_.max_vel_)/(2*planner_manager_->pp_.max_acc_)));
+    cout << "A" << endl;
+    local_target_vel_ = Eigen::Vector3d::Zero();
   }
   else
   {
     local_target_vel_ = planner_manager_->global_data_.getVelocity(t);
+    cout << "AA" << endl;
   }
   
 }

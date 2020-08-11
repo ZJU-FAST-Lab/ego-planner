@@ -72,6 +72,7 @@ private:
   std::pair<int, ReboReplanFSM::FSM_EXEC_STATE> timesOfConsecutiveStateCalls();
   void printFSMExecState();
 
+  void planGlobalTrajbyGivenWps();
   void getLocalTarget();
 
   /* ROS functions */
