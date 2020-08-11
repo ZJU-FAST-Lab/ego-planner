@@ -1,11 +1,11 @@
 # ego_planner
 
-# Quick Start within 5 Minutes
+# Quick Start within 3 Minutes
 In ubuntu 16.04 with ros installed
 ```
 git clone https://github.com/bigsuperZZZX/ego_planner.git
 cd ego_planner
-./run.sh
+./run_ego.sh
 ```
 
 
