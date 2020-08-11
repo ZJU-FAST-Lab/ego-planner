@@ -3,9 +3,12 @@
 # Quick Start within 3 Minutes
 In ubuntu 16.04 with ros installed
 ```
+sudo apt-get install libarmadillo-dev
 git clone https://github.com/bigsuperZZZX/ego_planner.git
 cd ego_planner
-./run_ego.sh
+catkin_make
+source devel/setup.bash
+roslaunch ego_planner simple_run.launch
 ```
 
 
