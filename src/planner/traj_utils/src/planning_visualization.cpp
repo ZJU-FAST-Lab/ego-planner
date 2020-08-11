@@ -155,7 +155,9 @@ void PlanningVisualization::displayGlobalPathList(vector<Eigen::Vector3d> init_p
 {
 
   if ( global_list_pub.getNumSubscribers() == 0 )
+  {
     return;
+  }
 
     Eigen::Vector4d color(0,0.5,0.5,1);
     displayMarkerList(global_list_pub, init_pts, scale, color, id);
@@ -165,7 +167,9 @@ void PlanningVisualization::displayInitPathList(vector<Eigen::Vector3d> init_pts
 {
 
   if ( init_list_pub.getNumSubscribers() == 0 )
+  {
     return;
+  }
 
     Eigen::Vector4d color(0,0,1,1);
     displayMarkerList(init_list_pub, init_pts, scale, color, id);
@@ -175,7 +179,9 @@ void PlanningVisualization::displayOptimalList(Eigen::MatrixXd optimal_pts, int 
 {
 
   if ( optimal_list_pub.getNumSubscribers() == 0 )
+  {
     return;
+  }
 
     vector<Eigen::Vector3d> list;
     for ( int i = 0; i < optimal_pts.cols(); i++)
@@ -192,7 +198,9 @@ void PlanningVisualization::displayAStarList( std::vector<std::vector<Eigen::Vec
 {
 
   if ( a_star_list_pub.getNumSubscribers() == 0 )
+  {
     return;
+  }
 
   int i=0;
   vector<Eigen::Vector3d> list;

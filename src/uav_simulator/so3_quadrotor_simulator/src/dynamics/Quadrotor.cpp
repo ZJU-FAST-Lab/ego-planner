@@ -138,17 +138,15 @@ Quadrotor::operator()(const Quadrotor::InternalState& x,
 
   motor_rpm_sq = cur_state.motor_rpm.array().square();
 
-  //! @todo implement
-  Eigen::Array4d blade_linear_velocity;
-  Eigen::Array4d motor_linear_velocity;
-  Eigen::Array4d AOA;
-  blade_linear_velocity = 0.104719755 // rpm to rad/s
-                          * cur_state.motor_rpm.array() * prop_radius_;
-  for (int i = 0; i < 4; ++i)
-    AOA[i]   = alpha0 -
-             atan2(motor_linear_velocity[i], blade_linear_velocity[i]) * //
-               180 / 3.14159265;
-  //! @todo end
+  // //! @todo implement
+  // Eigen::Array4d blade_linear_velocity;
+  // Eigen::Array4d motor_linear_velocity;
+  // Eigen::Array4d AOA;
+  // blade_linear_velocity = 0.104719755 // rpm to rad/s
+  //                         * cur_state.motor_rpm.array() * prop_radius_;
+  // for (int i = 0; i < 4; ++i)
+  //   AOA[i]   = alpha0 - atan2(motor_linear_velocity[i], blade_linear_velocity[i]) * 180 / 3.14159265;
+  // //! @todo end
 
   // double totalF = kf_ * motor_rpm_sq.sum();
   double thrust = kf_ * motor_rpm_sq.sum();

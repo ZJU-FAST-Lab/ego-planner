@@ -37,9 +37,9 @@ using namespace std;
 using namespace mocka;
 
 #if MAP_OR_WORLD
-const string kFrameIdNs_ = "/map";
+const string kFrameIdNs_ = "map";
 #else
-const string kFrameIdNs_ = "/world";
+const string kFrameIdNs_ = "world";
 #endif
 
 pcl::search::KdTree<pcl::PointXYZ> kdtreeLocalMap;
