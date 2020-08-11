@@ -1,5 +1,14 @@
 # ego_planner
 
+# Quick Start within 5 Minutes
+In ubuntu 16.04 with ros installation
+```
+git clone https://github.com/bigsuperZZZX/ego_planner.git
+cd ego_planner
+./run.sh
+```
+
+
 # Known Issues
 - If polyhedrons can't be visualized properly in Rviz, please delete the *Display Type* **PolyhedronArray** from the *display menu*, then manually add **PolyhedronArray** again and select the topic in its **Topic** drop-down list.
 
