@@ -151,7 +151,7 @@ Note that CPU frequency may still decrease due to high temperature in high load.
 We modified the ros-relasense driver to enable the laser emitter strobe every other frame, allowing the device to output high quality depth images with the help of emitter, and along with binocular images free from laser interference.
 
 <p align = "center">
-<img src="pictures/realsense.PNG" width = "640" height = "119" border="5" />
+<img src="pictures/realsense.PNG" width = "640" height = "158" border="5" />
 </p>
 
 This ros-driver is modified from [https://github.com/IntelRealSense/realsense-ros](https://github.com/IntelRealSense/realsense-ros) and is compatible with librealsense2 2.30.0.
