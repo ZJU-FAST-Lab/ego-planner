@@ -14,7 +14,7 @@ If your link to github is slow, I recommend you to try the gitee repository [htt
 # Acknowledgements
 The framework of this repository is based on [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner) by Zhou Boyu who achieves impressive proformance on quaorotor local planning.
 
-The L-BFGS solver we use is modified by wangzhepei@zju.edu.cn from [xxx](xxx). 
+The L-BFGS solver we use is from [xxx](xxx). 
 It is a C++ head-only single file, which is lightweight and easy to use.
 
 The map generated in simulation is from [mockamap](https://github.com/HKUST-Aerial-Robotics/mockamap) by Willim Wu.
