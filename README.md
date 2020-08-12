@@ -1,5 +1,5 @@
-# Quick Start within 3 Minutes
-Compiling tests passed on ubuntu 16.04, 18.04 and 20.04 with ros installed.
+# Quick Start within **3 Minutes**
+Compiling tests passed on ubuntu **16.04, 18.04 and 20.04** with ros installed.
 You can just execute the commands one by one.
 ```
 sudo apt-get install libarmadillo-dev
@@ -12,19 +12,19 @@ roslaunch ego_planner simple_run.launch
 If your network to github is slow, I recommend you to try the gitee repository [https://gitee.com/iszhouxin/ego_planner](https://gitee.com/iszhouxin/ego_planner). They synchronize automatically.
 
 # Acknowledgements
-The framework of this repository is based on [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner) by Zhou Boyu who achieves impressive proformance on quaorotor local planning.
+- The framework of this repository is based on [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner) by Zhou Boyu who achieves impressive proformance on quaorotor local planning.
 
-The L-BFGS solver we use is from [xxx](xxx). 
+- The L-BFGS solver we use is from [xxx](xxx). 
 It is a C++ head-only single file, which is lightweight and easy to use.
 
-The map generated in simulation is from [mockamap](https://github.com/HKUST-Aerial-Robotics/mockamap) by Willim Wu.
+- The map generated in simulation is from [mockamap](https://github.com/HKUST-Aerial-Robotics/mockamap) by Willim Wu.
 
-The hardware architecture is based on an open source implemation from [Teach-Repeat-Replan](https://github.com/HKUST-Aerial-Robotics/Teach-Repeat-Replan).
+- The hardware architecture is based on an open source implemation from [Teach-Repeat-Replan](https://github.com/HKUST-Aerial-Robotics/Teach-Repeat-Replan).
 
 # EGO-Planner 
 EGO-Planner: An ESDF-free Gradient-based Local Planner for Quadrotors
 
-**EGO-Planner** is a lightweight gradient-based local planner without ESDF construction, which significantly reduces computation time (around 1ms) compared to some state-of-the-art methods <!--(EWOK and Fast-Planner)-->.
+**EGO-Planner** is a lightweight gradient-based local planner without ESDF construction, which significantly reduces computation time (**around 1ms**) compared to some state-of-the-art methods <!--(EWOK and Fast-Planner)-->.
 
 <p align = "center">
 <img src="pictures/title.gif" width = "413" height = "232" border="5" />
@@ -36,18 +36,18 @@ EGO-Planner: An ESDF-free Gradient-based Local Planner for Quadrotors
 **Video Links:** [YouTube](https://youtu.be/UKoaGW7t7Dk), [bilibili](https://www.bilibili.com/video/BV1VC4y1t7F4/) (for Mainland China)
 
 ## 1. Related Paper
-
+EGO-Planner: An ESDF-free Gradient-based Local Planner for Quadrotors, Xin Zhou, Zhepei Wang, Chao Xu and Fei Gao (Will be released soon).
 
 ## 2. Standard Compilation
 
 **Requirements**: ubuntu 16.04, 18.04 or 20.04 with ros-desktop-full installation.
 
-**Step 1**: Install [Armadillo](http://arma.sourceforge.net/), which is required by **uav_simulator**.
+**Step 1**. Install [Armadillo](http://arma.sourceforge.net/), which is required by **uav_simulator**.
 ```
 sudo apt-get install libarmadillo-dev
 ``` 
 
-**Step 2**: Clone the code from github or gitee. This two repositories synchronize automaticly.
+**Step 2**. Clone the code from github or gitee. This two repositories synchronize automaticly.
 
 From github,
 ```
@@ -59,15 +59,15 @@ Or from gitee,
 git clone https://gitee.com/iszhouxin/ego_planner.git
 ```
 
-**Step 3**: Compile,
+**Step 3**. Compile,
 ```
 cd ego-planner
 catkin_make -DCMAKE_BUILD_TYPE=Release
 ```
 
-**Step 4**: Run.
+**Step 4**. Run.
 
-In a terminal at the _ego-planner_ folder, open the rviz for visuallization and interactions
+In a terminal at the _ego-planner/_ folder, open the rviz for visuallization and interactions
 ```
 source devel/setup.bash
 roslaunch ego-planner rviz.launch
@@ -86,23 +86,28 @@ Then you can follow the gif below to control the drone.
 </p>
 
 ## 3. Using an IDE
-We recommend using vscode, the project file has been included in the code you have cloned, which is the _.vscode_ folder.
-This folder is hidden by default.
+We recommend using [vscode](https://code.visualstudio.com/), the project file has been included in the code you have cloned, which is the _.vscode_ folder.
+This folder is **hidden** by default.
+Follow the steps below to configure the IDE for auto code completion & jump.
+It will take 3 minutes.
 
-First, re-compile the code using command
+**Step 1**. Install C++ and CMake extentions in vscode.
+
+**Step 2**. Re-compile the code using command
 ```
 catkin_make -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=Yes
 ```
 It will export a compile commands file, which can help vscode to determine the code architecture.
 
-Then launch vscode and select the _ego-planner_ folder to open.
+**Step 3**. Launch vscode and select the _ego-planner_ folder to open.
 ```
 code ~/<......>/ego-planner/
 ```
 
-Press Ctrl+Shift+B to compile the code in vscode. This command is defined in _.vscode/tasks.json_.
+Press **Ctrl+Shift+B** in vscode to compile the code. This command is defined in _.vscode/tasks.json_.
+You can add customized arguments after **"args"**. The default is **"-DCMAKE_BUILD_TYPE=Release"**.
 
-Then close and re-launch vscode, you will see the vscode has already understood the code architecture and can perform auto completion & jump.
+**Step 4**. Close and re-launch vscode, you will see the vscode has already understood the code architecture and can perform auto completion & jump.
 
  ## 4. Use GPU or Not
  Packages in this repo, **local_sensing** have GPU, CPU two different versions. By default, they are in CPU version for better compatibility. By changing
