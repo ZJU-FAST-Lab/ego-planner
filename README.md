@@ -29,13 +29,8 @@ EGO-Planner: An ESDF-free Gradient-based Local Planner for Quadrotors
 <p align = "center">
 <img src="pictures/title.gif" width = "413" height = "232" border="5" />
 <img src="pictures/comp.jpg" width = "413" height = "232" border="5" />
-<<<<<<< HEAD
-<img src="pictures/outdoor1.gif" width = "413" height = "232" border="5" />
-<img src="pictures/indoor2.gif" width = "413" height = "232" border="5" />
-=======
 <img src="pictures/indoor.gif" width = "413" height = "232" border="5" />
 <img src="pictures/outdoor.gif" width = "413" height = "232" border="5" />
->>>>>>> 0757bf83dc5076697d7ad61e751ba7aecdcf30cf
 </p>
 
 **Video Links:** [YouTube](https://youtu.be/UKoaGW7t7Dk), [bilibili](https://www.bilibili.com/video/BV1VC4y1t7F4/) (for Mainland China)
