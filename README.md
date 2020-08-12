@@ -146,7 +146,7 @@ More information can be found in [http://www.thinkwiki.org/wiki/How_to_use_cpufr
 
 Note that CPU frequency may still decrease due to high temperature in high load.
 
-## 5. Improved ROS-RealSense Driver
+# Improved ROS-RealSense Driver
 
 We modified the ros-relasense driver to enable the laser emitter strobe every other frame, allowing the device to output high quality depth images with the help of emitter, and along with binocular images free from laser interference.
 
@@ -161,6 +161,8 @@ Parameter ```emitter_on_off``` is to turn on/off the added feature.
 Note that if this feature is turned on, the output frame rate from the device will be reduced to half of the frame rate you set, since the device uses half of the stream for depth estimation and the other half as binocular grayscale outputs.
 
 Note that when ```emitter_on_off``` is set to true, parameters ```depth_fps``` and ```infra_fps``` must be identical, and ```enable_emitter``` must be true as well.
+
+##  Install
 
 The driver of librealsense2 2.30.0 should be installed explicitly.
 Firstly, remove the currently installed driver by 
@@ -193,6 +195,9 @@ Here you should be able to varify the installation by
 ```
 realsense_viewer
 ```
+
+##  Run
+
 If everything looks well, you can now compile the ros-realsense package named _modified_realsense2_camera.zip_ by ```catkin_make```, then run ros realsense node by 
 ```
 roslaunch realsense_camera rs_camera.launch
