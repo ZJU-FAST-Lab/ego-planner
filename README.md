@@ -79,7 +79,7 @@ roslaunch ego-planner run_in_sim.launch
 Then you can follow the gif below to select you targets.
 
 <p align = "center">
-<img src="files/drone_race_2.gif" width = "640" height = "438" border="5" />
+<img src="pictures/sim_demo.gif" width = "640" height = "438" border="5" />
 </p>
 
 ## 2. Using an IDE
