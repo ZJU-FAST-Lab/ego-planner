@@ -24,15 +24,13 @@ The hardware architecture is based on an open source implemation from [Teach-Rep
 # EGO-Planner 
 EGO-Planner: An ESDF-free Gradient-based Local Planner for Quadrotors
 
-
-
-**EGO-Planner** is a lightweight gradient-based local planner without ESDF construction, which significantly reduces computation time compared to some state-of-the-art methods <!--(EWOK and Fast-Planner)-->.
+**EGO-Planner** is a lightweight gradient-based local planner without ESDF construction, which significantly reduces computation time (around 1ms) compared to some state-of-the-art methods <!--(EWOK and Fast-Planner)-->.
 
 <p align = "center">
-<img src="files/drone_race_2.gif" width = "413" height = "264" border="5" />
-<img src="files/drone_race_2.gif" width = "413" height = "264" border="5" />
-<img src="files/drone_race_2.gif" width = "413" height = "264" border="5" />
-<img src="files/drone_race_2.gif" width = "413" height = "264" border="5" />
+<img src="pictures/title.gif" width = "413" height = "264" border="5" />
+<img src="pictures/comp.jpg" width = "413" height = "264" border="5" />
+<img src="pictures/indoor2.gif" width = "413" height = "264" border="5" />
+<img src="pictures/outdoor1.gif" width = "413" height = "264" border="5" />
 </p>
 
 **Video Links:** [YouTube](https://youtu.be/UKoaGW7t7Dk), [bilibili](https://www.bilibili.com/video/BV1VC4y1t7F4/) (for Mainland China)
@@ -84,8 +82,8 @@ Then you can follow the gif below to select you targets.
 <img src="files/drone_race_2.gif" width = "800" height = "600" border="5" />
 </p>
 
-## 2. Read and modify the code using an IDE
-We recommend using vscode, which is lightweight and more importantly, the project file has been included in the code you cloned, which the _.vscode_ folder.
+## 2. Using an IDE
+We recommend using vscode, the project file has been included in the code you cloned, which is the _.vscode_ folder.
 This folder is hidden by default.
 
 First, re-compile the code using command
@@ -94,13 +92,16 @@ catkin_make -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=Yes
 ```
 It will export a compile commands file, which can help vscode to determine the code architecture.
 
-Then launch vscode and select the _ego-planner_ folder which will be opened.
+Then launch vscode and select the _ego-planner_ folder to open.
+```
+code ~/<......>/ego-planner/
+```
 
 Press Ctrl+Shift+B to compile the code in vscode. This command is defined in _.vscode/tasks.json_.
 
 Then close and restart vscode, you will see the vscode has already known the code architecture and can perform auto completion & jump.
 
- ## 2.Use GPU or Not
+ ## 3.Use GPU or Not
  Packages in this repo, **local_sensing** have GPU, CPU two different versions. By default, they are in CPU version for better compatibility. By changing
  
  ```
@@ -128,6 +129,22 @@ Don't forget to re-compile the code!
 **local_sensing** is the simulated sensors. If ```ENABLE_CUDA``` **true**, it mimics the depth measured by stereo cameras and renders a depth image by GPU. If ```ENABLE_CUDA``` **false**, it will publish pointclouds with no ray-casting. Our local mapping module automatically selects whether depth images or pointclouds as its input.
 
 For installation of CUDA, please go to [CUDA ToolKit](https://developer.nvidia.com/cuda-toolkit)
+
+## 4.Utilize the Full Performance of CPU
+The computation time of our planner is too short to let the OS to increase CPU frequency, which makes the computation time tend to be longer and unstable.
+
+Therefore, we recommend that you manually set the CPU frequency to the maximum.
+Install this tool by
+```
+sudo apt install cpufrequtils
+```
+Then you can set the CPU frequency to the maximum allowed by
+```
+sudo cpufreq-set -g performance
+```
+More information can be found in [http://www.thinkwiki.org/wiki/How_to_use_cpufrequtils](http://www.thinkwiki.org/wiki/How_to_use_cpufrequtils).
+
+Note that CPU frequency may still decrease due to high temperature in high load.
  
 ## 6. Licence
 The source code is released under [GPLv3](http://www.gnu.org/licenses/) license.
@@ -135,6 +152,6 @@ The source code is released under [GPLv3](http://www.gnu.org/licenses/) license.
 ## 7. Maintaince
 We are still working on extending the proposed system and improving code reliability. 
 
-For any technical issues, please contact Fei GAO <fgaoaa@connect.ust.hk> or Boyu ZHOU <bzhouai@connect.ust.hk>.
+For any technical issues, please contact Xin Zhou (iszhouxin@zju.edu.cn) or Fei GAO (fgaoaa@zju.edu.cn).
 
-For commercial inquiries, please contact Shaojie SHEN <eeshaojie@ust.hk>
+For commercial inquiries, please contact Fei GAO (fgaoaa@zju.edu.cn).
