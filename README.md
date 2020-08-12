@@ -27,10 +27,10 @@ EGO-Planner: An ESDF-free Gradient-based Local Planner for Quadrotors
 **EGO-Planner** is a lightweight gradient-based local planner without ESDF construction, which significantly reduces computation time (around 1ms) compared to some state-of-the-art methods <!--(EWOK and Fast-Planner)-->.
 
 <p align = "center">
-<img src="pictures/title.gif" width = "413" height = "264" border="5" />
-<img src="pictures/comp.jpg" width = "413" height = "264" border="5" />
-<img src="pictures/indoor2.gif" width = "413" height = "264" border="5" />
-<img src="pictures/outdoor1.gif" width = "413" height = "264" border="5" />
+<img src="pictures/title.gif" width = "413" height = "232" border="5" />
+<img src="pictures/comp.jpg" width = "413" height = "232" border="5" />
+<img src="pictures/indoor.gif" width = "413" height = "232" border="5" />
+<img src="pictures/outdoor.gif" width = "413" height = "232" border="5" />
 </p>
 
 **Video Links:** [YouTube](https://youtu.be/UKoaGW7t7Dk), [bilibili](https://www.bilibili.com/video/BV1VC4y1t7F4/) (for Mainland China)
@@ -79,7 +79,7 @@ roslaunch ego-planner run_in_sim.launch
 Then you can follow the gif below to select you targets.
 
 <p align = "center">
-<img src="files/drone_race_2.gif" width = "800" height = "600" border="5" />
+<img src="files/drone_race_2.gif" width = "640" height = "438" border="5" />
 </p>
 
 ## 2. Using an IDE
