@@ -55,6 +55,7 @@ private:
   bool            enable_motors_;
   bool            use_external_yaw_;
   double          kR_[3], kOm_[3], corrections_[3];
+  double          init_x_, init_y_, init_z_;
 };
 
 void
@@ -99,8 +100,15 @@ SO3ControlNodelet::position_cmd_callback(
   des_vel_ = Eigen::Vector3d(cmd->velocity.x, cmd->velocity.y, cmd->velocity.z);
   des_acc_ = Eigen::Vector3d(cmd->acceleration.x, cmd->acceleration.y,
                              cmd->acceleration.z);
-  kx_ = Eigen::Vector3d(cmd->kx[0], cmd->kx[1], cmd->kx[2]);
-  kv_ = Eigen::Vector3d(cmd->kv[0], cmd->kv[1], cmd->kv[2]);
+
+  if ( cmd->kx[0] > 1e-5 || cmd->kx[1] > 1e-5 || cmd->kx[2] > 1e-5 )
+  {
+    kx_ = Eigen::Vector3d(cmd->kx[0], cmd->kx[1], cmd->kx[2]);
+  }
+  if ( cmd->kv[0] > 1e-5 || cmd->kv[1] > 1e-5 || cmd->kv[2] > 1e-5 )
+  {
+    kv_ = Eigen::Vector3d(cmd->kv[0], cmd->kv[1], cmd->kv[2]);
+  }
 
   des_yaw_              = cmd->yaw;
   des_yaw_dot_          = cmd->yaw_dot;
@@ -137,6 +145,14 @@ SO3ControlNodelet::odom_callback(const nav_msgs::Odometry::ConstPtr& odom)
       publishSO3Command();
     position_cmd_updated_ = false;
   }
+  else if ( init_z_ > -9999.0 )
+  {
+    des_pos_ = Eigen::Vector3d(init_x_, init_y_, init_z_);
+    des_vel_ = Eigen::Vector3d(0,0,0);
+    des_acc_ = Eigen::Vector3d(0,0,0);
+    publishSO3Command();
+  }
+  
 }
 
 void
@@ -189,10 +205,20 @@ SO3ControlNodelet::onInit(void)
   n.param("gains/ang/x", kOm_[0], 0.13);
   n.param("gains/ang/y", kOm_[1], 0.13);
   n.param("gains/ang/z", kOm_[2], 0.1);
+  n.param("gains/kx/x", kx_[0], 5.7);
+  n.param("gains/kx/y", kx_[1], 5.7);
+  n.param("gains/kx/z", kx_[2], 6.2);
+  n.param("gains/kv/x", kv_[0], 3.4);
+  n.param("gains/kv/y", kv_[1], 3.4);
+  n.param("gains/kv/z", kv_[2], 4.0);
 
   n.param("corrections/z", corrections_[0], 0.0);
   n.param("corrections/r", corrections_[1], 0.0);
   n.param("corrections/p", corrections_[2], 0.0);
+
+  n.param("so3_control/init_state_x", init_x_, 0.0);
+  n.param("so3_control/init_state_y", init_y_, 0.0);
+  n.param("so3_control/init_state_z", init_z_, -10000.0);
 
   so3_command_pub_ = n.advertise<quadrotor_msgs::SO3Command>("so3_cmd", 10);
 

@@ -174,6 +174,12 @@ target_link_libraries(so3_control_nodelet
     SO3Control
 )
 
+
+add_executable(control_example src/control_example.cpp)
+target_link_libraries(control_example 
+${catkin_LIBRARIES}
+)
+
 ## Add cmake target dependencies of the executable/library
 ## as an example, message headers may need to be generated before nodes
 # add_dependencies(multi_map_visualization multi_map_server_messages_cpp)

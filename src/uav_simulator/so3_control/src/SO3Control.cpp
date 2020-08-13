@@ -45,27 +45,38 @@ SO3Control::calculateControl(const Eigen::Vector3d& des_pos,
   //  ROS_INFO("Error %lf %lf %lf", (des_pos - pos_).norm(),
   //           (des_vel - vel_).norm(), (des_acc - acc_).norm());
 
-  Eigen::Vector3d totalError =
-    (des_pos - pos_) + (des_vel - vel_) + (des_acc - acc_);
+  bool flag_use_pos = !(std::isnan(des_pos(0)) || std::isnan(des_pos(1)) || std::isnan(des_pos(2)));
+  bool flag_use_vel = !(std::isnan(des_vel(0)) || std::isnan(des_vel(1)) || std::isnan(des_vel(2)));
+  bool flag_use_acc = !(std::isnan(des_acc(0)) || std::isnan(des_acc(1)) || std::isnan(des_acc(2)));
+
+  Eigen::Vector3d totalError(Eigen::Vector3d::Zero());
+  if ( flag_use_pos ) totalError.noalias() += des_pos - pos_;
+  if ( flag_use_vel ) totalError.noalias() += des_vel - vel_;
+  if ( flag_use_acc ) totalError.noalias() += des_acc - acc_;
 
   Eigen::Vector3d ka(fabs(totalError[0]) > 3 ? 0 : (fabs(totalError[0]) * 0.2),
                      fabs(totalError[1]) > 3 ? 0 : (fabs(totalError[1]) * 0.2),
                      fabs(totalError[2]) > 3 ? 0 : (fabs(totalError[2]) * 0.2));
 
-  force_.noalias() =
-    kx.asDiagonal() * (des_pos - pos_) + kv.asDiagonal() * (des_vel - vel_) +
-    mass_ * /*(Eigen::Vector3d(1, 1, 1) - ka).asDiagonal() **/ (des_acc) +
-    mass_ * ka.asDiagonal() * (des_acc - acc_) +
-    mass_ * g_ * Eigen::Vector3d(0, 0, 1);
+  // std::cout << des_pos.transpose() << std::endl;
+  // std::cout << des_vel.transpose() << std::endl;
+  // std::cout << des_acc.transpose() << std::endl;
+  // std::cout << des_yaw << std::endl;
+  // std::cout << pos_.transpose() << std::endl;
+  // std::cout << vel_.transpose() << std::endl;
+  // std::cout << acc_.transpose() << std::endl;
+  
+
+  force_ = mass_ * g_ * Eigen::Vector3d(0, 0, 1);
+  if ( flag_use_pos ) force_.noalias() += kx.asDiagonal() * (des_pos - pos_);
+  if ( flag_use_vel ) force_.noalias() += kv.asDiagonal() * (des_vel - vel_);
+  if ( flag_use_acc ) force_.noalias() += mass_ * ka.asDiagonal() * (des_acc - acc_) + mass_ * (des_acc);
 
   // Limit control angle to 45 degree
   double          theta = M_PI / 2;
   double          c     = cos(theta);
   Eigen::Vector3d f;
-  f.noalias() = kx.asDiagonal() * (des_pos - pos_) +
-                kv.asDiagonal() * (des_vel - vel_) + //
-                mass_ * des_acc +                    //
-                mass_ * ka.asDiagonal() * (des_acc - acc_);
+  f.noalias() = force_ - mass_ * g_ * Eigen::Vector3d(0, 0, 1);
   if (Eigen::Vector3d(0, 0, 1).dot(force_ / force_.norm()) < c)
   {
     double nf        = f.norm();

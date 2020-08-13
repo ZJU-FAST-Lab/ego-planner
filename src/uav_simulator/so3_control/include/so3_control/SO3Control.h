@@ -23,6 +23,7 @@ public:
   const Eigen::Vector3d&    getComputedForce(void);
   const Eigen::Quaterniond& getComputedOrientation(void);
 
+
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 private:

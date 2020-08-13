@@ -1,7 +1,7 @@
 <launch>
   <arg name="init_x" value="-18.0"/>
   <arg name="init_y" value="0.0"/>
-  <arg name="init_z" value="1.0"/> 
+  <arg name="init_z" value="0.0"/> 
   <arg name="obj_num" value="1" />
   <arg name="map_size_x_"/>
   <arg name="map_size_y_"/>
@@ -86,6 +86,9 @@
   </node>
  
   <node pkg="nodelet" type="nodelet" args="standalone so3_control/SO3ControlNodelet" name="so3_control" required="true" output="screen">
+        <param name="so3_control/init_state_x" value="$(arg init_x)"/>
+        <param name="so3_control/init_state_y" value="$(arg init_y)"/>
+        <param name="so3_control/init_state_z" value="$(arg init_z)"/>
         <remap from="~odom" to="/visual_slam/odom"/>
         <remap from="~position_cmd" to="/planning/pos_cmd"/>
         <remap from="~motors" to="motors"/>

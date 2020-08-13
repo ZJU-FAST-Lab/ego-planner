@@ -9,7 +9,9 @@ catkin_make
 source devel/setup.bash
 roslaunch ego_planner simple_run.launch
 ```
-If your link to github is slow, I recommend you to try the gitee repository [https://gitee.com/iszhouxin/ego_planner](https://gitee.com/iszhouxin/ego_planner). They synchronize automatically.
+If your network to github is slow, We recommend you to try the gitee repository [https://gitee.com/iszhouxin/ego_planner](https://gitee.com/iszhouxin/ego_planner). They synchronize automatically.
+
+If you find this work useful or interesting, please kindly give us a star 🌟, thanks!
 
 # Acknowledgements
 The framework of this repository is based on [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner) by Zhou Boyu who achieves impressive proformance on quaorotor local planning.
@@ -169,7 +171,7 @@ Firstly, remove the currently installed driver by
 ```
 sudo apt remove librealsense2-utils
 ```
-Then, you can install the library of version 2.20.0 by
+Then, you can install the library of version 2.30.0 by
 ```
 sudo apt-key adv --keyserver keys.gnupg.net --recv-key F6E65AC044F831AC80A06380C8B3A55A6F3EFCDE || sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-key F6E65AC044F831AC80A06380C8B3A55A6F3EFCDE
 ```
@@ -202,6 +204,18 @@ If everything looks well, you can now compile the ros-realsense package named _m
 ```
 roslaunch realsense_camera rs_camera.launch
 ```
+
+# A Lightweight Quadrotor Simulator
+
+The quadrotor simulator we use is inherited and modified from [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner). 
+It is lightweight and super easy to use.
+Only one topic is required to control the drone.
+You can execute 
+```
+roslaunch so3_quadrotor_simulator simulator_example.launch 
+```
+to run a simple example in ego-planner/src/uav_simulator/so3/control/src/control_example.cpp.
+If this simulator is helpful to you, plaease kindly give a star to [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner) as well.
 
 ## 6. Licence
 The source code is released under [GPLv3](http://www.gnu.org/licenses/) license.

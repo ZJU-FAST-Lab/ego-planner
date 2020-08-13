@@ -5,7 +5,8 @@
 
 using namespace ego_planner;
 
-int main(int argc, char** argv) {
+int main(int argc, char **argv)
+{
   ros::init(argc, argv, "ego_planner_node");
   ros::NodeHandle nh("~");
 
