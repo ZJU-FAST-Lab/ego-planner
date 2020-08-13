@@ -227,7 +227,7 @@ You can execute
 ```
 roslaunch so3_quadrotor_simulator simulator_example.launch 
 ```
-to run a simple example in _ego-planner/src/uav_simulator/so3/control/src/control_example.cpp_.
+to run a simple example in ego-planner/src/uav_simulator/so3/control/src/control_example.cpp.
 If this simulator is helpful to you, plaease kindly give a star to [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner) as well.
 
 ## 6. Licence
