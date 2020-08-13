@@ -1,5 +1,5 @@
-# Quick Start within 3 Minutes
-Compiling tests on ubuntu 16.04, 18.04 and 20.04 with ros installed all passed.
+# Quick Start within **3 Minutes**
+Compiling tests passed on ubuntu **16.04, 18.04 and 20.04** with ros installed.
 You can just execute the commands one by one.
 ```
 sudo apt-get install libarmadillo-dev
@@ -9,24 +9,28 @@ catkin_make
 source devel/setup.bash
 roslaunch ego_planner simple_run.launch
 ```
+<<<<<<< HEAD
 If your network to github is slow, We recommend you to try the gitee repository [https://gitee.com/iszhouxin/ego_planner](https://gitee.com/iszhouxin/ego_planner). They synchronize automatically.
 
 If you find this work useful or interesting, please kindly give us a star :star:, thanks!
+=======
+If your network to github is slow, I recommend you to try the gitee repository [https://gitee.com/iszhouxin/ego_planner](https://gitee.com/iszhouxin/ego_planner). They synchronize automatically.
+>>>>>>> b38256deb021ab111666bfef3cf03a459b034ce9
 
 # Acknowledgements
-The framework of this repository is based on [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner) by Zhou Boyu who achieves impressive proformance on quaorotor local planning.
+- The framework of this repository is based on [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner) by Zhou Boyu who achieves impressive proformance on quaorotor local planning.
 
-The L-BFGS solver we use is modified by wangzhepei@zju.edu.cn from [xxx](xxx). 
+- The L-BFGS solver we use is from [xxx](xxx). 
 It is a C++ head-only single file, which is lightweight and easy to use.
 
-The map generated in simulation is from [mockamap](https://github.com/HKUST-Aerial-Robotics/mockamap) by Willim Wu.
+- The map generated in simulation is from [mockamap](https://github.com/HKUST-Aerial-Robotics/mockamap) by Willim Wu.
 
-The hardware architecture is based on an open source implemation from [Teach-Repeat-Replan](https://github.com/HKUST-Aerial-Robotics/Teach-Repeat-Replan).
+- The hardware architecture is based on an open source implemation from [Teach-Repeat-Replan](https://github.com/HKUST-Aerial-Robotics/Teach-Repeat-Replan).
 
 # EGO-Planner 
 EGO-Planner: An ESDF-free Gradient-based Local Planner for Quadrotors
 
-**EGO-Planner** is a lightweight gradient-based local planner without ESDF construction, which significantly reduces computation time (around 1ms) compared to some state-of-the-art methods <!--(EWOK and Fast-Planner)-->.
+**EGO-Planner** is a lightweight gradient-based local planner without ESDF construction, which significantly reduces computation time (**around 1ms**) compared to some state-of-the-art methods <!--(EWOK and Fast-Planner)-->.
 
 <p align = "center">
 <img src="pictures/title.gif" width = "413" height = "232" border="5" />
@@ -37,80 +41,88 @@ EGO-Planner: An ESDF-free Gradient-based Local Planner for Quadrotors
 
 **Video Links:** [YouTube](https://youtu.be/UKoaGW7t7Dk), [bilibili](https://www.bilibili.com/video/BV1VC4y1t7F4/) (for Mainland China)
 
-## 1. Standard Compilation
+## 1. Related Paper
+EGO-Planner: An ESDF-free Gradient-based Local Planner for Quadrotors, Xin Zhou, Zhepei Wang, Chao Xu and Fei Gao (Will be released soon).
+
+## 2. Standard Compilation
 
 **Requirements**: ubuntu 16.04, 18.04 or 20.04 with ros-desktop-full installation.
 
-**Step 1**: install [Armadillo](http://arma.sourceforge.net/), which is required by **uav_simulator**.
+**Step 1**. Install [Armadillo](http://arma.sourceforge.net/), which is required by **uav_simulator**.
 ```
 sudo apt-get install libarmadillo-dev
 ``` 
 
-**Step 2**: clone the code from github or gitee (for Mainland China). This two repositories synchronize automaticly.
+**Step 2**. Clone the code from github or gitee. This two repositories synchronize automaticly.
 
-From github
+From github,
 ```
 git clone https://github.com/bigsuperZZZX/ego-planner.git
 ```
 
-Or from gitee
+Or from gitee,
 ```
 git clone https://gitee.com/iszhouxin/ego_planner.git
 ```
 
-**Step 3**: compile.
+**Step 3**. Compile,
 ```
 cd ego-planner
 catkin_make -DCMAKE_BUILD_TYPE=Release
 ```
 
-**Step 4**: run.
+**Step 4**. Run.
 
-In a terminal at the _ego-planner_ folder, open the rviz for visuallization and interactions
+In a terminal at the _ego-planner/_ folder, open the rviz for visuallization and interactions
 ```
 source devel/setup.bash
 roslaunch ego-planner rviz.launch
 ```
 
-In another terminal at the same folder, run the simulation and planner by
+In another terminal at the _ego-planner/_, run the planner in simulation by
 ```
 source devel/setup.bash
 roslaunch ego-planner run_in_sim.launch
 ```
 
-Then you can follow the gif below to select you targets.
+Then you can follow the gif below to control the drone.
 
 <p align = "center">
 <img src="pictures/sim_demo.gif" width = "640" height = "438" border="5" />
 </p>
 
-## 2. Using an IDE
-We recommend using vscode, the project file has been included in the code you cloned, which is the _.vscode_ folder.
-This folder is hidden by default.
+## 3. Using an IDE
+We recommend using [vscode](https://code.visualstudio.com/), the project file has been included in the code you have cloned, which is the _.vscode_ folder.
+This folder is **hidden** by default.
+Follow the steps below to configure the IDE for auto code completion & jump.
+It will take 3 minutes.
 
-First, re-compile the code using command
+**Step 1**. Install C++ and CMake extentions in vscode.
+
+**Step 2**. Re-compile the code using command
 ```
 catkin_make -DCMAKE_BUILD_TYPE=Release -DCMAKE_EXPORT_COMPILE_COMMANDS=Yes
 ```
 It will export a compile commands file, which can help vscode to determine the code architecture.
 
-Then launch vscode and select the _ego-planner_ folder to open.
+**Step 3**. Launch vscode and select the _ego-planner_ folder to open.
 ```
 code ~/<......>/ego-planner/
 ```
 
-Press Ctrl+Shift+B to compile the code in vscode. This command is defined in _.vscode/tasks.json_.
+Press **Ctrl+Shift+B** in vscode to compile the code. This command is defined in _.vscode/tasks.json_.
+You can add customized arguments after **"args"**. The default is **"-DCMAKE_BUILD_TYPE=Release"**.
 
-Then close and restart vscode, you will see the vscode has already known the code architecture and can perform auto completion & jump.
+**Step 4**. Close and re-launch vscode, you will see the vscode has already understood the code architecture and can perform auto completion & jump.
 
- ## 3. Use GPU or Not
+ ## 4. Use GPU or Not
  Packages in this repo, **local_sensing** have GPU, CPU two different versions. By default, they are in CPU version for better compatibility. By changing
  
  ```
  set(ENABLE_CUDA false)
  ```
  
- in the CMakeList.txt in **local_sensing** packages, to
+ in the _CMakeList.txt_ in **local_sensing** packages, to
  
  ```
  set(ENABLE_CUDA true)
@@ -124,7 +136,7 @@ Please remember to also change the 'arch' and 'code' flags in the line of
       -gencode arch=compute_61,code=sm_61;
     ) 
 ``` 
-in 'CMakeList', if you encounter compiling error due to different Nvidia graphics card you use. You can check the right code [here](https://github.com/tpruvot/ccminer/wiki/Compatibility).
+in _CMakeList.txt_, if you encounter compiling error due to different Nvidia graphics card you use. You can check the right code [here](https://github.com/tpruvot/ccminer/wiki/Compatibility).
  
 Don't forget to re-compile the code!
 
@@ -132,11 +144,11 @@ Don't forget to re-compile the code!
 
 For installation of CUDA, please go to [CUDA ToolKit](https://developer.nvidia.com/cuda-toolkit)
 
-## 4. Utilize the Full Performance of CPU
-The computation time of our planner is too short to let the OS to increase CPU frequency, which makes the computation time tend to be longer and unstable.
+## 5. Utilize the Full Performance of CPU
+The computation time of our planner is too short for the OS to increase CPU frequency, which makes the computation time tend to be longer and unstable.
 
-Therefore, we recommend that you manually set the CPU frequency to the maximum.
-Install this tool by
+Therefore, we recommend you to manually set the CPU frequency to the maximum.
+Firstly, install a tool by
 ```
 sudo apt install cpufrequtils
 ```
@@ -153,24 +165,28 @@ Note that CPU frequency may still decrease due to high temperature in high load.
 We modified the ros-relasense driver to enable the laser emitter strobe every other frame, allowing the device to output high quality depth images with the help of emitter, and along with binocular images free from laser interference.
 
 <p align = "center">
-<img src="pictures/realsense.gif" width = "640" height = "119" border="5" />
+<img src="pictures/realsense.PNG" width = "640" height = "158" border="5" />
 </p>
 
 This ros-driver is modified from [https://github.com/IntelRealSense/realsense-ros](https://github.com/IntelRealSense/realsense-ros) and is compatible with librealsense2 2.30.0.
 Tests are performed on Intel RealSense D435 and D435i.
 
-Parameter ```emitter_on_off``` is to turn on/off the added feature.
-Note that if this feature is turned on, the output frame rate from the device will be reduced to half of the frame rate you set, since the device uses half of the stream for depth estimation and the other half as binocular grayscale outputs.
-
-Note that when ```emitter_on_off``` is set to true, parameters ```depth_fps``` and ```infra_fps``` must be identical, and ```enable_emitter``` must be true as well.
+Parameter ```emitter_on_off``` is to turn on/off the added function.
+Note that if this function is turned on, the output frame rate from the device will be reduced to half of the frame rate you set, since the device uses half of the stream for depth estimation and the other half as binocular grayscale outputs.
+What's more, parameters ```depth_fps``` and ```infra_fps``` must be identical, and ```enable_emitter``` must be true as well under this setting.
 
 ##  Install
 
 The driver of librealsense2 2.30.0 should be installed explicitly.
+On a x86 CPU, this can be performed easily within 5 minutes.
 Firstly, remove the currently installed driver by 
 ```
 sudo apt remove librealsense2-utils
 ```
+<<<<<<< HEAD
+=======
+or manually remove the files if you have installed the librealsense from source.
+>>>>>>> b38256deb021ab111666bfef3cf03a459b034ce9
 Then, you can install the library of version 2.30.0 by
 ```
 sudo apt-key adv --keyserver keys.gnupg.net --recv-key F6E65AC044F831AC80A06380C8B3A55A6F3EFCDE || sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-key F6E65AC044F831AC80A06380C8B3A55A6F3EFCDE
@@ -179,7 +195,7 @@ For ubuntu 16.04
 ```
 sudo add-apt-repository "deb http://realsense-hw-public.s3.amazonaws.com/Debian/apt-repo xenial main" -u
 ```
-For ubuntu18.04
+For ubuntu 18.04
 ```
 sudo add-apt-repository "deb http://realsense-hw-public.s3.amazonaws.com/Debian/apt-repo bionic main" -u
 ```
@@ -193,7 +209,7 @@ sudo apt install librealsense2-dev=2.30.0-0~realsense0.1693
 sudo apt remove librealsense2-udev-rules
 sudo apt install librealsense2-udev-rules=2.30.0-0~realsense0.1693
 ``` 
-Here you should be able to varify the installation by 
+Here you can varify the installation by 
 ```
 realsense_viewer
 ```
@@ -204,7 +220,9 @@ If everything looks well, you can now compile the ros-realsense package named _m
 ```
 roslaunch realsense_camera rs_camera.launch
 ```
+Then you will receive depth stream along with binocular stream together at 30Hz by default.
 
+<<<<<<< HEAD
 # A Lightweight Quadrotor Simulator
 
 The quadrotor simulator we use is inherited and modified from [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner). 
@@ -218,9 +236,12 @@ to run a simple example in ego-planner/src/uav_simulator/so3/control/src/control
 If this simulator is helpful to you, plaease kindly give a star to [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner) as well.
 
 ## 6. Licence
+=======
+# Licence
+>>>>>>> b38256deb021ab111666bfef3cf03a459b034ce9
 The source code is released under [GPLv3](http://www.gnu.org/licenses/) license.
 
-## 7. Maintaince
+# Maintaince
 We are still working on extending the proposed system and improving code reliability. 
 
 For any technical issues, please contact Xin Zhou (iszhouxin@zju.edu.cn) or Fei GAO (fgaoaa@zju.edu.cn).
