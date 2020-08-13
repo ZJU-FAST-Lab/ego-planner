@@ -11,7 +11,7 @@ roslaunch ego_planner simple_run.launch
 ```
 If your network to github is slow, We recommend you to try the gitee repository [https://gitee.com/iszhouxin/ego_planner](https://gitee.com/iszhouxin/ego_planner). They synchronize automatically.
 
-If you find this work useful or interesting, please kindly give us a star 🌟, thanks!
+If you find this work useful or interesting, please kindly give us a star :star:, thanks!
 
 # Acknowledgements
 The framework of this repository is based on [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner) by Zhou Boyu who achieves impressive proformance on quaorotor local planning.
