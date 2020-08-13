@@ -1,4 +1,4 @@
-# Quick Start within **3 Minutes**
+# Quick Start within 3 Minutes :grinning:
 Compiling tests passed on ubuntu **16.04, 18.04 and 20.04** with ros installed.
 You can just execute the commands one by one.
 ```
