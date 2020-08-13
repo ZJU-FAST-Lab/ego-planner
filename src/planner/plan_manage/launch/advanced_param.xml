@@ -50,6 +50,7 @@
     <param name="fsm/thresh_no_replan" value="2.0" type="double"/>
     <param name="fsm/planning_horizen" value="$(arg planning_horizen)" type="double"/> <!--always set to 1.5 times grater than sensing horizen-->
     <param name="fsm/planning_horizen_time" value="3" type="double"/>
+    <param name="fsm/emergency_time_" value="1.0" type="double"/>
 
     <param name="fsm/waypoint_num" value="$(arg point_num)" type="int"/>
     <param name="fsm/waypoint0_x" value="$(arg point0_x)" type="double"/>

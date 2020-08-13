@@ -4,7 +4,7 @@
 namespace ego_planner
 {
 
-  void ReboReplanFSM::init(ros::NodeHandle &nh)
+  void EGOReplanFSM::init(ros::NodeHandle &nh)
   {
     current_wp_ = 0;
     exec_state_ = FSM_EXEC_STATE::INIT;
@@ -17,6 +17,7 @@ namespace ego_planner
     nh.param("fsm/thresh_no_replan", no_replan_thresh_, -1.0);
     nh.param("fsm/planning_horizen", planning_horizen_, -1.0);
     nh.param("fsm/planning_horizen_time", planning_horizen_time_, -1.0);
+    nh.param("fsm/emergency_time_", emergency_time_, 1.0);
 
     nh.param("fsm/waypoint_num", waypoint_num_, -1);
     for (int i = 0; i < waypoint_num_; i++)
@@ -32,16 +33,16 @@ namespace ego_planner
     planner_manager_->initPlanModules(nh, visualization_);
 
     /* callback */
-    exec_timer_ = nh.createTimer(ros::Duration(0.01), &ReboReplanFSM::execFSMCallback, this);
-    safety_timer_ = nh.createTimer(ros::Duration(0.05), &ReboReplanFSM::checkCollisionCallback, this);
+    exec_timer_ = nh.createTimer(ros::Duration(0.01), &EGOReplanFSM::execFSMCallback, this);
+    safety_timer_ = nh.createTimer(ros::Duration(0.05), &EGOReplanFSM::checkCollisionCallback, this);
 
-    odom_sub_ = nh.subscribe("/odom_world", 1, &ReboReplanFSM::odometryCallback, this);
+    odom_sub_ = nh.subscribe("/odom_world", 1, &EGOReplanFSM::odometryCallback, this);
 
     bspline_pub_ = nh.advertise<ego_planner::Bspline>("/planning/bspline", 10);
     data_disp_pub_ = nh.advertise<ego_planner::DataDisp>("/planning/data_display", 100);
 
     if (target_type_ == TARGET_TYPE::MANUAL_TARGET)
-      waypoint_sub_ = nh.subscribe("/waypoint_generator/waypoints", 1, &ReboReplanFSM::waypointCallback, this);
+      waypoint_sub_ = nh.subscribe("/waypoint_generator/waypoints", 1, &EGOReplanFSM::waypointCallback, this);
     else if (target_type_ == TARGET_TYPE::PRESET_TARGET)
     {
       ros::Duration(1.0).sleep();
@@ -53,7 +54,7 @@ namespace ego_planner
       cout << "Wrong target_type_ value! target_type_=" << target_type_ << endl;
   }
 
-  void ReboReplanFSM::planGlobalTrajbyGivenWps()
+  void EGOReplanFSM::planGlobalTrajbyGivenWps()
   {
     std::vector<Eigen::Vector3d> wps(waypoint_num_);
     for (int i = 0; i < waypoint_num_; i++)
@@ -105,7 +106,7 @@ namespace ego_planner
     }
   }
 
-  void ReboReplanFSM::waypointCallback(const nav_msgs::PathConstPtr &msg)
+  void EGOReplanFSM::waypointCallback(const nav_msgs::PathConstPtr &msg)
   {
     if (msg->poses[0].pose.position.z < -0.1)
       return;
@@ -151,7 +152,7 @@ namespace ego_planner
     }
   }
 
-  void ReboReplanFSM::odometryCallback(const nav_msgs::OdometryConstPtr &msg)
+  void EGOReplanFSM::odometryCallback(const nav_msgs::OdometryConstPtr &msg)
   {
     odom_pos_(0) = msg->pose.pose.position.x;
     odom_pos_(1) = msg->pose.pose.position.y;
@@ -171,7 +172,7 @@ namespace ego_planner
     have_odom_ = true;
   }
 
-  void ReboReplanFSM::changeFSMExecState(FSM_EXEC_STATE new_state, string pos_call)
+  void EGOReplanFSM::changeFSMExecState(FSM_EXEC_STATE new_state, string pos_call)
   {
 
     if (new_state == exec_state_)
@@ -185,19 +186,19 @@ namespace ego_planner
     cout << "[" + pos_call + "]: from " + state_str[pre_s] + " to " + state_str[int(new_state)] << endl;
   }
 
-  std::pair<int, ReboReplanFSM::FSM_EXEC_STATE> ReboReplanFSM::timesOfConsecutiveStateCalls()
+  std::pair<int, EGOReplanFSM::FSM_EXEC_STATE> EGOReplanFSM::timesOfConsecutiveStateCalls()
   {
     return std::pair<int, FSM_EXEC_STATE>(continously_called_times_, exec_state_);
   }
 
-  void ReboReplanFSM::printFSMExecState()
+  void EGOReplanFSM::printFSMExecState()
   {
     static string state_str[7] = {"INIT", "WAIT_TARGET", "GEN_NEW_TRAJ", "REPLAN_TRAJ", "EXEC_TRAJ", "EMERGENCY_STOP"};
 
     cout << "[FSM]: state: " + state_str[int(exec_state_)] << endl;
   }
 
-  void ReboReplanFSM::execFSMCallback(const ros::TimerEvent &e)
+  void EGOReplanFSM::execFSMCallback(const ros::TimerEvent &e)
   {
 
     static int fsm_num = 0;
@@ -341,7 +342,7 @@ namespace ego_planner
     data_disp_pub_.publish(data_disp_);
   }
 
-  bool ReboReplanFSM::planFromCurrentTraj()
+  bool EGOReplanFSM::planFromCurrentTraj()
   {
 
     LocalTrajData *info = &planner_manager_->local_data_;
@@ -373,7 +374,7 @@ namespace ego_planner
     return true;
   }
 
-  void ReboReplanFSM::checkCollisionCallback(const ros::TimerEvent &e)
+  void EGOReplanFSM::checkCollisionCallback(const ros::TimerEvent &e)
   {
     LocalTrajData *info = &planner_manager_->local_data_;
     auto map = planner_manager_->grid_map_;
@@ -399,7 +400,7 @@ namespace ego_planner
         }
         else
         {
-          if (t - t_cur < 0.8) // 0.8s of emergency time
+          if (t - t_cur < emergency_time_) // 0.8s of emergency time
           {
             ROS_WARN("Suddenly discovered obstacles. emergency stop! time=%f", t - t_cur);
             changeFSMExecState(EMERGENCY_STOP, "SAFETY");
@@ -416,7 +417,7 @@ namespace ego_planner
     }
   }
 
-  bool ReboReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj)
+  bool EGOReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj)
   {
 
     getLocalTarget();
@@ -464,7 +465,7 @@ namespace ego_planner
     return plan_success;
   }
 
-  bool ReboReplanFSM::callEmergencyStop(Eigen::Vector3d stop_pos)
+  bool EGOReplanFSM::callEmergencyStop(Eigen::Vector3d stop_pos)
   {
 
     planner_manager_->EmergencyStop(stop_pos);
@@ -500,7 +501,7 @@ namespace ego_planner
     return true;
   }
 
-  void ReboReplanFSM::getLocalTarget()
+  void EGOReplanFSM::getLocalTarget()
   {
     double t;
 
