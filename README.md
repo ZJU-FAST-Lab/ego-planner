@@ -9,13 +9,9 @@ catkin_make
 source devel/setup.bash
 roslaunch ego_planner simple_run.launch
 ```
-<<<<<<< HEAD
 If your network to github is slow, We recommend you to try the gitee repository [https://gitee.com/iszhouxin/ego_planner](https://gitee.com/iszhouxin/ego_planner). They synchronize automatically.
 
 If you find this work useful or interesting, please kindly give us a star :star:, thanks!
-=======
-If your network to github is slow, I recommend you to try the gitee repository [https://gitee.com/iszhouxin/ego_planner](https://gitee.com/iszhouxin/ego_planner). They synchronize automatically.
->>>>>>> b38256deb021ab111666bfef3cf03a459b034ce9
 
 # Acknowledgements
 - The framework of this repository is based on [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner) by Zhou Boyu who achieves impressive proformance on quaorotor local planning.
@@ -222,7 +218,6 @@ roslaunch realsense_camera rs_camera.launch
 ```
 Then you will receive depth stream along with binocular stream together at 30Hz by default.
 
-<<<<<<< HEAD
 # A Lightweight Quadrotor Simulator
 
 The quadrotor simulator we use is inherited and modified from [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner). 
@@ -236,9 +231,6 @@ to run a simple example in ego-planner/src/uav_simulator/so3/control/src/control
 If this simulator is helpful to you, plaease kindly give a star to [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner) as well.
 
 ## 6. Licence
-=======
-# Licence
->>>>>>> b38256deb021ab111666bfef3cf03a459b034ce9
 The source code is released under [GPLv3](http://www.gnu.org/licenses/) license.
 
 # Maintaince
