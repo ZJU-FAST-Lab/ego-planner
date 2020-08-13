@@ -179,10 +179,7 @@ Firstly, remove the currently installed driver by
 ```
 sudo apt remove librealsense2-utils
 ```
-<<<<<<< HEAD
-=======
 or manually remove the files if you have installed the librealsense from source.
->>>>>>> b38256deb021ab111666bfef3cf03a459b034ce9
 Then, you can install the library of version 2.30.0 by
 ```
 sudo apt-key adv --keyserver keys.gnupg.net --recv-key F6E65AC044F831AC80A06380C8B3A55A6F3EFCDE || sudo apt-key adv --keyserver hkp://keyserver.ubuntu.com:80 --recv-key F6E65AC044F831AC80A06380C8B3A55A6F3EFCDE
