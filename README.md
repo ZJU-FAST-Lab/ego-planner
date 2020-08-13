@@ -1,4 +1,4 @@
-# Quick Start within 3 Minutes :grinning:
+# Quick Start within 3 Minutes 
 Compiling tests passed on ubuntu **16.04, 18.04 and 20.04** with ros installed.
 You can just execute the commands one by one.
 ```
@@ -11,7 +11,7 @@ roslaunch ego_planner simple_run.launch
 ```
 If your network to github is slow, We recommend you to try the gitee repository [https://gitee.com/iszhouxin/ego_planner](https://gitee.com/iszhouxin/ego_planner). They synchronize automatically.
 
-If you find this work useful or interesting, please kindly give us a star :star:, thanks!
+If you find this work useful or interesting, please kindly give us a star :star:, thanks!:grinning:
 
 # Acknowledgements
 - The framework of this repository is based on [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner) by Zhou Boyu who achieves impressive proformance on quaorotor local planning.
@@ -215,6 +215,7 @@ roslaunch realsense_camera rs_camera.launch
 ```
 Then you will receive depth stream along with binocular stream together at 30Hz by default.
 
+<!--
 # A Lightweight Quadrotor Simulator
 
 The quadrotor simulator we use is inherited and modified from [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner). 
@@ -225,7 +226,7 @@ You can execute
 roslaunch so3_quadrotor_simulator simulator_example.launch 
 ```
 to run a simple example in ego-planner/src/uav_simulator/so3/control/src/control_example.cpp.
-If this simulator is helpful to you, plaease kindly give a star to [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner) as well.
+If this simulator is helpful to you, plaease kindly give a star to [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner) as well.-->
 
 ## 6. Licence
 The source code is released under [GPLv3](http://www.gnu.org/licenses/) license.
