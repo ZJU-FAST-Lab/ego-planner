@@ -44,27 +44,26 @@
     
     <!-- global waypoints -->
     <!-- It generates a piecewise min-snap traj passing all waypoints -->
-    <arg name="point_num" value="4" />
+    <arg name="point_num" value="5" />
 
-    <arg name="point0_x" value="0.0" />
-    <arg name="point0_y" value="18.0" />
+    <arg name="point0_x" value="-15.0" />
+    <arg name="point0_y" value="0.0" />
     <arg name="point0_z" value="1.0" />
 
-    <!-- set more waypoints if you need -->
-    <arg name="point1_x" value="18.0" />
-    <arg name="point1_y" value="0.0" />
+    <arg name="point1_x" value="0.0" />
+    <arg name="point1_y" value="15.0" />
     <arg name="point1_z" value="1.0" />
 
-    <arg name="point2_x" value="0.0" />
-    <arg name="point2_y" value="-18.0" />
+    <arg name="point2_x" value="15.0" />
+    <arg name="point2_y" value="0.0" />
     <arg name="point2_z" value="1.0" />
 
-    <arg name="point3_x" value="-18.0" />
-    <arg name="point3_y" value="0.0" />
+    <arg name="point3_x" value="0.0" />
+    <arg name="point3_y" value="-15.0" />
     <arg name="point3_z" value="1.0" />
 
-    <arg name="point4_x" value="5.0" />
-    <arg name="point4_y" value="13.0" />
+    <arg name="point4_x" value="-15.0" />
+    <arg name="point4_y" value="0.0" />
     <arg name="point4_z" value="1.0" />
     
   </include>

@@ -3,13 +3,13 @@ Compiling tests passed on ubuntu **16.04, 18.04 and 20.04** with ros installed.
 You can just execute the commands one by one.
 ```
 sudo apt-get install libarmadillo-dev
-git clone https://github.com/ZJU-FAST-Lab/ego_planner.git
+git clone https://github.com/ZJU-FAST-Lab/ego-planner.git
 cd ego-planner
 catkin_make
 source devel/setup.bash
 roslaunch ego_planner simple_run.launch
 ```
-If your network to github is slow, We recommend you to try the gitee repository [https://gitee.com/iszhouxin/ego_planner](https://gitee.com/iszhouxin/ego_planner). They synchronize automatically.
+If your network to github is slow, We recommend you to try the gitee repository [https://gitee.com/iszhouxin/ego-planner](https://gitee.com/iszhouxin/ego-planner). They synchronize automatically.
 
 If you find this work useful or interesting, please kindly give us a star :star:, thanks!:grinning:
 
@@ -58,7 +58,7 @@ git clone https://github.com/bigsuperZZZX/ego-planner.git
 
 Or from gitee,
 ```
-git clone https://gitee.com/iszhouxin/ego_planner.git
+git clone https://gitee.com/iszhouxin/ego-planner.git
 ```
 
 **Step 3**. Compile,
@@ -72,13 +72,13 @@ catkin_make -DCMAKE_BUILD_TYPE=Release
 In a terminal at the _ego-planner/_ folder, open the rviz for visuallization and interactions
 ```
 source devel/setup.bash
-roslaunch ego-planner rviz.launch
+roslaunch ego_planner rviz.launch
 ```
 
 In another terminal at the _ego-planner/_, run the planner in simulation by
 ```
 source devel/setup.bash
-roslaunch ego-planner run_in_sim.launch
+roslaunch ego_planner run_in_sim.launch
 ```
 
 Then you can follow the gif below to control the drone.
