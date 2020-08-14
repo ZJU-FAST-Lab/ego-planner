@@ -1,6 +1,6 @@
 # Quick Start within 3 Minutes 
 Compiling tests passed on ubuntu **16.04, 18.04 and 20.04** with ros installed.
-You can just execute the commands one by one.
+You can just execute the following commands one by one.
 ```
 sudo apt-get install libarmadillo-dev
 git clone https://github.com/ZJU-FAST-Lab/ego-planner.git
