@@ -26,7 +26,7 @@ It is a C++ head-only single file, which is lightweight and easy to use. -->
 # EGO-Planner 
 EGO-Planner: An ESDF-free Gradient-based Local Planner for Quadrotors
 
-**EGO-Planner** is a lightweight gradient-based local planner without ESDF construction, which significantly reduces computation time (**around 1ms**) compared to some state-of-the-art methods <!--(EWOK and Fast-Planner)-->.
+**EGO-Planner** is a lightweight gradient-based local planner without ESDF construction, which significantly reduces computation time compared to some state-of-the-art methods <!--(EWOK and Fast-Planner)-->. The total planning time is only **around 1ms** and don't need to compute ESDF.
 
 <p align = "center">
 <img src="pictures/title.gif" width = "413" height = "232" border="5" />
