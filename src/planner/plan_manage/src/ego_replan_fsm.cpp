@@ -422,13 +422,13 @@ namespace ego_planner
 
     getLocalTarget();
 
-    bool plan_success =
+    bool plan_and_refine_success =
         planner_manager_->reboundReplan(start_pt_, start_vel_, start_acc_, local_target_pt_, local_target_vel_, (have_new_target_ || flag_use_poly_init), flag_randomPolyTraj);
     have_new_target_ = false;
 
-    cout << "final_plan_success=" << plan_success << endl;
+    cout << "refine_success=" << plan_and_refine_success << endl;
 
-    if (plan_success)
+    if (plan_and_refine_success)
     {
 
       auto info = &planner_manager_->local_data_;
@@ -462,7 +462,7 @@ namespace ego_planner
       visualization_->displayOptimalList(info->position_traj_.get_control_points(), 0);
     }
 
-    return plan_success;
+    return plan_and_refine_success;
   }
 
   bool EGOReplanFSM::callEmergencyStop(Eigen::Vector3d stop_pos)

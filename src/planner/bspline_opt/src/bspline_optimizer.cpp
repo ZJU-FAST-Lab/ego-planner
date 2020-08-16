@@ -46,7 +46,7 @@ namespace ego_planner
 
     /*** Segment the initial trajectory according to obstacles ***/
     constexpr int ENOUGH_INTERVAL = 2;
-    double step_size = grid_map_->getResolution() / ((init_points.col(0) - init_points.rightCols(1)).norm() / (init_points.cols() - 1)) / 2;
+    double step_size = grid_map_->getResolution() / ((init_points.col(0) - init_points.rightCols(1)).norm() / (init_points.cols() - 1)) / 1.5;
     int in_id, out_id;
     vector<std::pair<int, int>> segment_ids;
     int same_occ_state_times = ENOUGH_INTERVAL + 1;
@@ -97,6 +97,13 @@ namespace ego_planner
           segment_ids.push_back(std::pair<int, int>(in_id, out_id));
         }
       }
+    }
+
+    // return in advance
+    if (segment_ids.size() == 0)
+    {
+      vector<vector<Eigen::Vector3d>> blank_ret;
+      return blank_ret;
     }
 
     /*** a star search ***/
@@ -914,6 +921,7 @@ namespace ego_planner
         //ROS_WARN("Solver error in planning!, return = %s", lbfgs::lbfgs_strerror(result));
         flag_force_return = false;
 
+        /*** collision check, phase 1 ***/
         UniformBspline traj = UniformBspline(cps_.points, 3, bspline_interval_);
         double tm, tmp;
         traj.getTimeSpan(tm, tmp);
@@ -938,6 +946,48 @@ namespace ego_planner
             break;
           }
         }
+
+        /*** collision check, phase 2 ***/
+        // bool flag_cls_xyp, flag_cls_xyn, flag_cls_zp, flag_cls_zn;
+        // Eigen::Vector3d start_end_vec = traj.evaluateDeBoorT(tmp) - traj.evaluateDeBoorT(tm);
+        // Eigen::Vector3d offset_xy(-start_end_vec(0), start_end_vec(1), 0);
+        // offset_xy.normalize();
+        // Eigen::Vector3d offset_z = start_end_vec.cross(offset_xy);
+        // offset_z.normalize();
+        // offset_xy *= cps_.clearance / 2;
+        // offset_z *= cps_.clearance / 2;
+        
+        // Eigen::MatrixXd check_pts(cps_.points.rows(), cps_.points.cols());
+        // for ( Eigen::Index i=0; i<cps_.points.cols(); i++ ) 
+        // {
+        //   check_pts.col(i) = cps_.points.col(i);
+        //   check_pts(0,i) +=  offset_xy(0);
+        //   check_pts(1,i) +=  offset_xy(1);
+        //   check_pts(2,i) +=  offset_xy(2);
+        // }
+        // flag_cls_xyp = initControlPoints(check_pts, false).size() > 0;
+        // for ( Eigen::Index i=0; i<cps_.points.cols(); i++ ) 
+        // {
+        //   check_pts(0,i) -=  2*offset_xy(0);
+        //   check_pts(1,i) -=  2*offset_xy(1);
+        //   check_pts(2,i) -=  2*offset_xy(2);
+        // }
+        // flag_cls_xyn = initControlPoints(check_pts, false).size() > 0;
+        // for ( Eigen::Index i=0; i<cps_.points.cols(); i++ ) 
+        // {
+        //   check_pts(0,i) +=  offset_xy(0)+offset_z(0);
+        //   check_pts(1,i) +=  offset_xy(1)+offset_z(1);
+        //   check_pts(2,i) +=  offset_xy(2)+offset_z(2);
+        // }
+        // flag_cls_zp = initControlPoints(check_pts, false).size() > 0;
+        // for ( Eigen::Index i=0; i<cps_.points.cols(); i++ ) 
+        // {
+        //   check_pts(0,i) -=  2*offset_z(0);
+        //   check_pts(1,i) -=  2*offset_z(1);
+        //   check_pts(2,i) -=  2*offset_z(2);
+        // }
+        // flag_cls_zn = initControlPoints(check_pts, false).size() > 0;
+        // if ( (flag_cls_xyp ^ flag_cls_xyn) || (flag_cls_zp ^ flag_cls_zn) ) flag_occ = true;
 
         if (!flag_occ)
         {

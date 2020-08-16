@@ -224,7 +224,7 @@ namespace ego_planner
 
     /*** STEP 2: OPTIMIZE ***/
     bool flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts);
-    cout << "first_optimize_step_success=" << flag_step_1_success << endl;
+    cout << "plan_success=" << flag_step_1_success << endl;
     if (!flag_step_1_success)
     {
       // visualization_->displayOptimalList( ctrl_pts, vis_id );
@@ -264,7 +264,11 @@ namespace ego_planner
     // save planned results
     updateTrajInfo(pos, ros::Time::now());
 
-    cout << "total time:\033[42m" << (t_init + t_opt + t_refine).toSec() << "\033[0m,optimize:" << (t_init + t_opt).toSec() << ",refine:" << t_refine.toSec() << endl;
+    static double sum_time = 0;
+    static int count_success = 0;
+    sum_time += (t_init + t_opt + t_refine).toSec();
+    count_success++;
+    cout << "total time:\033[42m" << (t_init + t_opt + t_refine).toSec() << "\033[0m,optimize:" << (t_init + t_opt).toSec() << ",refine:" << t_refine.toSec() << ",avg_time=" << sum_time / count_success << endl;
 
     // success. YoY
     continous_failures_count_ = 0;
