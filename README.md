@@ -19,7 +19,7 @@ If you find this work useful or interesting, please kindly give us a star :star:
 - The L-BFGS solver we use is from [LBFGS-Lite](https://github.com/ZJU-FAST-Lab/LBFGS-Lite). 
 It is a C++ head-only single file, which is lightweight and easy to use.
 
-- The map generated in simulation is from [mockamap](https://github.com/HKUST-Aerial-Robotics/mockamap) by Willim Wu.
+- The map generated in simulation is from [mockamap](https://github.com/HKUST-Aerial-Robotics/mockamap) by William Wu.
 
 - The hardware architecture is based on an open source implemation from [Teach-Repeat-Replan](https://github.com/HKUST-Aerial-Robotics/Teach-Repeat-Replan).
 

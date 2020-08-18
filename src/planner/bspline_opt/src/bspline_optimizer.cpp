@@ -198,9 +198,9 @@ namespace ego_planner
       int got_intersection_id = -1;
       for (int j = segment_ids[i].first + 1; j < segment_ids[i].second; ++j)
       {
-        Eigen::Vector3d ctrl_pts_law(cps_.points.col(j + 1) - cps_.points.col(j - 1)), intersection_point;
+        Eigen::Vector3d ctrl_pts_law(init_points.col(j + 1) - init_points.col(j - 1)), intersection_point;
         int Astar_id = a_star_pathes[i].size() / 2, last_Astar_id; // Let "Astar_id = id_of_the_most_far_away_Astar_point" will be better, but it needs more computation
-        double val = (a_star_pathes[i][Astar_id] - cps_.points.col(j)).dot(ctrl_pts_law), last_val = val;
+        double val = (a_star_pathes[i][Astar_id] - init_points.col(j)).dot(ctrl_pts_law), last_val = val;
         while (Astar_id >= 0 && Astar_id < (int)a_star_pathes[i].size())
         {
           last_Astar_id = Astar_id;
@@ -210,14 +210,14 @@ namespace ego_planner
           else
             ++Astar_id;
 
-          val = (a_star_pathes[i][Astar_id] - cps_.points.col(j)).dot(ctrl_pts_law);
+          val = (a_star_pathes[i][Astar_id] - init_points.col(j)).dot(ctrl_pts_law);
 
           if (val * last_val <= 0 && (abs(val) > 0 || abs(last_val) > 0)) // val = last_val = 0.0 is not allowed
           {
             intersection_point =
                 a_star_pathes[i][Astar_id] +
                 ((a_star_pathes[i][Astar_id] - a_star_pathes[i][last_Astar_id]) *
-                 (ctrl_pts_law.dot(cps_.points.col(j) - a_star_pathes[i][Astar_id]) / ctrl_pts_law.dot(a_star_pathes[i][Astar_id] - a_star_pathes[i][last_Astar_id])) // = t
+                 (ctrl_pts_law.dot(init_points.col(j) - a_star_pathes[i][Astar_id]) / ctrl_pts_law.dot(a_star_pathes[i][Astar_id] - a_star_pathes[i][last_Astar_id])) // = t
                 );
 
             //cout << "i=" << i << " j=" << j << " Astar_id=" << Astar_id << " last_Astar_id=" << last_Astar_id << " intersection_point = " << intersection_point.transpose() << endl;
@@ -230,19 +230,19 @@ namespace ego_planner
         if (got_intersection_id >= 0)
         {
           cps_.flag_temp[j] = true;
-          double length = (intersection_point - cps_.points.col(j)).norm();
+          double length = (intersection_point - init_points.col(j)).norm();
           if (length > 1e-5)
           {
             for (double a = length; a >= 0.0; a -= grid_map_->getResolution())
             {
-              occ = grid_map_->getInflateOccupancy((a / length) * intersection_point + (1 - a / length) * cps_.points.col(j));
+              occ = grid_map_->getInflateOccupancy((a / length) * intersection_point + (1 - a / length) * init_points.col(j));
 
               if (occ || a < grid_map_->getResolution())
               {
                 if (occ)
                   a += grid_map_->getResolution();
-                cps_.base_point[j].push_back((a / length) * intersection_point + (1 - a / length) * cps_.points.col(j));
-                cps_.direction[j].push_back((intersection_point - cps_.points.col(j)).normalized());
+                cps_.base_point[j].push_back((a / length) * intersection_point + (1 - a / length) * init_points.col(j));
+                cps_.direction[j].push_back((intersection_point - init_points.col(j)).normalized());
                 break;
               }
             }
@@ -253,8 +253,8 @@ namespace ego_planner
       /* Corner case: the segment length is too short. Here the control points may outside the A* path, leading to opposite gradient direction. So I have to take special care of it */
       if (segment_ids[i].second - segment_ids[i].first == 1)
       {
-        Eigen::Vector3d ctrl_pts_law(cps_.points.col(segment_ids[i].second) - cps_.points.col(segment_ids[i].first)), intersection_point;
-        Eigen::Vector3d middle_point = (cps_.points.col(segment_ids[i].second) + cps_.points.col(segment_ids[i].first)) / 2;
+        Eigen::Vector3d ctrl_pts_law(init_points.col(segment_ids[i].second) - init_points.col(segment_ids[i].first)), intersection_point;
+        Eigen::Vector3d middle_point = (init_points.col(segment_ids[i].second) + init_points.col(segment_ids[i].first)) / 2;
         int Astar_id = a_star_pathes[i].size() / 2, last_Astar_id; // Let "Astar_id = id_of_the_most_far_away_Astar_point" will be better, but it needs more computation
         double val = (a_star_pathes[i][Astar_id] - middle_point).dot(ctrl_pts_law), last_val = val;
         while (Astar_id >= 0 && Astar_id < (int)a_star_pathes[i].size())
@@ -279,7 +279,7 @@ namespace ego_planner
             if ((intersection_point - middle_point).norm() > 0.01) // 1cm.
             {
               cps_.flag_temp[segment_ids[i].first] = true;
-              cps_.base_point[segment_ids[i].first].push_back(cps_.points.col(segment_ids[i].first));
+              cps_.base_point[segment_ids[i].first].push_back(init_points.col(segment_ids[i].first));
               cps_.direction[segment_ids[i].first].push_back((intersection_point - middle_point).normalized());
 
               got_intersection_id = segment_ids[i].first;
@@ -935,10 +935,10 @@ namespace ego_planner
 
             if (t <= bspline_interval_) // First 3 control points in obstacles!
             {
-              cout << cps_.points.col(1).transpose() << "\n"
-                   << cps_.points.col(2).transpose() << "\n"
-                   << cps_.points.col(3).transpose() << "\n"
-                   << cps_.points.col(4).transpose() << endl;
+              // cout << cps_.points.col(1).transpose() << "\n"
+              //      << cps_.points.col(2).transpose() << "\n"
+              //      << cps_.points.col(3).transpose() << "\n"
+              //      << cps_.points.col(4).transpose() << endl;
               ROS_WARN("First 3 control points in obstacles! return false, t=%f", t);
               return false;
             }
@@ -948,46 +948,50 @@ namespace ego_planner
         }
 
         /*** collision check, phase 2 ***/
-        // bool flag_cls_xyp, flag_cls_xyn, flag_cls_zp, flag_cls_zn;
-        // Eigen::Vector3d start_end_vec = traj.evaluateDeBoorT(tmp) - traj.evaluateDeBoorT(tm);
-        // Eigen::Vector3d offset_xy(-start_end_vec(0), start_end_vec(1), 0);
-        // offset_xy.normalize();
-        // Eigen::Vector3d offset_z = start_end_vec.cross(offset_xy);
-        // offset_z.normalize();
-        // offset_xy *= cps_.clearance / 2;
-        // offset_z *= cps_.clearance / 2;
-        
-        // Eigen::MatrixXd check_pts(cps_.points.rows(), cps_.points.cols());
-        // for ( Eigen::Index i=0; i<cps_.points.cols(); i++ ) 
-        // {
-        //   check_pts.col(i) = cps_.points.col(i);
-        //   check_pts(0,i) +=  offset_xy(0);
-        //   check_pts(1,i) +=  offset_xy(1);
-        //   check_pts(2,i) +=  offset_xy(2);
-        // }
-        // flag_cls_xyp = initControlPoints(check_pts, false).size() > 0;
-        // for ( Eigen::Index i=0; i<cps_.points.cols(); i++ ) 
-        // {
-        //   check_pts(0,i) -=  2*offset_xy(0);
-        //   check_pts(1,i) -=  2*offset_xy(1);
-        //   check_pts(2,i) -=  2*offset_xy(2);
-        // }
-        // flag_cls_xyn = initControlPoints(check_pts, false).size() > 0;
-        // for ( Eigen::Index i=0; i<cps_.points.cols(); i++ ) 
-        // {
-        //   check_pts(0,i) +=  offset_xy(0)+offset_z(0);
-        //   check_pts(1,i) +=  offset_xy(1)+offset_z(1);
-        //   check_pts(2,i) +=  offset_xy(2)+offset_z(2);
-        // }
-        // flag_cls_zp = initControlPoints(check_pts, false).size() > 0;
-        // for ( Eigen::Index i=0; i<cps_.points.cols(); i++ ) 
-        // {
-        //   check_pts(0,i) -=  2*offset_z(0);
-        //   check_pts(1,i) -=  2*offset_z(1);
-        //   check_pts(2,i) -=  2*offset_z(2);
-        // }
-        // flag_cls_zn = initControlPoints(check_pts, false).size() > 0;
-        // if ( (flag_cls_xyp ^ flag_cls_xyn) || (flag_cls_zp ^ flag_cls_zn) ) flag_occ = true;
+//#define USE_SECOND_CLEARENCE_CHECK
+#ifdef USE_SECOND_CLEARENCE_CHECK
+        bool flag_cls_xyp, flag_cls_xyn, flag_cls_zp, flag_cls_zn;
+        Eigen::Vector3d start_end_vec = traj.evaluateDeBoorT(tmp) - traj.evaluateDeBoorT(tm);
+        Eigen::Vector3d offset_xy(-start_end_vec(0), start_end_vec(1), 0);
+        offset_xy.normalize();
+        Eigen::Vector3d offset_z = start_end_vec.cross(offset_xy);
+        offset_z.normalize();
+        offset_xy *= cps_.clearance / 2;
+        offset_z *= cps_.clearance / 2;
+
+        Eigen::MatrixXd check_pts(cps_.points.rows(), cps_.points.cols());
+        for (Eigen::Index i = 0; i < cps_.points.cols(); i++)
+        {
+          check_pts.col(i) = cps_.points.col(i);
+          check_pts(0, i) += offset_xy(0);
+          check_pts(1, i) += offset_xy(1);
+          check_pts(2, i) += offset_xy(2);
+        }
+        flag_cls_xyp = initControlPoints(check_pts, false).size() > 0;
+        for (Eigen::Index i = 0; i < cps_.points.cols(); i++)
+        {
+          check_pts(0, i) -= 2 * offset_xy(0);
+          check_pts(1, i) -= 2 * offset_xy(1);
+          check_pts(2, i) -= 2 * offset_xy(2);
+        }
+        flag_cls_xyn = initControlPoints(check_pts, false).size() > 0;
+        for (Eigen::Index i = 0; i < cps_.points.cols(); i++)
+        {
+          check_pts(0, i) += offset_xy(0) + offset_z(0);
+          check_pts(1, i) += offset_xy(1) + offset_z(1);
+          check_pts(2, i) += offset_xy(2) + offset_z(2);
+        }
+        flag_cls_zp = initControlPoints(check_pts, false).size() > 0;
+        for (Eigen::Index i = 0; i < cps_.points.cols(); i++)
+        {
+          check_pts(0, i) -= 2 * offset_z(0);
+          check_pts(1, i) -= 2 * offset_z(1);
+          check_pts(2, i) -= 2 * offset_z(2);
+        }
+        flag_cls_zn = initControlPoints(check_pts, false).size() > 0;
+        if ((flag_cls_xyp ^ flag_cls_xyn) || (flag_cls_zp ^ flag_cls_zn))
+          flag_occ = true;
+#endif
 
         if (!flag_occ)
         {
