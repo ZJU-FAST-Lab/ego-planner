@@ -204,7 +204,7 @@ sudo apt install librealsense2-udev-rules=2.30.0-0~realsense0.1693
 ``` 
 Here you can varify the installation by 
 ```
-realsense_viewer
+realsense-viewer
 ```
 
 ##  Run
