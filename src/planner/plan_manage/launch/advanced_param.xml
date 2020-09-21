@@ -37,6 +37,7 @@
   <arg name="flight_type"/>
 
   <!-- main node -->
+  <!-- node pkg="ego_planner" name="ego_planner_node" type="ego_planner_node" output="screen" launch-prefix="valgrind" -->
   <node pkg="ego_planner" name="ego_planner_node" type="ego_planner_node" output="screen">
     <remap from="/odom_world" to="$(arg odometry_topic)"/>
     <remap from="/grid_map/odom" to="$(arg odometry_topic)"/>

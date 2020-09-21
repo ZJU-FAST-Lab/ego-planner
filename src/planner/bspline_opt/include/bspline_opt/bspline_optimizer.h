@@ -42,6 +42,41 @@ namespace ego_planner
       flag_temp.resize(size);
       // occupancy.resize(size);
     }
+
+    void segment(ControlPoints &buf, const int start, const int end)
+    {
+      if (start < 0 || end >= size || points.rows() != 3)
+      {
+        ROS_ERROR("Wrong segment index! start=%d, end=%d", start, end);
+        return;
+      }
+
+      buf.resize(end - start + 1);
+      buf.points = points.block(0, start, 3, end - start + 1);
+      buf.clearance = clearance;
+      buf.size = end - start + 1;
+      for (int i = start; i <= end; i++)
+      {
+        buf.base_point[i - start] = base_point[i];
+        buf.direction[i - start] = direction[i];
+
+        // if ( buf.base_point[i - start].size() > 1 )
+        // {
+        //   ROS_ERROR("buf.base_point[i - start].size()=%d, base_point[i].size()=%d", buf.base_point[i - start].size(), base_point[i].size());
+        // }
+      }
+
+      // cout << "RichInfoOneSeg_temp, insede" << endl;
+      // for ( int k=0; k<buf.size; k++ )
+      //   if ( buf.base_point[k].size() > 0 )
+      //   {
+      //     cout << "###" << buf.points.col(k).transpose() << endl;
+      //     for (int k2 = 0; k2 < buf.base_point[k].size(); k2++)
+      //     {
+      //       cout << "      " << buf.base_point[k][k2].transpose() << " @ " << buf.direction[k][k2].transpose() << endl;
+      //     }
+      //   }
+    }
   };
 
   class BsplineOptimizer
@@ -72,13 +107,15 @@ namespace ego_planner
 
     void optimize();
 
-    Eigen::MatrixXd getControlPoints();
+    ControlPoints getControlPoints() { return cps_; };
 
     AStar::Ptr a_star_;
     std::vector<Eigen::Vector3d> ref_pts_;
 
-    std::vector<std::vector<Eigen::Vector3d>> initControlPoints(Eigen::MatrixXd &init_points, bool flag_first_init = true);
+    std::vector<ControlPoints> distinctiveTrajs(vector<std::pair<int, int>> segments);
+    std::vector<std::pair<int, int>> initControlPoints(Eigen::MatrixXd &init_points, bool flag_first_init = true);
     bool BsplineOptimizeTrajRebound(Eigen::MatrixXd &optimal_points, double ts); // must be called after initControlPoints()
+    bool BsplineOptimizeTrajRebound(Eigen::MatrixXd &optimal_points, const ControlPoints &control_points, double ts);
     bool BsplineOptimizeTrajRefine(const Eigen::MatrixXd &init_points, const double ts, Eigen::MatrixXd &optimal_points);
 
     inline int getOrder(void) { return order_; }

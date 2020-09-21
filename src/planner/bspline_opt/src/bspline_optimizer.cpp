@@ -31,10 +31,360 @@ namespace ego_planner
 
   void BsplineOptimizer::setBsplineInterval(const double &ts) { bspline_interval_ = ts; }
 
+  std::vector<ControlPoints> BsplineOptimizer::distinctiveTrajs(vector<std::pair<int, int>> segments)
+  {
+    if (segments.size() == 0) // will be invoked again later.
+    {
+      std::vector<ControlPoints> oneSeg;
+      oneSeg.push_back(cps_);
+      return oneSeg;
+    }
+
+    constexpr int MAX_TRAJS = 8;
+    constexpr int VARIS = 2;
+    int seg_upbound = std::min((int)segments.size(), static_cast<int>(floor(log(MAX_TRAJS) / log(VARIS))));
+    std::vector<ControlPoints> control_pts_buf;
+    control_pts_buf.reserve(MAX_TRAJS);
+    const double RESOLUTION = grid_map_->getResolution();
+    const double CTRL_PT_DIST = (cps_.points.col(0) - cps_.points.col(cps_.size - 1)).norm() / (cps_.size - 1);
+
+    // Step 1. Find the opposite vectors and base points for every segment.
+    std::vector<std::pair<ControlPoints, ControlPoints>> RichInfoSegs;
+    for (int i = 0; i < seg_upbound; i++)
+    {
+      std::pair<ControlPoints, ControlPoints> RichInfoOneSeg;
+      ControlPoints RichInfoOneSeg_temp;
+      cps_.segment(RichInfoOneSeg_temp, segments[i].first, segments[i].second);
+      RichInfoOneSeg.first = RichInfoOneSeg_temp;
+      RichInfoOneSeg.second = RichInfoOneSeg_temp;
+      RichInfoSegs.push_back(RichInfoOneSeg);
+
+      // cout << "RichInfoOneSeg_temp, out" << endl;
+      // cout << "RichInfoSegs[" << i << "].first" << endl;
+      // for ( int k=0; k<RichInfoOneSeg_temp.size; k++ )
+      //   if ( RichInfoOneSeg_temp.base_point[k].size() > 0 )
+      //   {
+      //     cout << "###" << RichInfoOneSeg_temp.points.col(k).transpose() << endl;
+      //     for (int k2 = 0; k2 < RichInfoOneSeg_temp.base_point[k].size(); k2++)
+      //     {
+      //       cout << "      " << RichInfoOneSeg_temp.base_point[k][k2].transpose() << " @ " << RichInfoOneSeg_temp.direction[k][k2].transpose() << endl;
+      //     }
+      //   }
+    }
+
+    for ( int i=0; i<seg_upbound; i++)
+    {
+      if ( RichInfoSegs[i].first.base_point.size() <=1 )
+      {
+        ROS_ERROR("RichInfoSegs[%d].first.base_point.size()=%d", i, RichInfoSegs[i].first.base_point.size());
+      }
+    }
+
+    for (int i = 0; i < seg_upbound; i++)
+    {
+
+      // 1.1 Find the start occupied point id and the last occupied point id
+      if (RichInfoSegs[i].first.size <= 1)
+      {
+        ROS_ERROR("What???, RichInfoSegs[i].first.size=%d", RichInfoSegs[i].first.size);
+
+        RichInfoSegs[i].second.direction[0][0] = -RichInfoSegs[i].first.direction[0][0];
+        RichInfoSegs[i].second.base_point[0][0] = RichInfoSegs[i].first.points.col(0) + RichInfoSegs[i].second.direction[0][0] * (RichInfoSegs[i].first.base_point[0][0] - RichInfoSegs[i].first.points.col(0)).norm();;
+
+        continue;
+      }
+
+      int occ_start_id = -1, occ_end_id = -1;
+      Eigen::Vector3d occ_start_pt, occ_end_pt;
+      for (int j = 0; j < RichInfoSegs[i].first.size - 1; j++)
+      {
+        //cout << "A *" << j << "*" << endl;
+        double step_size = RESOLUTION / (RichInfoSegs[i].first.points.col(j) - RichInfoSegs[i].first.points.col(j + 1)).norm() / 2;
+        for (double a = 1; a > 0; a -= step_size)
+        {
+          Eigen::Vector3d pt(a * RichInfoSegs[i].first.points.col(j) + (1 - a) * RichInfoSegs[i].first.points.col(j + 1));
+          //cout << " " << grid_map_->getInflateOccupancy(pt) << " pt=" << pt.transpose() << endl;
+          if (grid_map_->getInflateOccupancy(pt))
+          {
+            occ_start_id = j;
+            occ_start_pt = pt;
+            goto exit_multi_loop1;
+          }
+        }
+      }
+      exit_multi_loop1:;
+      for (int j = RichInfoSegs[i].first.size - 1; j >= 1; j--)
+      {
+        //cout << "j=" << j << endl;
+        //cout << "B *" << j << "*" << endl;
+        ;
+        double step_size = RESOLUTION / (RichInfoSegs[i].first.points.col(j) - RichInfoSegs[i].first.points.col(j - 1)).norm();
+        for (double a = 1; a > 0; a -= step_size)
+        {
+          Eigen::Vector3d pt(a * RichInfoSegs[i].first.points.col(j) + (1 - a) * RichInfoSegs[i].first.points.col(j - 1));
+          //cout << " " << grid_map_->getInflateOccupancy(pt) << " pt=" << pt.transpose() << endl;
+          ;
+          if (grid_map_->getInflateOccupancy(pt))
+          {
+            occ_end_id = j;
+            occ_end_pt = pt;
+            goto exit_multi_loop2;
+          }
+        }
+      }
+      exit_multi_loop2:;
+
+      // double check
+      if (occ_start_id == -1 || occ_end_id == -1)
+      {
+        // It means that the first or the last control points of one segment are in obstacles, which is not allowed.
+        ROS_ERROR("What? occ_start_id=%d, occ_end_id=%d", occ_start_id, occ_end_id);
+
+        segments.erase(segments.begin() + i);
+        RichInfoSegs.erase(RichInfoSegs.begin() + i);
+        seg_upbound--;
+        i--;
+
+        continue;
+
+        // cout << "RichInfoSegs[" << i << "].first" << endl;
+        // for (int k = 0; k < RichInfoSegs[i].first.size; k++)
+        // {
+        //   if (RichInfoSegs[i].first.base_point.size() > 0)
+        //   {
+        //     cout << "###" << RichInfoSegs[i].first.points.col(k).transpose() << endl;
+        //     for (int k2 = 0; k2 < RichInfoSegs[i].first.base_point[k].size(); k2++)
+        //     {
+        //       cout << "      " << RichInfoSegs[i].first.base_point[k][k2].transpose() << " @ " << RichInfoSegs[i].first.direction[k][k2].transpose() << endl;
+        //     }
+        //   }
+        // }
+      }
+      for (int j = occ_start_id + 1; j <= occ_end_id - 1; j++)
+      {
+        if (!grid_map_->getInflateOccupancy(RichInfoSegs[i].first.points.col(j)))
+        {
+          ROS_ERROR("This finally happened. j=%d", j);
+        }
+      }
+
+      // 1.2 Reverse the vector and find new base points from occ_start_id to occ_end_id.
+      for (int j = occ_start_id; j <= occ_end_id; j++)
+      {
+        Eigen::Vector3d base_pt_reverse, base_vec_reverse;
+        if (RichInfoSegs[i].first.base_point[j].size() != 1)
+        {
+          cout << "RichInfoSegs[" << i << "].first.base_point[" << j << "].size()=" << RichInfoSegs[i].first.base_point[j].size() << endl;
+          ROS_ERROR("Wrong number of base_points!!! Should not be happen!.");
+
+          cout << setprecision(5) << endl;
+          cout << "cps_" << endl;
+          cout << " clearance=" << cps_.clearance << " cps.size=" << cps_.size << endl;
+          for (int temp_i = 0; temp_i < cps_.size; temp_i++)
+          {
+            if (cps_.base_point[temp_i].size() > 1 && cps_.base_point[temp_i].size() < 1000)
+            {
+              ROS_ERROR("Should not happen!!!");
+              ROS_ERROR("Should not happen!!!");
+              ROS_ERROR("Should not happen!!!");
+              ROS_ERROR("Should not happen!!!");
+              ROS_ERROR("Should not happen!!!");
+              ROS_ERROR("Should not happen!!!");
+              ROS_ERROR("Should not happen!!!");
+              cout << "######" << cps_.points.col(temp_i).transpose() << endl;
+              for (int temp_j = 0; temp_j < cps_.base_point[temp_i].size(); temp_j++)
+                cout << "      " << cps_.base_point[temp_i][temp_j].transpose() << " @ " << cps_.direction[temp_i][temp_j].transpose() << endl;
+            }
+          }
+
+          std::vector<ControlPoints> blank;
+          return blank;
+        }
+
+        base_vec_reverse = -RichInfoSegs[i].first.direction[j][0];
+
+        // The start and the end case must get taken special care of.
+        if (j == occ_start_id)
+        {
+          base_pt_reverse = occ_start_pt;
+        }
+        else if (j == occ_end_id)
+        {
+          base_pt_reverse = occ_end_pt;
+        }
+        else
+        {
+          base_pt_reverse = RichInfoSegs[i].first.points.col(j) + base_vec_reverse * (RichInfoSegs[i].first.base_point[j][0] - RichInfoSegs[i].first.points.col(j)).norm();
+        }
+
+        if (grid_map_->getInflateOccupancy(base_pt_reverse)) // Search outward.
+        {
+          double l_upbound = 5 * CTRL_PT_DIST; // "5" is the threshold.
+          double l = RESOLUTION;
+          for (; l <= l_upbound; l += RESOLUTION)
+          {
+            Eigen::Vector3d base_pt_temp = base_pt_reverse + l * base_vec_reverse;
+            //cout << base_pt_temp.transpose() << endl;
+            if (!grid_map_->getInflateOccupancy(base_pt_temp))
+            {
+              RichInfoSegs[i].second.base_point[j][0] = base_pt_temp;
+              RichInfoSegs[i].second.direction[j][0] = base_vec_reverse;
+              break;
+            }
+          }
+          if (l > l_upbound)
+          {
+            ROS_WARN("Can't find the new base points at the opposite within the threshold. i=%d, j=%d", i, j);
+
+            segments.erase(segments.begin() + i);
+            RichInfoSegs.erase(RichInfoSegs.begin() + i);
+            seg_upbound--;
+            i--;
+
+            goto exit_multi_loop3; // break "for (int j = 0; j < RichInfoSegs[i].first.size; j++)"
+          }
+        }
+        else // Unnecessary to search.
+        {
+          RichInfoSegs[i].second.base_point[j][0] = base_pt_reverse;
+          RichInfoSegs[i].second.direction[j][0] = base_vec_reverse;
+        }
+      }
+
+      // 1.3 Assign the base points to control points within [0, occ_start_id) and (occ_end_id, RichInfoSegs[i].first.size()-1].
+      if (RichInfoSegs[i].second.size)
+      {
+        for (int j = -1; j >= 0; j--)
+        {
+          RichInfoSegs[i].second.base_point[j][0] = RichInfoSegs[i].second.base_point[occ_start_id][0];
+          RichInfoSegs[i].second.direction[j][0] = RichInfoSegs[i].second.direction[occ_start_id][0];
+        }
+        for (int j = occ_end_id + 1; j < RichInfoSegs[i].second.size; j++)
+        {
+          RichInfoSegs[i].second.base_point[j][0] = RichInfoSegs[i].second.base_point[occ_end_id][0];
+          RichInfoSegs[i].second.direction[j][0] = RichInfoSegs[i].second.direction[occ_end_id][0];
+        }
+      }
+
+      exit_multi_loop3:;
+    }
+
+    // Step 2. Assemble each segment to make up the new control point sequence.
+    if (seg_upbound == 0) // After the erase operation above, segment legth will decrease to 0 again.
+    {
+      std::vector<ControlPoints> oneSeg;
+      oneSeg.push_back(cps_);
+      return oneSeg;
+    }
+
+    std::vector<int> selection(seg_upbound);
+    std::fill(selection.begin(), selection.end(), 0);
+    selection[0] = -1; // init
+    int max_traj_nums = static_cast<int>(pow(VARIS, seg_upbound));
+    for (int i = 0; i < max_traj_nums; i++)
+    {
+      // 2.1 Calculate the selection table.
+      int digit_id = 0;
+      selection[digit_id]++;
+      while (digit_id < seg_upbound && selection[digit_id] >= VARIS)
+      {
+        selection[digit_id] = 0;
+        digit_id++;
+        if (digit_id >= seg_upbound)
+        {
+          ROS_ERROR("Should not happen!!! digit_id=%d, seg_upbound=%d", digit_id, seg_upbound);
+        }
+        selection[digit_id]++;
+      }
+
+      // 2.2 Assign params according to the selection table.
+      ControlPoints cpsOneSample;
+      cpsOneSample.resize(cps_.size);
+      cpsOneSample.clearance = cps_.clearance;
+      int cp_id = 0, seg_id = 0, cp_of_seg_id = 0;
+      while (/*seg_id < RichInfoSegs.size() ||*/ cp_id < cps_.size)
+      {
+        //cout << "A ";
+        // if ( seg_id >= RichInfoSegs.size() )
+        // {
+        //   cout << "seg_id=" << seg_id << " RichInfoSegs.size()=" << RichInfoSegs.size() << endl;
+        // }
+        if ( cp_id >= cps_.base_point.size() )
+        {
+          cout << "cp_id=" << cp_id << " cps_.base_point.size()=" << cps_.base_point.size() << endl;
+        }
+        if ( cp_of_seg_id >= RichInfoSegs[seg_id].first.base_point.size() )
+        {
+          cout << "cp_of_seg_id=" << cp_of_seg_id << " RichInfoSegs[seg_id].first.base_point.size()=" << RichInfoSegs[seg_id].first.base_point.size() << endl;
+        }
+
+        if (seg_id >= segments.size() || cp_id < segments[seg_id].first || cp_id > segments[seg_id].second)
+        {
+          cpsOneSample.points.col(cp_id) = cps_.points.col(cp_id);
+          cpsOneSample.base_point[cp_id] = cps_.base_point[cp_id];
+          cpsOneSample.direction[cp_id] = cps_.direction[cp_id];
+        //cout << "AA1 ";
+        }
+        else if (cp_id >= segments[seg_id].first && cp_id <= segments[seg_id].second)
+        {
+          if (!selection[seg_id]) // FUCK
+          {
+        //cout << "AA2 ";
+        cout << "cp_id=" << cp_id << " points.cols()=" << cpsOneSample.points.cols() << " seg_id=" << seg_id << " RichInfoSegs.size()=" << RichInfoSegs.size() << " points2.cols()=" << RichInfoSegs[seg_id].first.points.cols() << " cp_of_seg_id=" << cp_of_seg_id << endl;
+            cpsOneSample.points.col(cp_id) = RichInfoSegs[seg_id].first.points.col(cp_of_seg_id);
+            cpsOneSample.base_point[cp_id] = RichInfoSegs[seg_id].first.base_point[cp_of_seg_id];
+            cpsOneSample.direction[cp_id] = RichInfoSegs[seg_id].first.direction[cp_of_seg_id];
+            cp_of_seg_id++;
+          }
+          else
+          {
+        //cout << "AA3 ";
+            if (RichInfoSegs[seg_id].second.size)
+            {
+              cpsOneSample.points.col(cp_id) = RichInfoSegs[seg_id].second.points.col(cp_of_seg_id);
+              cpsOneSample.base_point[cp_id] = RichInfoSegs[seg_id].second.base_point[cp_of_seg_id];
+              cpsOneSample.direction[cp_id] = RichInfoSegs[seg_id].second.direction[cp_of_seg_id];
+              cp_of_seg_id++;
+            }
+            else
+            {
+              // Abandon this trajectory.
+              goto abandon_this_trajectory;
+            }
+          }
+        //cout << "AA4 ";
+
+          if (cp_id == segments[seg_id].second)
+          {
+            cp_of_seg_id = 0;
+            seg_id++;
+          }
+        //cout << "AA5 ";
+        }
+        else
+        {
+          ROS_ERROR("Shold not happen!!!!, cp_id=%d, seg_id=%d, segments.front().first=%d, segments.back().second=%d, segments[seg_id].first=%d, segments[seg_id].second=%d",
+                    cp_id, seg_id, segments.front().first, segments.back().second, segments[seg_id].first, segments[seg_id].second);
+        }
+        //cout << "AAA ";
+
+        cp_id++;
+      }
+
+      cout << endl;
+
+      control_pts_buf.push_back(cpsOneSample);
+
+    abandon_this_trajectory:;
+    }
+
+    return control_pts_buf;
+  } // namespace ego_planner
+
   /* This function is very similar to check_collision_and_rebound(). 
    * It was written separately, just because I did it once and it has been running stably since March 2020.
    * But I will merge then someday.*/
-  std::vector<std::vector<Eigen::Vector3d>> BsplineOptimizer::initControlPoints(Eigen::MatrixXd &init_points, bool flag_first_init /*= true*/)
+  std::vector<std::pair<int, int>> BsplineOptimizer::initControlPoints(Eigen::MatrixXd &init_points, bool flag_first_init /*= true*/)
   {
 
     if (flag_first_init)
@@ -55,9 +405,11 @@ namespace ego_planner
     int i_end = (int)init_points.cols() - order_ - ((int)init_points.cols() - 2 * order_) / 3; // only check closed 2/3 points.
     for (int i = order_; i <= i_end; ++i)
     {
-      for (double a = 1.0; a >= 0.0; a -= step_size)
+      //cout << " *" << i-1 << "*" ;
+      for (double a = 1.0; a > 0.0; a -= step_size)
       {
         occ = grid_map_->getInflateOccupancy(a * init_points.col(i - 1) + (1 - a) * init_points.col(i));
+        //cout << " " << occ;
         // cout << setprecision(5);
         // cout << (a * init_points.col(i-1) + (1-a) * init_points.col(i)).transpose() << " occ1=" << occ << endl;
 
@@ -98,11 +450,17 @@ namespace ego_planner
         }
       }
     }
+    // cout << endl;
+
+    // for (size_t i = 0; i < segment_ids.size(); i++)
+    // {
+    //   cout << "segment_ids=" << segment_ids[i].first << " ~ " << segment_ids[i].second << endl;
+    // }
 
     // return in advance
     if (segment_ids.size() == 0)
     {
-      vector<vector<Eigen::Vector3d>> blank_ret;
+      vector<std::pair<int, int>> blank_ret;
       return blank_ret;
     }
 
@@ -119,7 +477,8 @@ namespace ego_planner
       else
       {
         ROS_ERROR("a star error, force return!");
-        return a_star_pathes;
+        vector<std::pair<int, int>> blank_ret;
+        return blank_ret;
       }
     }
 
@@ -162,8 +521,8 @@ namespace ego_planner
     // }
 
     /*** Adjust segment length ***/
-    vector<std::pair<int, int>> final_segment_ids(segment_ids.size());
-    constexpr double MINIMUM_PERCENT = 0.0; // Each segment is guaranteed to have sufficient points to generate sufficient thrust
+    vector<std::pair<int, int>> adjusted_segment_ids(segment_ids.size());
+    constexpr double MINIMUM_PERCENT = 0.0; // Each segment is guaranteed to have sufficient points to generate sufficient force
     int minimum_points = round(init_points.cols() * MINIMUM_PERCENT), num_points;
     for (size_t i = 0; i < segment_ids.size(); i++)
     {
@@ -174,24 +533,36 @@ namespace ego_planner
       {
         double add_points_each_side = (int)(((minimum_points - num_points) + 1.0f) / 2);
 
-        final_segment_ids[i].first = segment_ids[i].first - add_points_each_side >= bounds[i].first ? segment_ids[i].first - add_points_each_side : bounds[i].first;
+        adjusted_segment_ids[i].first = segment_ids[i].first - add_points_each_side >= bounds[i].first ? segment_ids[i].first - add_points_each_side : bounds[i].first;
 
-        final_segment_ids[i].second = segment_ids[i].second + add_points_each_side <= bounds[i].second ? segment_ids[i].second + add_points_each_side : bounds[i].second;
+        adjusted_segment_ids[i].second = segment_ids[i].second + add_points_each_side <= bounds[i].second ? segment_ids[i].second + add_points_each_side : bounds[i].second;
       }
       else
       {
-        final_segment_ids[i].first = segment_ids[i].first;
-        final_segment_ids[i].second = segment_ids[i].second;
+        adjusted_segment_ids[i].first = segment_ids[i].first;
+        adjusted_segment_ids[i].second = segment_ids[i].second;
       }
 
-      //cout << "final:" << "i = " << i << " first = " << final_segment_ids[i].first << " second = " << final_segment_ids[i].second << endl;
+      //cout << "final:" << "i = " << i << " first = " << adjusted_segment_ids[i].first << " second = " << adjusted_segment_ids[i].second << endl;
     }
+    for (size_t i = 1; i < adjusted_segment_ids.size(); i++) // Avoid overlap
+    {
+      if (adjusted_segment_ids[i - 1].second >= adjusted_segment_ids[i].first)
+      {
+        double middle = (double)(adjusted_segment_ids[i - 1].second + adjusted_segment_ids[i].first) / 2.0;
+        adjusted_segment_ids[i - 1].second = static_cast<int>(middle - 0.1);
+        adjusted_segment_ids[i].first = static_cast<int>(middle + 1.1);
+      }
+    }
+
+    // Used for return
+    vector<std::pair<int, int>> final_segment_ids;
 
     /*** Assign data to each segment ***/
     for (size_t i = 0; i < segment_ids.size(); i++)
     {
       // step 1
-      for (int j = final_segment_ids[i].first; j <= final_segment_ids[i].second; ++j)
+      for (int j = adjusted_segment_ids[i].first; j <= adjusted_segment_ids[i].second; ++j)
         cps_.flag_temp[j] = false;
 
       // step 2
@@ -243,6 +614,7 @@ namespace ego_planner
                   a += grid_map_->getResolution();
                 cps_.base_point[j].push_back((a / length) * intersection_point + (1 - a / length) * init_points.col(j));
                 cps_.direction[j].push_back((intersection_point - init_points.col(j)).normalized());
+                // cout << "A " << j << endl;
                 break;
               }
             }
@@ -281,6 +653,7 @@ namespace ego_planner
               cps_.flag_temp[segment_ids[i].first] = true;
               cps_.base_point[segment_ids[i].first].push_back(init_points.col(segment_ids[i].first));
               cps_.direction[segment_ids[i].first].push_back((intersection_point - middle_point).normalized());
+              // cout << "AA " << segment_ids[i].first << endl;
 
               got_intersection_id = segment_ids[i].first;
             }
@@ -292,19 +665,23 @@ namespace ego_planner
       //step 3
       if (got_intersection_id >= 0)
       {
-        for (int j = got_intersection_id + 1; j <= final_segment_ids[i].second; ++j)
+        for (int j = got_intersection_id + 1; j <= adjusted_segment_ids[i].second; ++j)
           if (!cps_.flag_temp[j])
           {
             cps_.base_point[j].push_back(cps_.base_point[j - 1].back());
             cps_.direction[j].push_back(cps_.direction[j - 1].back());
+            // cout << "AAA " << j << endl;
           }
 
-        for (int j = got_intersection_id - 1; j >= final_segment_ids[i].first; --j)
+        for (int j = got_intersection_id - 1; j >= adjusted_segment_ids[i].first; --j)
           if (!cps_.flag_temp[j])
           {
             cps_.base_point[j].push_back(cps_.base_point[j + 1].back());
             cps_.direction[j].push_back(cps_.direction[j + 1].back());
+            // cout << "AAAA " << j << endl;
           }
+
+        final_segment_ids.push_back(adjusted_segment_ids[i]);
       }
       else
       {
@@ -313,7 +690,7 @@ namespace ego_planner
       }
     }
 
-    return a_star_pathes;
+    return final_segment_ids;
   }
 
   int BsplineOptimizer::earlyExit(void *func_data, const double *x, const double *g, const double fx, const double xnorm, const double gnorm, const double step, int n, int k, int ls)
@@ -754,6 +1131,16 @@ namespace ego_planner
         }
       }
 
+      for (size_t i = 1; i < segment_ids.size(); i++) // Avoid overlap
+      {
+        if (segment_ids[i - 1].second >= segment_ids[i].first)
+        {
+          double middle = (double)(segment_ids[i - 1].second + segment_ids[i].first) / 2.0;
+          segment_ids[i - 1].second = static_cast<int>(middle - 0.1);
+          segment_ids[i].first = static_cast<int>(middle + 1.1);
+        }
+      }
+
       /*** Assign parameters to each segment ***/
       for (size_t i = 0; i < segment_ids.size(); ++i)
       {
@@ -852,6 +1239,19 @@ namespace ego_planner
   bool BsplineOptimizer::BsplineOptimizeTrajRebound(Eigen::MatrixXd &optimal_points, double ts)
   {
     setBsplineInterval(ts);
+
+    bool flag_success = rebound_optimize();
+
+    optimal_points = cps_.points;
+
+    return flag_success;
+  }
+
+  bool BsplineOptimizer::BsplineOptimizeTrajRebound(Eigen::MatrixXd &optimal_points, const ControlPoints &control_points, double ts)
+  {
+    setBsplineInterval(ts);
+
+    cps_ = control_points;
 
     bool flag_success = rebound_optimize();
 

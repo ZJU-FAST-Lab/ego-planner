@@ -88,8 +88,8 @@
     <arg name="map_size_x_" value="$(arg map_size_x)"/>
     <arg name="map_size_y_" value="$(arg map_size_y)"/>
     <arg name="map_size_z_" value="$(arg map_size_z)"/>
-    <arg name="c_num" value="200"/>
-    <arg name="p_num" value="200"/>
+    <arg name="c_num" value="600"/>
+    <arg name="p_num" value="600"/>
     <arg name="min_dist" value="1.2"/>
 
     <arg name="odometry_topic" value="$(arg odom_topic)" />

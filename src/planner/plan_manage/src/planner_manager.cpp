@@ -211,14 +211,79 @@ namespace ego_planner
     Eigen::MatrixXd ctrl_pts;
     UniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, ctrl_pts);
 
-    vector<vector<Eigen::Vector3d>> a_star_pathes;
-    a_star_pathes = bspline_optimizer_rebound_->initControlPoints(ctrl_pts, true);
+    
+    vector<std::pair<int,int>> segments;
+    segments = bspline_optimizer_rebound_->initControlPoints(ctrl_pts, true);
 
     t_init = ros::Time::now() - t_start;
 
+    // auto cps = bspline_optimizer_rebound_->getControlPoints();
+    // cout << endl;
+    // if (segments.size() >= 1)
+    //   cout << "segments.size()=" << segments.size() << " " << segments[0].first << " " << segments[0].second << endl;
+    // for ( int i=0; i<cps.size; i++ )
+    // {
+    //   cout << "######" << cps.points.col(i).transpose() << endl;
+    //   for ( int j=0; j<cps.base_point[i].size(); j++ )
+    //   cout << "      " << cps.base_point[i][j].transpose() << " @ " << cps.direction[i][j].transpose() << endl;
+    // }
+
+
+#define USE_DISTINCTIVE_TRAJS
+#ifdef USE_DISTINCTIVE_TRAJS
+    std::vector<ControlPoints> trajs = bspline_optimizer_rebound_->distinctiveTrajs(segments);
+    cout << "\033[1;31m" << "trajs=" << trajs.size() << "\033[1;0m" << endl;
+
+    static int last_num = 0;
+
+    for ( int i=0; i<last_num; i++ )
+    {
+      point_set.clear();
+      visualization_->displayInitPathList(point_set, 0.2, i);
+      ros::Duration(0.001).sleep();
+    }
+
+    for ( int i=trajs.size()-1; i>=0; i-- )
+    {
+
+      if ( trajs.size() >= 2 )
+      {
+        auto cps = trajs[i];
+        cout << setprecision(5) << endl;
+        for ( int i=0; i<cps.size; i++ )
+        {
+          if ( cps.base_point[i].size() > 1 )
+          {
+            cout << "######" << cps.points.col(i).transpose() << " clearance=" << cps.clearance << " cps.size=" << cps.size << " cps.flag_temp[i]=" << cps.flag_temp[i] << endl;
+            for ( int j=0; j<cps.base_point[i].size(); j++ )
+              cout << "      " << cps.base_point[i][j].transpose() << " @ " << cps.direction[i][j].transpose() << endl;
+          }
+        }
+      }
+
+
+      if ( bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, trajs[i], ts) )
+      {
+        cout << endl;
+        point_set.clear();
+        for ( int j=0; j<ctrl_pts.cols(); j++ )
+        {
+          point_set.push_back( ctrl_pts.col(j) );
+        }
+        visualization_->displayInitPathList(point_set, 0.2, i);
+        ros::Duration(0.001).sleep();
+      }
+
+    }
+
+    last_num = trajs.size();
+
+#else
+
     static int vis_id = 0;
     visualization_->displayInitPathList(point_set, 0.2, 0);
-    visualization_->displayAStarList(a_star_pathes, vis_id);
+    //visualization_->displayAStarList(a_star_pathes, vis_id);
+#endif
 
     t_start = ros::Time::now();
 
