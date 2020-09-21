@@ -177,7 +177,7 @@ namespace ego_planner
           cout << "RichInfoSegs[" << i << "].first.base_point[" << j << "].size()=" << RichInfoSegs[i].first.base_point[j].size() << endl;
           ROS_ERROR("Wrong number of base_points!!! Should not be happen!.");
 
-          cout << setprecision(5) << endl;
+          cout << setprecision(5);
           cout << "cps_" << endl;
           cout << " clearance=" << cps_.clearance << " cps.size=" << cps_.size << endl;
           for (int temp_i = 0; temp_i < cps_.size; temp_i++)
@@ -309,16 +309,16 @@ namespace ego_planner
         // {
         //   cout << "seg_id=" << seg_id << " RichInfoSegs.size()=" << RichInfoSegs.size() << endl;
         // }
-        if ( cp_id >= cps_.base_point.size() )
-        {
-          cout << "cp_id=" << cp_id << " cps_.base_point.size()=" << cps_.base_point.size() << endl;
-        }
-        if ( cp_of_seg_id >= RichInfoSegs[seg_id].first.base_point.size() )
-        {
-          cout << "cp_of_seg_id=" << cp_of_seg_id << " RichInfoSegs[seg_id].first.base_point.size()=" << RichInfoSegs[seg_id].first.base_point.size() << endl;
-        }
+        // if ( cp_id >= cps_.base_point.size() )
+        // {
+        //   cout << "cp_id=" << cp_id << " cps_.base_point.size()=" << cps_.base_point.size() << endl;
+        // }
+        // if ( cp_of_seg_id >= RichInfoSegs[seg_id].first.base_point.size() )
+        // {
+        //   cout << "cp_of_seg_id=" << cp_of_seg_id << " RichInfoSegs[seg_id].first.base_point.size()=" << RichInfoSegs[seg_id].first.base_point.size() << endl;
+        // }
 
-        if (seg_id >= segments.size() || cp_id < segments[seg_id].first || cp_id > segments[seg_id].second)
+        if (seg_id >= seg_upbound || cp_id < segments[seg_id].first || cp_id > segments[seg_id].second)
         {
           cpsOneSample.points.col(cp_id) = cps_.points.col(cp_id);
           cpsOneSample.base_point[cp_id] = cps_.base_point[cp_id];
@@ -330,7 +330,7 @@ namespace ego_planner
           if (!selection[seg_id]) // FUCK
           {
         //cout << "AA2 ";
-        cout << "cp_id=" << cp_id << " points.cols()=" << cpsOneSample.points.cols() << " seg_id=" << seg_id << " RichInfoSegs.size()=" << RichInfoSegs.size() << " points2.cols()=" << RichInfoSegs[seg_id].first.points.cols() << " cp_of_seg_id=" << cp_of_seg_id << endl;
+        //cout << "cp_id=" << cp_id << " segments.size()=" << segments.size() << " points.cols()=" << cpsOneSample.points.cols() << " seg_id=" << seg_id << " RichInfoSegs.size()=" << RichInfoSegs.size() << " points2.cols()=" << RichInfoSegs[seg_id].first.points.cols() << " cp_of_seg_id=" << cp_of_seg_id << endl;
             cpsOneSample.points.col(cp_id) = RichInfoSegs[seg_id].first.points.col(cp_of_seg_id);
             cpsOneSample.base_point[cp_id] = RichInfoSegs[seg_id].first.base_point[cp_of_seg_id];
             cpsOneSample.direction[cp_id] = RichInfoSegs[seg_id].first.direction[cp_of_seg_id];
@@ -370,8 +370,6 @@ namespace ego_planner
 
         cp_id++;
       }
-
-      cout << endl;
 
       control_pts_buf.push_back(cpsOneSample);
 

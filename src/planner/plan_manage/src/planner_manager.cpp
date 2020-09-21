@@ -264,7 +264,7 @@ namespace ego_planner
 
       if ( bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, trajs[i], ts) )
       {
-        cout << endl;
+        cout << "---" << endl;
         point_set.clear();
         for ( int j=0; j<ctrl_pts.cols(); j++ )
         {
