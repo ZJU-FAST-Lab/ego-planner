@@ -224,6 +224,7 @@ namespace ego_planner
 
     if (pp_.use_distinctive_trajs)
     {
+      cout << "enter" << endl;
       std::vector<ControlPoints> trajs = bspline_optimizer_rebound_->distinctiveTrajs(segments);
       cout << "\033[1;33m" << "multi-trajs=" << trajs.size() << "\033[1;0m" << endl;
 

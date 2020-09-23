@@ -527,6 +527,7 @@ namespace ego_planner
         ROS_ERROR("last_progress_time_ ERROR !!!!!!!!!");
         ROS_ERROR("last_progress_time_ ERROR !!!!!!!!!");
         ROS_ERROR("last_progress_time_ ERROR !!!!!!!!!");
+        cout << "dist=" << dist << endl;
         return;
       }
       if (dist < dist_min)

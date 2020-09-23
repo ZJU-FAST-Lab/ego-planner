@@ -40,6 +40,8 @@ namespace ego_planner
       return oneSeg;
     }
 
+    cout << "A1" << endl;
+
     constexpr int MAX_TRAJS = 8;
     constexpr int VARIS = 2;
     int seg_upbound = std::min((int)segments.size(), static_cast<int>(floor(log(MAX_TRAJS) / log(VARIS))));
@@ -71,6 +73,8 @@ namespace ego_planner
       //     }
       //   }
     }
+
+    cout << "A2" << endl;
 
     for (int i = 0; i < seg_upbound; i++)
     {
@@ -299,6 +303,8 @@ namespace ego_planner
 
       }
 
+      cout << "A3" << endl;
+
       
     }
 
@@ -309,6 +315,8 @@ namespace ego_planner
       oneSeg.push_back(cps_);
       return oneSeg;
     }
+
+    cout << "A4" << endl;
 
     std::vector<int> selection(seg_upbound);
     std::fill(selection.begin(), selection.end(), 0);
@@ -401,6 +409,8 @@ namespace ego_planner
 
     abandon_this_trajectory:;
     }
+
+    cout << "A5" << endl;
 
     return control_pts_buf;
   } // namespace ego_planner

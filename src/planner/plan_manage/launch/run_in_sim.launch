@@ -38,7 +38,7 @@
     <!--always set to 1.5 times grater than sensing horizen-->
     <arg name="planning_horizen" value="7.5" /> 
 
-    <arg name="use_distinctive_trajs" value="false" />
+    <arg name="use_distinctive_trajs" value="true" />
 
     <!-- 1: use 2D Nav Goal to select goal  -->
     <!-- 2: use global waypoints below  -->
