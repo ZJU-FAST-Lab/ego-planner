@@ -232,7 +232,7 @@ namespace ego_planner
 #define USE_DISTINCTIVE_TRAJS
 #ifdef USE_DISTINCTIVE_TRAJS
     std::vector<ControlPoints> trajs = bspline_optimizer_rebound_->distinctiveTrajs(segments);
-    cout << "\033[1;31m" << "trajs=" << trajs.size() << "\033[1;0m" << endl;
+    cout << "\033[1;33m" << "trajs=" << trajs.size() << "\033[1;0m" << endl;
 
     static int last_num = 0;
 
@@ -249,7 +249,7 @@ namespace ego_planner
       if ( trajs.size() >= 2 )
       {
         auto cps = trajs[i];
-        cout << setprecision(5) << endl;
+        cout << setprecision(5);
         for ( int i=0; i<cps.size; i++ )
         {
           if ( cps.base_point[i].size() > 1 )

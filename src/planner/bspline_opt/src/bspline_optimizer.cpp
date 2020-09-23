@@ -72,151 +72,190 @@ namespace ego_planner
       //   }
     }
 
-    for ( int i=0; i<seg_upbound; i++)
-    {
-      if ( RichInfoSegs[i].first.base_point.size() <=1 )
-      {
-        ROS_ERROR("RichInfoSegs[%d].first.base_point.size()=%d", i, RichInfoSegs[i].first.base_point.size());
-      }
-    }
-
     for (int i = 0; i < seg_upbound; i++)
     {
 
       // 1.1 Find the start occupied point id and the last occupied point id
-      if (RichInfoSegs[i].first.size <= 1)
+      if (RichInfoSegs[i].first.size > 1)
       {
-        ROS_ERROR("What???, RichInfoSegs[i].first.size=%d", RichInfoSegs[i].first.size);
-
-        RichInfoSegs[i].second.direction[0][0] = -RichInfoSegs[i].first.direction[0][0];
-        RichInfoSegs[i].second.base_point[0][0] = RichInfoSegs[i].first.points.col(0) + RichInfoSegs[i].second.direction[0][0] * (RichInfoSegs[i].first.base_point[0][0] - RichInfoSegs[i].first.points.col(0)).norm();;
-
-        continue;
-      }
-
-      int occ_start_id = -1, occ_end_id = -1;
-      Eigen::Vector3d occ_start_pt, occ_end_pt;
-      for (int j = 0; j < RichInfoSegs[i].first.size - 1; j++)
-      {
-        //cout << "A *" << j << "*" << endl;
-        double step_size = RESOLUTION / (RichInfoSegs[i].first.points.col(j) - RichInfoSegs[i].first.points.col(j + 1)).norm() / 2;
-        for (double a = 1; a > 0; a -= step_size)
+        int occ_start_id = -1, occ_end_id = -1;
+        Eigen::Vector3d occ_start_pt, occ_end_pt;
+        for (int j = 0; j < RichInfoSegs[i].first.size - 1; j++)
         {
-          Eigen::Vector3d pt(a * RichInfoSegs[i].first.points.col(j) + (1 - a) * RichInfoSegs[i].first.points.col(j + 1));
-          //cout << " " << grid_map_->getInflateOccupancy(pt) << " pt=" << pt.transpose() << endl;
-          if (grid_map_->getInflateOccupancy(pt))
+          //cout << "A *" << j << "*" << endl;
+          double step_size = RESOLUTION / (RichInfoSegs[i].first.points.col(j) - RichInfoSegs[i].first.points.col(j + 1)).norm() / 2;
+          for (double a = 1; a > 0; a -= step_size)
           {
-            occ_start_id = j;
-            occ_start_pt = pt;
-            goto exit_multi_loop1;
-          }
-        }
-      }
-      exit_multi_loop1:;
-      for (int j = RichInfoSegs[i].first.size - 1; j >= 1; j--)
-      {
-        //cout << "j=" << j << endl;
-        //cout << "B *" << j << "*" << endl;
-        ;
-        double step_size = RESOLUTION / (RichInfoSegs[i].first.points.col(j) - RichInfoSegs[i].first.points.col(j - 1)).norm();
-        for (double a = 1; a > 0; a -= step_size)
-        {
-          Eigen::Vector3d pt(a * RichInfoSegs[i].first.points.col(j) + (1 - a) * RichInfoSegs[i].first.points.col(j - 1));
-          //cout << " " << grid_map_->getInflateOccupancy(pt) << " pt=" << pt.transpose() << endl;
-          ;
-          if (grid_map_->getInflateOccupancy(pt))
-          {
-            occ_end_id = j;
-            occ_end_pt = pt;
-            goto exit_multi_loop2;
-          }
-        }
-      }
-      exit_multi_loop2:;
-
-      // double check
-      if (occ_start_id == -1 || occ_end_id == -1)
-      {
-        // It means that the first or the last control points of one segment are in obstacles, which is not allowed.
-        ROS_ERROR("What? occ_start_id=%d, occ_end_id=%d", occ_start_id, occ_end_id);
-
-        segments.erase(segments.begin() + i);
-        RichInfoSegs.erase(RichInfoSegs.begin() + i);
-        seg_upbound--;
-        i--;
-
-        continue;
-
-        // cout << "RichInfoSegs[" << i << "].first" << endl;
-        // for (int k = 0; k < RichInfoSegs[i].first.size; k++)
-        // {
-        //   if (RichInfoSegs[i].first.base_point.size() > 0)
-        //   {
-        //     cout << "###" << RichInfoSegs[i].first.points.col(k).transpose() << endl;
-        //     for (int k2 = 0; k2 < RichInfoSegs[i].first.base_point[k].size(); k2++)
-        //     {
-        //       cout << "      " << RichInfoSegs[i].first.base_point[k][k2].transpose() << " @ " << RichInfoSegs[i].first.direction[k][k2].transpose() << endl;
-        //     }
-        //   }
-        // }
-      }
-      for (int j = occ_start_id + 1; j <= occ_end_id - 1; j++)
-      {
-        if (!grid_map_->getInflateOccupancy(RichInfoSegs[i].first.points.col(j)))
-        {
-          ROS_ERROR("This finally happened. j=%d", j);
-        }
-      }
-
-      // 1.2 Reverse the vector and find new base points from occ_start_id to occ_end_id.
-      for (int j = occ_start_id; j <= occ_end_id; j++)
-      {
-        Eigen::Vector3d base_pt_reverse, base_vec_reverse;
-        if (RichInfoSegs[i].first.base_point[j].size() != 1)
-        {
-          cout << "RichInfoSegs[" << i << "].first.base_point[" << j << "].size()=" << RichInfoSegs[i].first.base_point[j].size() << endl;
-          ROS_ERROR("Wrong number of base_points!!! Should not be happen!.");
-
-          cout << setprecision(5);
-          cout << "cps_" << endl;
-          cout << " clearance=" << cps_.clearance << " cps.size=" << cps_.size << endl;
-          for (int temp_i = 0; temp_i < cps_.size; temp_i++)
-          {
-            if (cps_.base_point[temp_i].size() > 1 && cps_.base_point[temp_i].size() < 1000)
+            Eigen::Vector3d pt(a * RichInfoSegs[i].first.points.col(j) + (1 - a) * RichInfoSegs[i].first.points.col(j + 1));
+            //cout << " " << grid_map_->getInflateOccupancy(pt) << " pt=" << pt.transpose() << endl;
+            if (grid_map_->getInflateOccupancy(pt))
             {
-              ROS_ERROR("Should not happen!!!");
-              ROS_ERROR("Should not happen!!!");
-              ROS_ERROR("Should not happen!!!");
-              ROS_ERROR("Should not happen!!!");
-              ROS_ERROR("Should not happen!!!");
-              ROS_ERROR("Should not happen!!!");
-              ROS_ERROR("Should not happen!!!");
-              cout << "######" << cps_.points.col(temp_i).transpose() << endl;
-              for (int temp_j = 0; temp_j < cps_.base_point[temp_i].size(); temp_j++)
-                cout << "      " << cps_.base_point[temp_i][temp_j].transpose() << " @ " << cps_.direction[temp_i][temp_j].transpose() << endl;
+              occ_start_id = j;
+              occ_start_pt = pt;
+              goto exit_multi_loop1;
             }
           }
-
-          std::vector<ControlPoints> blank;
-          return blank;
         }
-
-        base_vec_reverse = -RichInfoSegs[i].first.direction[j][0];
-
-        // The start and the end case must get taken special care of.
-        if (j == occ_start_id)
+        exit_multi_loop1:;
+        for (int j = RichInfoSegs[i].first.size - 1; j >= 1; j--)
         {
-          base_pt_reverse = occ_start_pt;
+          //cout << "j=" << j << endl;
+          //cout << "B *" << j << "*" << endl;
+          ;
+          double step_size = RESOLUTION / (RichInfoSegs[i].first.points.col(j) - RichInfoSegs[i].first.points.col(j - 1)).norm();
+          for (double a = 1; a > 0; a -= step_size)
+          {
+            Eigen::Vector3d pt(a * RichInfoSegs[i].first.points.col(j) + (1 - a) * RichInfoSegs[i].first.points.col(j - 1));
+            //cout << " " << grid_map_->getInflateOccupancy(pt) << " pt=" << pt.transpose() << endl;
+            ;
+            if (grid_map_->getInflateOccupancy(pt))
+            {
+              occ_end_id = j;
+              occ_end_pt = pt;
+              goto exit_multi_loop2;
+            }
+          }
         }
-        else if (j == occ_end_id)
+        exit_multi_loop2:;
+
+        // double check
+        if (occ_start_id == -1 || occ_end_id == -1)
         {
-          base_pt_reverse = occ_end_pt;
-        }
-        else
-        {
-          base_pt_reverse = RichInfoSegs[i].first.points.col(j) + base_vec_reverse * (RichInfoSegs[i].first.base_point[j][0] - RichInfoSegs[i].first.points.col(j)).norm();
+          // It means that the first or the last control points of one segment are in obstacles, which is not allowed.
+          ROS_WARN("What? occ_start_id=%d, occ_end_id=%d", occ_start_id, occ_end_id);
+
+          segments.erase(segments.begin() + i);
+          RichInfoSegs.erase(RichInfoSegs.begin() + i);
+          seg_upbound--;
+          i--;
+
+          continue;
+
+          // cout << "RichInfoSegs[" << i << "].first" << endl;
+          // for (int k = 0; k < RichInfoSegs[i].first.size; k++)
+          // {
+          //   if (RichInfoSegs[i].first.base_point.size() > 0)
+          //   {
+          //     cout << "###" << RichInfoSegs[i].first.points.col(k).transpose() << endl;
+          //     for (int k2 = 0; k2 < RichInfoSegs[i].first.base_point[k].size(); k2++)
+          //     {
+          //       cout << "      " << RichInfoSegs[i].first.base_point[k][k2].transpose() << " @ " << RichInfoSegs[i].first.direction[k][k2].transpose() << endl;
+          //     }
+          //   }
+          // }
         }
 
+        // 1.2 Reverse the vector and find new base points from occ_start_id to occ_end_id.
+        for (int j = occ_start_id; j <= occ_end_id; j++)
+        {
+          Eigen::Vector3d base_pt_reverse, base_vec_reverse;
+          if (RichInfoSegs[i].first.base_point[j].size() != 1)
+          {
+            cout << "RichInfoSegs[" << i << "].first.base_point[" << j << "].size()=" << RichInfoSegs[i].first.base_point[j].size() << endl;
+            ROS_ERROR("Wrong number of base_points!!! Should not be happen!.");
+
+            cout << setprecision(5);
+            cout << "cps_" << endl;
+            cout << " clearance=" << cps_.clearance << " cps.size=" << cps_.size << endl;
+            for (int temp_i = 0; temp_i < cps_.size; temp_i++)
+            {
+              if (cps_.base_point[temp_i].size() > 1 && cps_.base_point[temp_i].size() < 1000)
+              {
+                ROS_ERROR("Should not happen!!!");
+                cout << "######" << cps_.points.col(temp_i).transpose() << endl;
+                for (int temp_j = 0; temp_j < cps_.base_point[temp_i].size(); temp_j++)
+                  cout << "      " << cps_.base_point[temp_i][temp_j].transpose() << " @ " << cps_.direction[temp_i][temp_j].transpose() << endl;
+              }
+            }
+
+            std::vector<ControlPoints> blank;
+            return blank;
+          }
+
+          base_vec_reverse = -RichInfoSegs[i].first.direction[j][0];
+
+          // The start and the end case must get taken special care of.
+          if (j == occ_start_id)
+          {
+            base_pt_reverse = occ_start_pt;
+          }
+          else if (j == occ_end_id)
+          {
+            base_pt_reverse = occ_end_pt;
+          }
+          else
+          {
+            base_pt_reverse = RichInfoSegs[i].first.points.col(j) + base_vec_reverse * (RichInfoSegs[i].first.base_point[j][0] - RichInfoSegs[i].first.points.col(j)).norm();
+          }
+
+          if (grid_map_->getInflateOccupancy(base_pt_reverse)) // Search outward.
+          {
+            double l_upbound = 5 * CTRL_PT_DIST; // "5" is the threshold.
+            double l = RESOLUTION;
+            for (; l <= l_upbound; l += RESOLUTION)
+            {
+              Eigen::Vector3d base_pt_temp = base_pt_reverse + l * base_vec_reverse;
+              //cout << base_pt_temp.transpose() << endl;
+              if (!grid_map_->getInflateOccupancy(base_pt_temp))
+              {
+                RichInfoSegs[i].second.base_point[j][0] = base_pt_temp;
+                RichInfoSegs[i].second.direction[j][0] = base_vec_reverse;
+                break;
+              }
+            }
+            if (l > l_upbound)
+            {
+              ROS_WARN("Can't find the new base points at the opposite within the threshold. i=%d, j=%d", i, j);
+
+              segments.erase(segments.begin() + i);
+              RichInfoSegs.erase(RichInfoSegs.begin() + i);
+              seg_upbound--;
+              i--;
+
+              goto exit_multi_loop3; // break "for (int j = 0; j < RichInfoSegs[i].first.size; j++)"
+            }
+          }
+          else if ( (base_pt_reverse - RichInfoSegs[i].first.points.col(j)).norm() >= RESOLUTION )// Unnecessary to search.
+          {
+            RichInfoSegs[i].second.base_point[j][0] = base_pt_reverse;
+            RichInfoSegs[i].second.direction[j][0] = base_vec_reverse;
+          }
+          else
+          {
+            ROS_WARN("base_point and control point are too close!");
+            cout << "base_point=" << RichInfoSegs[i].first.base_point[j][0].transpose() << " control point=" << RichInfoSegs[i].first.points.col(j).transpose() << endl;
+          
+            segments.erase(segments.begin() + i);
+            RichInfoSegs.erase(RichInfoSegs.begin() + i);
+            seg_upbound--;
+            i--;
+            
+            goto exit_multi_loop3; // break "for (int j = 0; j < RichInfoSegs[i].first.size; j++)"
+          }
+        }
+
+        // 1.3 Assign the base points to control points within [0, occ_start_id) and (occ_end_id, RichInfoSegs[i].first.size()-1].
+        if (RichInfoSegs[i].second.size)
+        {
+          for (int j = occ_start_id-1; j >= 0; j--)
+          {
+            RichInfoSegs[i].second.base_point[j][0] = RichInfoSegs[i].second.base_point[occ_start_id][0];
+            RichInfoSegs[i].second.direction[j][0] = RichInfoSegs[i].second.direction[occ_start_id][0];
+          }
+          for (int j = occ_end_id + 1; j < RichInfoSegs[i].second.size; j++)
+          {
+            RichInfoSegs[i].second.base_point[j][0] = RichInfoSegs[i].second.base_point[occ_end_id][0];
+            RichInfoSegs[i].second.direction[j][0] = RichInfoSegs[i].second.direction[occ_end_id][0];
+          }
+        }
+
+        exit_multi_loop3:;
+      }
+      else
+      {
+        Eigen::Vector3d base_vec_reverse = -RichInfoSegs[i].first.direction[0][0];
+        Eigen::Vector3d base_pt_reverse = RichInfoSegs[i].first.points.col(0) + base_vec_reverse * (RichInfoSegs[i].first.base_point[0][0] - RichInfoSegs[i].first.points.col(0)).norm();
+          
         if (grid_map_->getInflateOccupancy(base_pt_reverse)) // Search outward.
         {
           double l_upbound = 5 * CTRL_PT_DIST; // "5" is the threshold.
@@ -227,46 +266,40 @@ namespace ego_planner
             //cout << base_pt_temp.transpose() << endl;
             if (!grid_map_->getInflateOccupancy(base_pt_temp))
             {
-              RichInfoSegs[i].second.base_point[j][0] = base_pt_temp;
-              RichInfoSegs[i].second.direction[j][0] = base_vec_reverse;
+              RichInfoSegs[i].second.base_point[0][0] = base_pt_temp;
+              RichInfoSegs[i].second.direction[0][0] = base_vec_reverse;
               break;
             }
           }
           if (l > l_upbound)
           {
-            ROS_WARN("Can't find the new base points at the opposite within the threshold. i=%d, j=%d", i, j);
+            ROS_WARN("Can't find the new base points at the opposite within the threshold, 2. i=%d", i);
 
             segments.erase(segments.begin() + i);
             RichInfoSegs.erase(RichInfoSegs.begin() + i);
             seg_upbound--;
             i--;
-
-            goto exit_multi_loop3; // break "for (int j = 0; j < RichInfoSegs[i].first.size; j++)"
           }
         }
-        else // Unnecessary to search.
+        else if ( (base_pt_reverse - RichInfoSegs[i].first.points.col(0)).norm() >= RESOLUTION )// Unnecessary to search.
         {
-          RichInfoSegs[i].second.base_point[j][0] = base_pt_reverse;
-          RichInfoSegs[i].second.direction[j][0] = base_vec_reverse;
+          RichInfoSegs[i].second.base_point[0][0] = base_pt_reverse;
+          RichInfoSegs[i].second.direction[0][0] = base_vec_reverse;
         }
+        else
+        {
+          ROS_WARN("base_point and control point are too close!, 2");
+          cout << "base_point=" << RichInfoSegs[i].first.base_point[0][0].transpose() << " control point=" << RichInfoSegs[i].first.points.col(0).transpose() << endl;
+
+          segments.erase(segments.begin() + i);
+          RichInfoSegs.erase(RichInfoSegs.begin() + i);
+          seg_upbound--;
+          i--;
+        }
+
       }
 
-      // 1.3 Assign the base points to control points within [0, occ_start_id) and (occ_end_id, RichInfoSegs[i].first.size()-1].
-      if (RichInfoSegs[i].second.size)
-      {
-        for (int j = -1; j >= 0; j--)
-        {
-          RichInfoSegs[i].second.base_point[j][0] = RichInfoSegs[i].second.base_point[occ_start_id][0];
-          RichInfoSegs[i].second.direction[j][0] = RichInfoSegs[i].second.direction[occ_start_id][0];
-        }
-        for (int j = occ_end_id + 1; j < RichInfoSegs[i].second.size; j++)
-        {
-          RichInfoSegs[i].second.base_point[j][0] = RichInfoSegs[i].second.base_point[occ_end_id][0];
-          RichInfoSegs[i].second.direction[j][0] = RichInfoSegs[i].second.direction[occ_end_id][0];
-        }
-      }
-
-      exit_multi_loop3:;
+      
     }
 
     // Step 2. Assemble each segment to make up the new control point sequence.
@@ -323,22 +356,18 @@ namespace ego_planner
           cpsOneSample.points.col(cp_id) = cps_.points.col(cp_id);
           cpsOneSample.base_point[cp_id] = cps_.base_point[cp_id];
           cpsOneSample.direction[cp_id] = cps_.direction[cp_id];
-        //cout << "AA1 ";
         }
         else if (cp_id >= segments[seg_id].first && cp_id <= segments[seg_id].second)
         {
           if (!selection[seg_id]) // FUCK
           {
-        //cout << "AA2 ";
-        //cout << "cp_id=" << cp_id << " segments.size()=" << segments.size() << " points.cols()=" << cpsOneSample.points.cols() << " seg_id=" << seg_id << " RichInfoSegs.size()=" << RichInfoSegs.size() << " points2.cols()=" << RichInfoSegs[seg_id].first.points.cols() << " cp_of_seg_id=" << cp_of_seg_id << endl;
-            cpsOneSample.points.col(cp_id) = RichInfoSegs[seg_id].first.points.col(cp_of_seg_id);
+          cpsOneSample.points.col(cp_id) = RichInfoSegs[seg_id].first.points.col(cp_of_seg_id);
             cpsOneSample.base_point[cp_id] = RichInfoSegs[seg_id].first.base_point[cp_of_seg_id];
             cpsOneSample.direction[cp_id] = RichInfoSegs[seg_id].first.direction[cp_of_seg_id];
             cp_of_seg_id++;
           }
           else
           {
-        //cout << "AA3 ";
             if (RichInfoSegs[seg_id].second.size)
             {
               cpsOneSample.points.col(cp_id) = RichInfoSegs[seg_id].second.points.col(cp_of_seg_id);
@@ -352,21 +381,18 @@ namespace ego_planner
               goto abandon_this_trajectory;
             }
           }
-        //cout << "AA4 ";
 
           if (cp_id == segments[seg_id].second)
           {
             cp_of_seg_id = 0;
             seg_id++;
           }
-        //cout << "AA5 ";
         }
         else
         {
           ROS_ERROR("Shold not happen!!!!, cp_id=%d, seg_id=%d, segments.front().first=%d, segments.back().second=%d, segments[seg_id].first=%d, segments[seg_id].second=%d",
                     cp_id, seg_id, segments.front().first, segments.back().second, segments[seg_id].first, segments[seg_id].second);
         }
-        //cout << "AAA ";
 
         cp_id++;
       }
