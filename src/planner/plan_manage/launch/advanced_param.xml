@@ -35,6 +35,7 @@
   <arg name="point4_z"/>
 
   <arg name="flight_type"/>
+  <arg name="use_distinctive_trajs"/>
 
   <!-- main node -->
   <!-- node pkg="ego_planner" name="ego_planner_node" type="ego_planner_node" output="screen" launch-prefix="valgrind" -->
@@ -115,6 +116,7 @@
     <param name="manager/control_points_distance" value="0.4" type="double"/>
     <param name="manager/feasibility_tolerance" value="0.05" type="double"/>
     <param name="manager/planning_horizen" value="$(arg planning_horizen)" type="double"/>
+    <param name="manager/use_distinctive_trajs" value="$(arg use_distinctive_trajs)" type="bool"/>
 
   <!-- trajectory optimization -->
     <param name="optimization/lambda_smooth" value="1.0" type="double"/>

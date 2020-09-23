@@ -115,7 +115,7 @@ namespace ego_planner
     std::vector<ControlPoints> distinctiveTrajs(vector<std::pair<int, int>> segments);
     std::vector<std::pair<int, int>> initControlPoints(Eigen::MatrixXd &init_points, bool flag_first_init = true);
     bool BsplineOptimizeTrajRebound(Eigen::MatrixXd &optimal_points, double ts); // must be called after initControlPoints()
-    bool BsplineOptimizeTrajRebound(Eigen::MatrixXd &optimal_points, const ControlPoints &control_points, double ts);
+    bool BsplineOptimizeTrajRebound(Eigen::MatrixXd &optimal_points, double &final_cost, const ControlPoints &control_points, double ts);
     bool BsplineOptimizeTrajRefine(const Eigen::MatrixXd &init_points, const double ts, Eigen::MatrixXd &optimal_points);
 
     inline int getOrder(void) { return order_; }
@@ -182,7 +182,7 @@ namespace ego_planner
     static double costFunctionRebound(void *func_data, const double *x, double *grad, const int n);
     static double costFunctionRefine(void *func_data, const double *x, double *grad, const int n);
 
-    bool rebound_optimize();
+    bool rebound_optimize(double &final_cost);
     bool refine_optimize();
     void combineCostRebound(const double *x, double *grad, double &f_combine, const int n);
     void combineCostRefine(const double *x, double *grad, double &f_combine, const int n);

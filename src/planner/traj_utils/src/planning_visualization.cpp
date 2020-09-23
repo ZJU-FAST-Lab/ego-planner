@@ -17,7 +17,7 @@ namespace ego_planner
 
   // // real ids used: {id, id+1000}
   void PlanningVisualization::displayMarkerList(ros::Publisher &pub, const vector<Eigen::Vector3d> &list, double scale,
-                                                Eigen::Vector4d color, int id)
+                                                Eigen::Vector4d color, int id, bool show_sphere /* = true */ )
   {
     visualization_msgs::Marker sphere, line_strip;
     sphere.header.frame_id = line_strip.header.frame_id = "world";
@@ -43,10 +43,10 @@ namespace ego_planner
       pt.x = list[i](0);
       pt.y = list[i](1);
       pt.z = list[i](2);
-      sphere.points.push_back(pt);
+      if (show_sphere) sphere.points.push_back(pt);
       line_strip.points.push_back(pt);
     }
-    pub.publish(sphere);
+    if (show_sphere) pub.publish(sphere);
     pub.publish(line_strip);
   }
 
@@ -164,6 +164,35 @@ namespace ego_planner
     displayMarkerList(global_list_pub, init_pts, scale, color, id);
   }
 
+  void PlanningVisualization::displayMultiInitPathList(vector<vector<Eigen::Vector3d>> init_trajs, const double scale)
+  {
+
+    if (init_list_pub.getNumSubscribers() == 0)
+    {
+      return;
+    }
+
+    static int last_nums = 0;
+
+    for ( int id=0; id<last_nums; id++ )
+    {
+      Eigen::Vector4d color(0, 0, 0, 0);
+      vector<Eigen::Vector3d> blank;
+      displayMarkerList(init_list_pub, blank, scale, color, id, false);
+      ros::Duration(0.001).sleep();
+    }
+    last_nums = 0;
+
+    for ( int id=0; id<init_trajs.size(); id++ )
+    {
+      Eigen::Vector4d color(0, 0, 1, 0.7);
+      displayMarkerList(init_list_pub, init_trajs[id], scale, color, id, false);
+      ros::Duration(0.001).sleep();
+      last_nums++;
+    }
+
+  }
+
   void PlanningVisualization::displayInitPathList(vector<Eigen::Vector3d> init_pts, const double scale, int id)
   {
 
@@ -207,12 +236,6 @@ namespace ego_planner
 
     Eigen::Vector4d color = Eigen::Vector4d(0.5 + ((double)rand() / RAND_MAX / 2), 0.5 + ((double)rand() / RAND_MAX / 2), 0, 1); // make the A star pathes different every time.
     double scale = 0.05 + (double)rand() / RAND_MAX / 10;
-
-    // for ( int i=0; i<10; i++ )
-    // {
-    //   //Eigen::Vector4d color(1,1,0,0);
-    //   displayMarkerList(a_star_list_pub, list, scale, color, id+i);
-    // }
 
     for (auto block : a_star_paths)
     {

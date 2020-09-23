@@ -122,7 +122,7 @@ namespace ego_planner
         if (occ_start_id == -1 || occ_end_id == -1)
         {
           // It means that the first or the last control points of one segment are in obstacles, which is not allowed.
-          ROS_WARN("What? occ_start_id=%d, occ_end_id=%d", occ_start_id, occ_end_id);
+          // ROS_WARN("What? occ_start_id=%d, occ_end_id=%d", occ_start_id, occ_end_id);
 
           segments.erase(segments.begin() + i);
           RichInfoSegs.erase(RichInfoSegs.begin() + i);
@@ -1263,21 +1263,22 @@ namespace ego_planner
   bool BsplineOptimizer::BsplineOptimizeTrajRebound(Eigen::MatrixXd &optimal_points, double ts)
   {
     setBsplineInterval(ts);
-
-    bool flag_success = rebound_optimize();
+    
+    double final_cost;
+    bool flag_success = rebound_optimize(final_cost);
 
     optimal_points = cps_.points;
 
     return flag_success;
   }
 
-  bool BsplineOptimizer::BsplineOptimizeTrajRebound(Eigen::MatrixXd &optimal_points, const ControlPoints &control_points, double ts)
+  bool BsplineOptimizer::BsplineOptimizeTrajRebound(Eigen::MatrixXd &optimal_points, double &final_cost, const ControlPoints &control_points, double ts)
   {
     setBsplineInterval(ts);
 
     cps_ = control_points;
 
-    bool flag_success = rebound_optimize();
+    bool flag_success = rebound_optimize(final_cost);
 
     optimal_points = cps_.points;
 
@@ -1297,13 +1298,12 @@ namespace ego_planner
     return flag_success;
   }
 
-  bool BsplineOptimizer::rebound_optimize()
+  bool BsplineOptimizer::rebound_optimize(double &final_cost)
   {
     iter_num_ = 0;
     int start_id = order_;
     int end_id = this->cps_.size - order_;
     variable_num_ = 3 * (end_id - start_id);
-    double final_cost;
 
     ros::Time t0 = ros::Time::now(), t1, t2;
     int restart_nums = 0, rebound_times = 0;

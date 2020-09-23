@@ -47,11 +47,14 @@ namespace ego_planner
     {
       ros::Duration(1.0).sleep();
       while (ros::ok() && !have_odom_)
+      {
         ros::spinOnce();
+      }
       planGlobalTrajbyGivenWps();
     }
     else
       cout << "Wrong target_type_ value! target_type_=" << target_type_ << endl;
+
   }
 
   void EGOReplanFSM::planGlobalTrajbyGivenWps()
@@ -107,9 +110,11 @@ namespace ego_planner
   }
 
   void EGOReplanFSM::waypointCallback(const nav_msgs::PathConstPtr &msg)
-  {
+  { 
+    cout << "A1" << endl;
     if (msg->poses[0].pose.position.z < -0.1)
       return;
+    cout << "A2" << endl;
 
     cout << "Triggered!" << endl;
     trigger_ = true;
@@ -150,6 +155,7 @@ namespace ego_planner
     {
       ROS_ERROR("Unable to generate global trajectory!");
     }
+    cout << "A3" << endl;
   }
 
   void EGOReplanFSM::odometryCallback(const nav_msgs::OdometryConstPtr &msg)
@@ -376,10 +382,11 @@ namespace ego_planner
 
   void EGOReplanFSM::checkCollisionCallback(const ros::TimerEvent &e)
   {
+    
     LocalTrajData *info = &planner_manager_->local_data_;
     auto map = planner_manager_->grid_map_;
 
-    if (exec_state_ == WAIT_TARGET)
+    if (exec_state_ == WAIT_TARGET || info->start_time_.toSec() < 1e-5)
       return;
 
     /* ---------- check trajectory ---------- */

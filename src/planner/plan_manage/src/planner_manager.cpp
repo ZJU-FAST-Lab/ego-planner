@@ -21,6 +21,7 @@ namespace ego_planner
     nh.param("manager/feasibility_tolerance", pp_.feasibility_tolerance_, 0.0);
     nh.param("manager/control_points_distance", pp_.ctrl_pt_dist, -1.0);
     nh.param("manager/planning_horizen", pp_.planning_horizen_, 5.0);
+    nh.param("manager/use_distinctive_trajs", pp_.use_distinctive_trajs, false);
 
     local_data_.traj_id_ = 0;
     grid_map_.reset(new GridMap);
@@ -208,97 +209,69 @@ namespace ego_planner
       }
     } while (flag_regenerate);
 
-    Eigen::MatrixXd ctrl_pts;
+    Eigen::MatrixXd ctrl_pts, ctrl_pts_temp;
     UniformBspline::parameterizeToBspline(ts, point_set, start_end_derivatives, ctrl_pts);
-
     
     vector<std::pair<int,int>> segments;
     segments = bspline_optimizer_rebound_->initControlPoints(ctrl_pts, true);
 
     t_init = ros::Time::now() - t_start;
-
-    // auto cps = bspline_optimizer_rebound_->getControlPoints();
-    // cout << endl;
-    // if (segments.size() >= 1)
-    //   cout << "segments.size()=" << segments.size() << " " << segments[0].first << " " << segments[0].second << endl;
-    // for ( int i=0; i<cps.size; i++ )
-    // {
-    //   cout << "######" << cps.points.col(i).transpose() << endl;
-    //   for ( int j=0; j<cps.base_point[i].size(); j++ )
-    //   cout << "      " << cps.base_point[i][j].transpose() << " @ " << cps.direction[i][j].transpose() << endl;
-    // }
-
-
-#define USE_DISTINCTIVE_TRAJS
-#ifdef USE_DISTINCTIVE_TRAJS
-    std::vector<ControlPoints> trajs = bspline_optimizer_rebound_->distinctiveTrajs(segments);
-    cout << "\033[1;33m" << "trajs=" << trajs.size() << "\033[1;0m" << endl;
-
-    static int last_num = 0;
-
-    for ( int i=0; i<last_num; i++ )
-    {
-      point_set.clear();
-      visualization_->displayInitPathList(point_set, 0.2, i);
-      ros::Duration(0.001).sleep();
-    }
-
-    for ( int i=trajs.size()-1; i>=0; i-- )
-    {
-
-      if ( trajs.size() >= 2 )
-      {
-        auto cps = trajs[i];
-        cout << setprecision(5);
-        for ( int i=0; i<cps.size; i++ )
-        {
-          if ( cps.base_point[i].size() > 1 )
-          {
-            cout << "######" << cps.points.col(i).transpose() << " clearance=" << cps.clearance << " cps.size=" << cps.size << " cps.flag_temp[i]=" << cps.flag_temp[i] << endl;
-            for ( int j=0; j<cps.base_point[i].size(); j++ )
-              cout << "      " << cps.base_point[i][j].transpose() << " @ " << cps.direction[i][j].transpose() << endl;
-          }
-        }
-      }
-
-
-      if ( bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, trajs[i], ts) )
-      {
-        cout << "---" << endl;
-        point_set.clear();
-        for ( int j=0; j<ctrl_pts.cols(); j++ )
-        {
-          point_set.push_back( ctrl_pts.col(j) );
-        }
-        visualization_->displayInitPathList(point_set, 0.2, i);
-        ros::Duration(0.001).sleep();
-      }
-
-    }
-
-    last_num = trajs.size();
-
-#else
-
-    static int vis_id = 0;
-    visualization_->displayInitPathList(point_set, 0.2, 0);
-    //visualization_->displayAStarList(a_star_pathes, vis_id);
-#endif
-
     t_start = ros::Time::now();
 
     /*** STEP 2: OPTIMIZE ***/
-    bool flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts);
+    bool flag_step_1_success = false;
+    vector<vector<Eigen::Vector3d>> vis_trajs;
+
+    if (pp_.use_distinctive_trajs)
+    {
+      std::vector<ControlPoints> trajs = bspline_optimizer_rebound_->distinctiveTrajs(segments);
+      cout << "\033[1;33m" << "multi-trajs=" << trajs.size() << "\033[1;0m" << endl;
+
+      double final_cost, min_cost = 999999.0;
+      for ( int i=trajs.size()-1; i>=0; i-- )
+      {
+
+        if ( bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts_temp, final_cost, trajs[i], ts) )
+        {
+          flag_step_1_success = true;
+          if ( final_cost < min_cost )
+          {
+            min_cost = final_cost;
+            ctrl_pts = ctrl_pts_temp;
+          }
+
+          // visualization
+          cout << "---" << endl;
+          point_set.clear();
+          for ( int j=0; j<ctrl_pts_temp.cols(); j++ )
+          {
+            point_set.push_back( ctrl_pts_temp.col(j) );
+          }
+          vis_trajs.push_back( point_set );
+        }
+
+      }
+
+      t_opt = ros::Time::now() - t_start;
+
+      visualization_->displayMultiInitPathList(vis_trajs, 0.2); // This visuallization will take up several milliseconds.
+    } 
+    else
+    {
+      flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts);
+      t_opt = ros::Time::now() - t_start;
+      static int vis_id = 0;
+      visualization_->displayInitPathList(point_set, 0.2, 0);
+    }
+
     cout << "plan_success=" << flag_step_1_success << endl;
     if (!flag_step_1_success)
     {
-      // visualization_->displayOptimalList( ctrl_pts, vis_id );
+      visualization_->displayOptimalList( ctrl_pts, 0 );
       continous_failures_count_++;
       return false;
     }
-    //visualization_->displayOptimalList( ctrl_pts, vis_id );
 
-    t_opt = ros::Time::now() - t_start;
     t_start = ros::Time::now();
 
     /*** STEP 3: REFINE(RE-ALLOCATE TIME) IF NECESSARY ***/

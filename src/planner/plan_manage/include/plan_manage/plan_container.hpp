@@ -195,6 +195,7 @@ namespace ego_planner
     double ctrl_pt_dist;                  // distance between adjacient B-spline control points
     double feasibility_tolerance_;        // permitted ratio of vel/acc exceeding limits
     double planning_horizen_;
+    bool use_distinctive_trajs;
 
     /* processing time */
     double time_search_ = 0.0;
