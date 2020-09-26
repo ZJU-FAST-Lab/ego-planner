@@ -1,6 +1,7 @@
 // #include <fstream>
 #include <plan_manage/planner_manager.h>
 #include <thread>
+#include "visualization_msgs/Marker.h" // fuck
 
 namespace ego_planner
 {
@@ -27,6 +28,9 @@ namespace ego_planner
     grid_map_.reset(new GridMap);
     grid_map_->initMap(nh);
 
+    obj_predictor_.reset(new fast_planner::ObjPredictor(nh));
+    obj_predictor_->init();
+
     bspline_optimizer_rebound_.reset(new BsplineOptimizer);
     bspline_optimizer_rebound_->setParam(nh);
     bspline_optimizer_rebound_->setEnvironment(grid_map_);
@@ -34,6 +38,8 @@ namespace ego_planner
     bspline_optimizer_rebound_->a_star_->initGridMap(grid_map_, Eigen::Vector3i(100, 100, 100));
 
     visualization_ = vis;
+
+    obj_pub_ = nh.advertise<visualization_msgs::Marker>("/dynamic/obj_prdi", 10); // fuck
   }
 
   // !SECTION
@@ -44,6 +50,35 @@ namespace ego_planner
                                         Eigen::Vector3d start_acc, Eigen::Vector3d local_target_pt,
                                         Eigen::Vector3d local_target_vel, bool flag_polyInit, bool flag_randomPolyTraj)
   {
+    // int obj_nums = obj_predictor_->getObjNums();
+    // cout << "obj_nums=" << obj_nums << endl;
+    // for ( int id=0; id<obj_nums; id++ )
+    // {
+    //   Eigen::Vector3d prdi_pt = obj_predictor_->evaluateConstVel(id,ros::Time::now().toSec()+1.0);
+    //   cout << "prdi_pt=" << prdi_pt.transpose() << endl;
+
+    //   /* ---------- rviz ---------- */
+    //   visualization_msgs::Marker mk;
+    //   mk.header.frame_id = "/world";
+    //   mk.header.stamp = ros::Time::now();
+    //   mk.type = visualization_msgs::Marker::CUBE;
+    //   mk.action = visualization_msgs::Marker::ADD;
+    //   mk.id = id;
+
+    //   mk.scale.x = 0.5, mk.scale.y = 0.5, mk.scale.z = 0.5;
+    //   mk.color.a = 1.0, mk.color.r = 0, mk.color.g = 0, mk.color.b = 1;
+
+    //   mk.pose.orientation.w = 1;
+    //   mk.pose.orientation.x = 0;
+    //   mk.pose.orientation.y = 0;
+    //   mk.pose.orientation.z = 0;
+
+    //   mk.pose.position.x = prdi_pt(0), mk.pose.position.y = prdi_pt(1), mk.pose.position.z = prdi_pt(2);
+
+    //   obj_pub_.publish(mk);
+    // }
+
+
 
     static int count = 0;
     std::cout << endl
@@ -261,7 +296,7 @@ namespace ego_planner
     {
       flag_step_1_success = bspline_optimizer_rebound_->BsplineOptimizeTrajRebound(ctrl_pts, ts);
       t_opt = ros::Time::now() - t_start;
-      static int vis_id = 0;
+      //static int vis_id = 0;
       visualization_->displayInitPathList(point_set, 0.2, 0);
     }
 

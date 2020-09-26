@@ -37,6 +37,9 @@
   <arg name="flight_type"/>
   <arg name="use_distinctive_trajs"/>
 
+  <arg name="obj_num_set"/>
+
+
   <!-- main node -->
   <!-- node pkg="ego_planner" name="ego_planner_node" type="ego_planner_node" output="screen" launch-prefix="valgrind" -->
   <node pkg="ego_planner" name="ego_planner_node" type="ego_planner_node" output="screen">
@@ -130,6 +133,14 @@
     <param name="bspline/limit_vel" value="$(arg max_vel)" type="double"/>
     <param name="bspline/limit_acc" value="$(arg max_acc)" type="double"/>
     <param name="bspline/limit_ratio" value="1.1" type="double"/>
+
+  <!-- objects prediction -->
+    <param name="prediction/obj_num" value="$(arg obj_num_set)" type="int"/>
+    <param name="prediction/lambda" value="1.0" type="double"/>
+    <param name="prediction/predict_rate" value="1.0" type="double"/>
+  
+  
+
 
   </node>
 

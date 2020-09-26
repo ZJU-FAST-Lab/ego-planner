@@ -757,6 +757,18 @@ namespace ego_planner
     return cost;
   }
 
+  void BsplineOptimizer::calcMovingObjCost(const Eigen::MatrixXd &q, double &cost, Eigen::MatrixXd &gradient)
+  {
+    cost = 0.0;
+    int end_idx = q.cols() - order_;
+
+    for (auto i = order_; i < end_idx; ++i)
+    {
+      
+    }
+
+  }
+
   void BsplineOptimizer::calcDistanceCostRebound(const Eigen::MatrixXd &q, double &cost,
                                                  Eigen::MatrixXd &gradient, int iter_num, double smoothness_cost)
   {

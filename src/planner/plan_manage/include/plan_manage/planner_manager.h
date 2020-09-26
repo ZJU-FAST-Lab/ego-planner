@@ -7,6 +7,7 @@
 #include <bspline_opt/uniform_bspline.h>
 #include <ego_planner/DataDisp.h>
 #include <plan_env/grid_map.h>
+#include <plan_env/obj_predictor.h>
 #include <plan_manage/plan_container.hpp>
 #include <ros/ros.h>
 #include <traj_utils/planning_visualization.h>
@@ -41,10 +42,13 @@ namespace ego_planner
     LocalTrajData local_data_;
     GlobalTrajData global_data_;
     GridMap::Ptr grid_map_;
+    fast_planner::ObjPredictor::Ptr obj_predictor_;    
 
   private:
     /* main planning algorithms & modules */
     PlanningVisualization::Ptr visualization_;
+
+    ros::Publisher obj_pub_; //fuck 
 
     BsplineOptimizer::Ptr bspline_optimizer_rebound_;
 

@@ -42,8 +42,16 @@ link_directories(${PCL_LIBRARY_DIRS})
 add_library( plan_env 
     src/grid_map.cpp 
     src/raycast.cpp
+    src/obj_predictor.cpp 
     )
 target_link_libraries( plan_env
     ${catkin_LIBRARIES} 
     ${PCL_LIBRARIES}
     )  
+
+add_executable(obj_generator
+    src/obj_generator.cpp 
+)
+target_link_libraries(obj_generator 
+    ${catkin_LIBRARIES}
+    )
