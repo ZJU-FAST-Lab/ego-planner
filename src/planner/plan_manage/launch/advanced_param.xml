@@ -15,7 +15,7 @@
 
   <arg name="max_vel"/>
   <arg name="max_acc"/>
-  <arg name="planning_horizen"/>
+  <arg name="planning_horizon"/>
 
   <arg name="point_num"/>
   <arg name="point0_x"/>
@@ -48,7 +48,7 @@
     <param name="fsm/flight_type" value="$(arg flight_type)" type="int"/>
     <param name="fsm/thresh_replan" value="1.5" type="double"/>
     <param name="fsm/thresh_no_replan" value="2.0" type="double"/>
-    <param name="fsm/planning_horizen" value="$(arg planning_horizen)" type="double"/> <!--always set to 1.5 times grater than sensing horizen-->
+    <param name="fsm/planning_horizon" value="$(arg planning_horizon)" type="double"/> <!--always set to 1.5 times grater than sensing horizen-->
     <param name="fsm/planning_horizen_time" value="3" type="double"/>
     <param name="fsm/emergency_time_" value="1.0" type="double"/>
 
@@ -113,7 +113,7 @@
     <param name="manager/max_jerk" value="4" type="double"/>
     <param name="manager/control_points_distance" value="0.4" type="double"/>
     <param name="manager/feasibility_tolerance" value="0.05" type="double"/>
-    <param name="manager/planning_horizen" value="$(arg planning_horizen)" type="double"/>
+    <param name="manager/planning_horizon" value="$(arg planning_horizon)" type="double"/>
 
   <!-- trajectory optimization -->
     <param name="optimization/lambda_smooth" value="1.0" type="double"/>
