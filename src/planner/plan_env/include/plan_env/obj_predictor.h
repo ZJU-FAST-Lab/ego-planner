@@ -89,6 +89,8 @@ public:
     Eigen::Matrix<double, 2, 1> tv;
     tv << 1.0, pow(t-global_start_time_.toSec(), 1);
 
+    // cout << t-global_start_time_.toSec() << endl;
+
     Eigen::Vector3d pt;
     pt(0) = tv.dot(polys[0].head(2)), pt(1) = tv.dot(polys[1].head(2)), pt(2) = tv.dot(polys[2].head(2));
 

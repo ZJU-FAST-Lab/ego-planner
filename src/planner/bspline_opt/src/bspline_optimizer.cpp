@@ -19,9 +19,15 @@ namespace ego_planner
     nh.param("optimization/order", order_, 3);
   }
 
-  void BsplineOptimizer::setEnvironment(const GridMap::Ptr &env)
+  void BsplineOptimizer::setEnvironment(const GridMap::Ptr &map)
   {
-    this->grid_map_ = env;
+    this->grid_map_ = map;
+  }
+
+  void BsplineOptimizer::setEnvironment(const GridMap::Ptr &map, const fast_planner::ObjPredictor::Ptr mov_obj)
+  {
+    this->grid_map_ = map;
+    this->moving_objs_ = mov_obj;
   }
 
   void BsplineOptimizer::setControlPoints(const Eigen::MatrixXd &points)
@@ -761,11 +767,35 @@ namespace ego_planner
   {
     cost = 0.0;
     int end_idx = q.cols() - order_;
+    constexpr double CLEARANCE = 1.5;
+    double t_now = ros::Time::now().toSec();
 
-    for (auto i = order_; i < end_idx; ++i)
+    for (int i = order_; i < end_idx; i++)
     {
+      double time = ((double)(order_-1)/2+(i-order_+1)) * bspline_interval_;
       
+      for ( int id = 0; id < moving_objs_->getObjNums(); id ++ )
+      {
+        Eigen::Vector3d obj_prid = moving_objs_->evaluateConstVel(id, t_now + time);
+        double dist = (cps_.points.col(i) - obj_prid).norm();
+        //cout /*<< "cps_.points.col(i)=" << cps_.points.col(i).transpose()*/ << " moving_objs_=" << obj_prid.transpose() << " dist=" << dist << endl;
+        double dist_err = CLEARANCE - dist;
+        Eigen::Vector3d dist_grad = (cps_.points.col(i) - obj_prid).normalized();
+
+        if (dist_err < 0)
+        {
+          /* do nothing */
+        }
+        else
+        {
+          cost += pow(dist_err, 2);
+          gradient.col(i) += -2.0 * dist_err * dist_grad;
+        }
+      }
+      // cout << "time=" << time << " i=" << i << " order_=" << order_ << " end_idx=" << end_idx << endl;
+      // cout << "--" << endl;
     }
+    // cout << "---------------" << endl;
 
   }
 
@@ -1547,20 +1577,22 @@ namespace ego_planner
     memcpy(cps_.points.data() + 3 * order_, x, n * sizeof(x[0]));
 
     /* ---------- evaluate cost and gradient ---------- */
-    double f_smoothness, f_distance, f_feasibility;
+    double f_smoothness, f_distance, f_feasibility, f_mov_objs;
 
     Eigen::MatrixXd g_smoothness = Eigen::MatrixXd::Zero(3, cps_.size);
     Eigen::MatrixXd g_distance = Eigen::MatrixXd::Zero(3, cps_.size);
     Eigen::MatrixXd g_feasibility = Eigen::MatrixXd::Zero(3, cps_.size);
+    Eigen::MatrixXd g_mov_objs = Eigen::MatrixXd::Zero(3, cps_.size);
 
     calcSmoothnessCost(cps_.points, f_smoothness, g_smoothness);
     calcDistanceCostRebound(cps_.points, f_distance, g_distance, iter_num_, f_smoothness);
     calcFeasibilityCost(cps_.points, f_feasibility, g_feasibility);
+    calcMovingObjCost(cps_.points, f_mov_objs, g_mov_objs);
 
-    f_combine = lambda1_ * f_smoothness + new_lambda2_ * f_distance + lambda3_ * f_feasibility;
+    f_combine = lambda1_ * f_smoothness + new_lambda2_ * f_distance + lambda3_ * f_feasibility + new_lambda2_ * f_mov_objs;
     //printf("origin %f %f %f %f\n", f_smoothness, f_distance, f_feasibility, f_combine);
 
-    Eigen::MatrixXd grad_3D = lambda1_ * g_smoothness + new_lambda2_ * g_distance + lambda3_ * g_feasibility;
+    Eigen::MatrixXd grad_3D = lambda1_ * g_smoothness + new_lambda2_ * g_distance + lambda3_ * g_feasibility + new_lambda2_ * g_mov_objs;
     memcpy(grad, grad_3D.data() + 3 * order_, n * sizeof(grad[0]));
   }
 

@@ -21,7 +21,7 @@ namespace ego_planner
     nh.param("manager/max_jerk", pp_.max_jerk_, -1.0);
     nh.param("manager/feasibility_tolerance", pp_.feasibility_tolerance_, 0.0);
     nh.param("manager/control_points_distance", pp_.ctrl_pt_dist, -1.0);
-    nh.param("manager/planning_horizen", pp_.planning_horizen_, 5.0);
+    nh.param("manager/planning_horizon", pp_.planning_horizen_, 5.0);
     nh.param("manager/use_distinctive_trajs", pp_.use_distinctive_trajs, false);
 
     local_data_.traj_id_ = 0;
@@ -33,7 +33,7 @@ namespace ego_planner
 
     bspline_optimizer_rebound_.reset(new BsplineOptimizer);
     bspline_optimizer_rebound_->setParam(nh);
-    bspline_optimizer_rebound_->setEnvironment(grid_map_);
+    bspline_optimizer_rebound_->setEnvironment(grid_map_, obj_predictor_);
     bspline_optimizer_rebound_->a_star_.reset(new AStar);
     bspline_optimizer_rebound_->a_star_->initGridMap(grid_map_, Eigen::Vector3i(100, 100, 100));
 

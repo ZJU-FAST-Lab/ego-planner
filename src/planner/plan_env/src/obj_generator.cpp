@@ -38,8 +38,9 @@
 #include <plan_env/linear_obj_model.hpp>
 using namespace std;
 
-int obj_num;
-double _xy_size, _h_size, _vel, _yaw_dot, _acc_r1, _acc_r2, _acc_z, _scale1, _scale2, _interval;
+int obj_num, _input_type;
+double _x_size, _y_size, _h_size, _vel, _yaw_dot, _acc_r1, _acc_r2, _acc_z, _scale1, _scale2, _interval;
+
 
 ros::Publisher obj_pub;            // visualize marker
 vector<ros::Publisher> pose_pubs;  // obj pose (from optitrack)
@@ -47,7 +48,8 @@ vector<LinearObjModel> obj_models;
 
 random_device rd;
 default_random_engine eng(rd());
-uniform_real_distribution<double> rand_pos;
+uniform_real_distribution<double> rand_pos_x;
+uniform_real_distribution<double> rand_pos_y;
 uniform_real_distribution<double> rand_h;
 uniform_real_distribution<double> rand_vel;
 uniform_real_distribution<double> rand_acc_r;
@@ -69,16 +71,18 @@ int main(int argc, char** argv) {
 
   /* ---------- initialize ---------- */
   node.param("obj_generator/obj_num", obj_num, 20);
-  node.param("obj_generator/xy_size", _xy_size, 10.0);
+  node.param("obj_generator/x_size", _x_size, 10.0);
+  node.param("obj_generator/y_size", _y_size, 10.0);
   node.param("obj_generator/h_size", _h_size, 2.0);
   node.param("obj_generator/vel", _vel, 2.0);
   node.param("obj_generator/yaw_dot", _yaw_dot, 2.0);
   node.param("obj_generator/acc_r1", _acc_r1, 2.0);
   node.param("obj_generator/acc_r2", _acc_r2, 2.0);
-  node.param("obj_generator/acc_z", _acc_z, 3.0);
+  node.param("obj_generator/acc_z", _acc_z, 0.0);
   node.param("obj_generator/scale1", _scale1, 0.5);
   node.param("obj_generator/scale2", _scale2, 1.0);
   node.param("obj_generator/interval", _interval, 100.0);
+  node.param("obj_generator/input_type", _input_type, 1);
 
   obj_pub = node.advertise<visualization_msgs::Marker>("/dynamic/obj", 10);
   for (int i = 0; i < obj_num; ++i) {
@@ -92,7 +96,8 @@ int main(int argc, char** argv) {
   ros::Duration(1.0).sleep();
 
   rand_color = uniform_real_distribution<double>(0.0, 1.0);
-  rand_pos = uniform_real_distribution<double>(-_xy_size, _xy_size);
+  rand_pos_x = uniform_real_distribution<double>(-_x_size/2, _x_size/2);
+  rand_pos_y = uniform_real_distribution<double>(-_y_size/2, _y_size/2);
   rand_h = uniform_real_distribution<double>(0.0, _h_size);
   rand_vel = uniform_real_distribution<double>(-_vel, _vel);
   rand_acc_t = uniform_real_distribution<double>(0.0, 6.28);
@@ -105,10 +110,10 @@ int main(int argc, char** argv) {
   /* ---------- give initial value of each obj ---------- */
   for (int i = 0; i < obj_num; ++i) {
     LinearObjModel model;
-    Eigen::Vector3d pos(rand_pos(eng), rand_pos(eng), rand_h(eng));
+    Eigen::Vector3d pos(rand_pos_x(eng), rand_pos_y(eng), rand_h(eng));
     Eigen::Vector3d vel(rand_vel(eng), rand_vel(eng), 0.0);
     Eigen::Vector3d color(rand_color(eng), rand_color(eng), rand_color(eng));
-    Eigen::Vector3d scale(rand_scale(eng), 1.5 * rand_scale(eng), 2.0*rand_scale(eng));
+    Eigen::Vector3d scale(rand_scale(eng), 1.5 * rand_scale(eng), 5.0*rand_scale(eng));
     double yaw = rand_yaw(eng);
     double yaw_dot = rand_yaw_dot(eng);
 
@@ -118,8 +123,15 @@ int main(int argc, char** argv) {
     z = rand_acc_z(eng);
     Eigen::Vector3d acc(r * cos(t), r * sin(t), z);
 
-    model.initialize(pos, vel, acc, yaw, yaw_dot, color, scale);
-    model.setLimits(Eigen::Vector3d(_xy_size, _xy_size, _h_size), Eigen::Vector2d(0.0, _vel),
+    if ( _input_type == 1 )
+    {
+      model.initialize(pos, vel, acc, yaw, yaw_dot, color, scale, _input_type); // Vel input
+    }
+    else
+    {
+      model.initialize(pos, Eigen::Vector3d(0,0,0), acc, yaw, yaw_dot, color, scale, _input_type); // Acc input
+    }
+    model.setLimits(Eigen::Vector3d(_x_size/2, _y_size/2, _h_size), Eigen::Vector2d(0.0, _vel),
                     Eigen::Vector2d(0, 0));
     obj_models.push_back(model);
   }
@@ -137,29 +149,29 @@ void updateCallback(const ros::TimerEvent& e) {
   ros::Time time_now = ros::Time::now();
 
   /* ---------- change input ---------- */
-  double dtc = (time_now - time_change).toSec();
-  if (dtc > _interval) {
-    for (int i = 0; i < obj_num; ++i) {
-      /* ---------- use acc input ---------- */
-      // double r, t, z;
-      // r = rand_acc_r(eng);
-      // t = rand_acc_t(eng);
-      // z = rand_acc_z(eng);
-      // Eigen::Vector3d acc(r * cos(t), r * sin(t), z);
-      // obj_models[i].setInput(acc);
+  // double dtc = (time_now - time_change).toSec();
+  // if (dtc > _interval) {
+  //   for (int i = 0; i < obj_num; ++i) {
+  //     /* ---------- use acc input ---------- */
+  //     // double r, t, z;
+  //     // r = rand_acc_r(eng);
+  //     // t = rand_acc_t(eng);
+  //     // z = rand_acc_z(eng);
+  //     // Eigen::Vector3d acc(r * cos(t), r * sin(t), z);
+  //     // obj_models[i].setInput(acc);
 
-      /* ---------- use vel input ---------- */
-      double vx, vy, vz, yd;
-      vx = rand_vel(eng);
-      vy = rand_vel(eng);
-      vz = 0.0;
-      yd = rand_yaw_dot(eng);
+  //     /* ---------- use vel input ---------- */
+  //     double vx, vy, vz, yd;
+  //     vx = rand_vel(eng);
+  //     vy = rand_vel(eng);
+  //     vz = 0.0;
+  //     yd = rand_yaw_dot(eng);
 
-      obj_models[i].setInput(Eigen::Vector3d(vx, vy, vz));
-      obj_models[i].setYawDot(yd);
-    }
-    time_change = time_now;
-  }
+  //     obj_models[i].setInput(Eigen::Vector3d(vx, vy, vz));
+  //     obj_models[i].setYawDot(yd);
+  //   }
+  //   time_change = time_now;
+  // }
 
   /* ---------- update obj state ---------- */
   double dt = (time_now - time_update).toSec();

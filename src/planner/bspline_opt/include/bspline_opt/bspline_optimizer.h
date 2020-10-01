@@ -5,6 +5,7 @@
 #include <path_searching/dyn_a_star.h>
 #include <bspline_opt/uniform_bspline.h>
 #include <plan_env/grid_map.h>
+#include <plan_env/obj_predictor.h>
 #include <ros/ros.h>
 #include "bspline_opt/lbfgs.hpp"
 
@@ -87,7 +88,8 @@ namespace ego_planner
     ~BsplineOptimizer() {}
 
     /* main API */
-    void setEnvironment(const GridMap::Ptr &env);
+    void setEnvironment(const GridMap::Ptr &map);
+    void setEnvironment(const GridMap::Ptr &map, const fast_planner::ObjPredictor::Ptr mov_obj);
     void setParam(ros::NodeHandle &nh);
     Eigen::MatrixXd BsplineOptimizeTraj(const Eigen::MatrixXd &points, const double &ts,
                                         const int &cost_function, int max_num_id, int max_time_id);
@@ -122,6 +124,7 @@ namespace ego_planner
 
   private:
     GridMap::Ptr grid_map_;
+    fast_planner::ObjPredictor::Ptr moving_objs_;
 
     enum FORCE_STOP_OPTIMIZE_TYPE
     {
