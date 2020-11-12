@@ -53,7 +53,7 @@ sudo apt-get install libarmadillo-dev
 
 From github,
 ```
-git clone https://github.com/bigsuperZZZX/ego-planner.git
+git clone https://github.com/ZJU-FAST-Lab/ego-planner.git
 ```
 
 Or from gitee,
