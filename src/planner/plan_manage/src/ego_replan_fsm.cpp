@@ -45,7 +45,7 @@ namespace ego_planner
       waypoint_sub_ = nh.subscribe("/waypoint_generator/waypoints", 1, &EGOReplanFSM::waypointCallback, this);
     else if (target_type_ == TARGET_TYPE::PRESET_TARGET)
     {
-      ros::Duration(1.0).sleep();
+      // ros::Duration(1.0).sleep();
       while (ros::ok() && !have_odom_)
       {
         ros::spinOnce();

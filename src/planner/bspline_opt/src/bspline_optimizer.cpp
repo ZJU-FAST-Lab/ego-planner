@@ -510,9 +510,17 @@ namespace ego_planner
     {
       //cout << "in=" << in.transpose() << " out=" << out.transpose() << endl;
       Eigen::Vector3d in(init_points.col(segment_ids[i].first)), out(init_points.col(segment_ids[i].second));
-      if (a_star_->AstarSearch(/*(in-out).norm()/10+0.05*/ 0.1, in, out))
+      if (a_star_->AstarSearch(/*(in-out).norm()/10+0.05*/ 0.1, out, in))
       {
         a_star_pathes.push_back(a_star_->getPath());
+      }
+      else if ( i < segment_ids.size() - 1 ) // Maybe the obstacle is a closed empty box and the .second is in the box.  /fuck
+      {
+        ROS_ERROR("Here Here 1!!!");
+        
+        segment_ids[i].second = segment_ids[i+1].second;
+        segment_ids.erase(segment_ids.begin()+i+1);
+        i--;
       }
       else
       {
@@ -520,6 +528,10 @@ namespace ego_planner
         vector<std::pair<int, int>> blank_ret;
         return blank_ret;
       }
+    }
+    if ( a_star_pathes.size() != segment_ids.size() )
+    {
+      ROS_ERROR("Should not happen 1!!! a_star_pathes.size()=%d, segment_ids.size()=%d", a_star_pathes.size(), segment_ids.size());
     }
 
     /*** calculate bounds ***/
@@ -1195,9 +1207,17 @@ namespace ego_planner
       {
         /*** a star search ***/
         Eigen::Vector3d in(cps_.points.col(segment_ids[i].first)), out(cps_.points.col(segment_ids[i].second));
-        if (a_star_->AstarSearch(/*(in-out).norm()/10+0.05*/ 0.1, in, out))
+        if (a_star_->AstarSearch(/*(in-out).norm()/10+0.05*/ 0.1, out, in))
         {
           a_star_pathes.push_back(a_star_->getPath());
+        }
+        else if ( i < segment_ids.size() - 1 ) // Maybe the obstacle is a closed empty box and the .second is in the box.  /fuck
+        {
+          ROS_ERROR("Here Here 2!!!");
+
+          segment_ids[i].second = segment_ids[i+1].second;
+          segment_ids.erase(segment_ids.begin()+i+1);
+          i--;
         }
         else
         {
@@ -1205,6 +1225,10 @@ namespace ego_planner
           segment_ids.erase(segment_ids.begin() + i);
           i--;
         }
+      }
+      if ( a_star_pathes.size() != segment_ids.size() )
+      {
+        ROS_ERROR("Should not happen 2!!! a_star_pathes.size()=%d, segment_ids.size()=%d", a_star_pathes.size(), segment_ids.size());
       }
 
       for (size_t i = 1; i < segment_ids.size(); i++) // Avoid overlap
