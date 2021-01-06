@@ -39,7 +39,7 @@ void GridMap::initMap(ros::NodeHandle &nh)
   node_.param("grid_map/min_ray_length", mp_.min_ray_length_, -0.1);
   node_.param("grid_map/max_ray_length", mp_.max_ray_length_, -0.1);
 
-  node_.param("grid_map/visualization_truncate_height", mp_.visualization_truncate_height_, -0.1);
+  node_.param("grid_map/visualization_truncate_height", mp_.visualization_truncate_height_, 999.0);
   node_.param("grid_map/virtual_ceil_height", mp_.virtual_ceil_height_, -0.1);
 
   node_.param("grid_map/show_occ_time", mp_.show_occ_time_, false);
@@ -856,7 +856,6 @@ void GridMap::publishMap()
         indexToPos(Eigen::Vector3i(x, y, z), pos);
         if (pos(2) > mp_.visualization_truncate_height_)
           continue;
-
         pt.x = pos(0);
         pt.y = pos(1);
         pt.z = pos(2);
@@ -983,7 +982,6 @@ void GridMap::getRegion(Eigen::Vector3d &ori, Eigen::Vector3d &size)
 void GridMap::depthOdomCallback(const sensor_msgs::ImageConstPtr &img,
                                 const nav_msgs::OdometryConstPtr &odom)
 {
-  cout << "A" << endl;
   /* get pose */
   Eigen::Quaterniond body_q = Eigen::Quaterniond(odom->pose.pose.orientation.w,
                                                  odom->pose.pose.orientation.x,

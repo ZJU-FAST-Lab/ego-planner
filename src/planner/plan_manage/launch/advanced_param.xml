@@ -77,7 +77,7 @@
     <param name="grid_map/local_update_range_y"  value="5.5" /> 
     <param name="grid_map/local_update_range_z"  value="4.5" /> 
     <param name="grid_map/obstacles_inflation"     value="0.099" /> 
-    <param name="grid_map/local_map_margin" value="500"/>
+    <param name="grid_map/local_map_margin" value="30"/>
     <param name="grid_map/ground_height"        value="-0.01"/>
     <!-- camera parameter -->
     <param name="grid_map/cx" value="$(arg cx)"/>
@@ -89,7 +89,7 @@
     <param name="grid_map/depth_filter_tolerance" value="0.15"/>
     <param name="grid_map/depth_filter_maxdist"   value="5.0"/>
     <param name="grid_map/depth_filter_mindist"   value="0.2"/>
-    <param name="grid_map/depth_filter_margin"    value="2"/>
+    <param name="grid_map/depth_filter_margin"    value="1"/>
     <param name="grid_map/k_depth_scaling_factor" value="1000.0"/>
     <param name="grid_map/skip_pixel" value="2"/>
     <!-- local fusion -->
