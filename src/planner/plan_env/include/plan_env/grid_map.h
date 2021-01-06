@@ -100,6 +100,8 @@ struct MappingData {
   cv::Mat depth_image_, last_depth_image_;
   int image_cnt_;
 
+  Eigen::Matrix4d cam2body_;
+
   // flags of map state
 
   bool occ_need_update_, local_updated_;

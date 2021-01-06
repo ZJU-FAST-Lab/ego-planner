@@ -300,6 +300,15 @@ void RandomMapGenerateCylinder() {
     }
   }
 
+  // generate floor 
+  pcl::PointXYZ pt;
+  pt.z = 0.1;
+  for ( pt.x = _x_l; pt.x <= _x_h; pt.x += _resolution )
+    for ( pt.y = _y_l; pt.y <= _y_h; pt.y += _resolution )
+    {
+      cloudMap.push_back(pt);
+    }
+
   cloudMap.width = cloudMap.points.size();
   cloudMap.height = 1;
   cloudMap.is_dense = true;

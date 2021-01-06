@@ -6,7 +6,7 @@ ADD_COMPILE_OPTIONS(-std=c++11 )
 ADD_COMPILE_OPTIONS(-std=c++14 )
 
 #set(ENABLE_CUDA false)
-set(ENABLE_CUDA false)
+set(ENABLE_CUDA true)
 
 if(ENABLE_CUDA)
   find_package(CUDA REQUIRED)

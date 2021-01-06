@@ -32,8 +32,8 @@
     <arg name="fy" value="387.229248046875"/>
 
     <!-- maximum velocity and acceleration the drone will reach -->
-    <arg name="max_vel" value="2.0" />
-    <arg name="max_acc" value="3.0" />
+    <arg name="max_vel" value="0.5" />
+    <arg name="max_acc" value="0.5" />
 
     <!--always set to 1.5 times grater than sensing horizen-->
     <arg name="planning_horizon" value="7.5" /> 
@@ -88,7 +88,7 @@
     <arg name="map_size_x_" value="$(arg map_size_x)"/>
     <arg name="map_size_y_" value="$(arg map_size_y)"/>
     <arg name="map_size_z_" value="$(arg map_size_z)"/>
-    <arg name="c_num" value="200"/>
+    <arg name="c_num" value="0"/>
     <arg name="p_num" value="200"/>
     <arg name="min_dist" value="1.2"/>
 
