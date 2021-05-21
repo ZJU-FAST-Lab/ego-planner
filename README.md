@@ -20,7 +20,7 @@ If your network to github is slow, We recommend you to try the gitee repository 
 If you find this work useful or interesting, please kindly give us a star :star:, thanks!:grinning:
 
 # Acknowledgements
-- The framework of this repository is based on [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner) by Zhou Boyu who achieves impressive proformance on quaorotor local planning.
+- The framework of this repository is based on [Fast-Planner](https://github.com/HKUST-Aerial-Robotics/Fast-Planner) by Zhou Boyu who achieves impressive proformance on quadrotor local planning.
 
 - The L-BFGS solver we use is from [LBFGS-Lite](https://github.com/ZJU-FAST-Lab/LBFGS-Lite). 
 It is a C++ head-only single file, which is lightweight and easy to use.
