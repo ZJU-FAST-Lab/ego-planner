@@ -74,14 +74,14 @@
 
     <remap from="/odom_world" to="$(arg odom_topic)"/>
     <param name="traj_server/time_forward" value="1.0" type="double"/>
-  </node>
+  </node> -->
 
   <node pkg="waypoint_generator" name="waypoint_generator" type="waypoint_generator" output="screen">
     <remap from="~odom" to="$(arg odom_topic)"/>        
     <remap from="~goal" to="/move_base_simple/goal"/>
     <remap from="~traj_start_trigger" to="/traj_start_trigger" />
     <param name="waypoint_type" value="manual-lonely-waypoint"/>    
-  </node> -->
+  </node>
 
   <!-- use simulator -->
   <!-- <include file="$(find ego_planner)/launch/simulator.xml">
@@ -94,5 +94,7 @@
 
     <arg name="odometry_topic" value="$(arg odom_topic)" />
   </include> -->
+
+  <node name="rviz" pkg="rviz" type="rviz" args="-d $(find ego_planner)/launch/default.rviz" required="true" />
 
 </launch>

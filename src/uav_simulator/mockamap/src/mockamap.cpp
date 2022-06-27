@@ -52,7 +52,7 @@ optimizeMap(mocka::Maps::BasicInfo& in)
   in.cloud->width -= temp->size();
 
   pcl::toROSMsg(*in.cloud, *in.output);
-  in.output->header.frame_id = "world";
+  in.output->header.frame_id = "map";
   ROS_INFO("finish: number of points after optimization %d", in.cloud->width);
   delete temp;
   return;

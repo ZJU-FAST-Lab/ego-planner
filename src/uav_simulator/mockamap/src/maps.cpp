@@ -93,7 +93,7 @@ void
 Maps::pcl2ros()
 {
   pcl::toROSMsg(*info.cloud, *info.output);
-  info.output->header.frame_id = "world";
+  info.output->header.frame_id = "map";
   ROS_INFO("finish: infill %lf%%",
            info.cloud->width / (1.0 * info.sizeX * info.sizeY * info.sizeZ));
 }

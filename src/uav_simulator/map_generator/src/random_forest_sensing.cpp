@@ -339,7 +339,7 @@ int i = 0;
 void pubSensedPoints() {
   // if (i < 10) {
   pcl::toROSMsg(cloudMap, globalMap_pcd);
-  globalMap_pcd.header.frame_id = "world";
+  globalMap_pcd.header.frame_id = "map";
   _all_map_pub.publish(globalMap_pcd);
   // }
 
@@ -376,7 +376,7 @@ void pubSensedPoints() {
   localMap.is_dense = true;
 
   pcl::toROSMsg(localMap, localMap_pcd);
-  localMap_pcd.header.frame_id = "world";
+  localMap_pcd.header.frame_id = "map";
   _local_map_pub.publish(localMap_pcd);
 }
 
@@ -409,7 +409,7 @@ void clickCallback(const geometry_msgs::PoseStamped& msg) {
   clicked_cloud_.is_dense = true;
 
   pcl::toROSMsg(clicked_cloud_, localMap_pcd);
-  localMap_pcd.header.frame_id = "world";
+  localMap_pcd.header.frame_id = "map";
   click_map_pub_.publish(localMap_pcd);
 
   cloudMap.width = cloudMap.points.size();
