@@ -67,10 +67,12 @@
       <!-- attenuation:   for fractal attenuation
                               typical: 0.0 ~ 0.5 -->
 
-      <param name="complexity"    type="double" value="0.05"/>
+      <param name="complexity"    type="double" value="0.03"/>
       <param name="fill"          type="double" value="0.12"/>
       <param name="fractal"       type="int"    value="1"/>
       <param name="attenuation"   type="double" value="0.1"/>
+      <param name="road_width"        type="double" value="2"/>
+
   </node>
 
   <node pkg="so3_quadrotor_simulator" type="quadrotor_simulator_so3" name="quadrotor_simulator_so3" output="screen">
