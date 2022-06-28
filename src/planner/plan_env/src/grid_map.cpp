@@ -659,7 +659,7 @@ void GridMap::updateOccupancyCallback(const ros::TimerEvent & /*event*/)
   // ros::Time t1, t2, t3, t4;
   // t1 = ros::Time::now();
 
-  projectDepthImage();
+  // projectDepthImage();
   // t2 = ros::Time::now();
   raycastProcess();
   // t3 = ros::Time::now();
@@ -729,6 +729,9 @@ void GridMap::odomCallback(const nav_msgs::OdometryConstPtr &odom)
 
 void GridMap::cloudCallback(const sensor_msgs::PointCloud2ConstPtr &img)
 {
+  md_.proj_points_.clear();
+  md_.proj_points_cnt = 0;
+  md_.occ_need_update_ = true;
 
   pcl::PointCloud<pcl::PointXYZ> latest_cloud;
   pcl::fromROSMsg(*img, latest_cloud);
@@ -753,77 +756,79 @@ void GridMap::cloudCallback(const sensor_msgs::PointCloud2ConstPtr &img)
   pcl::PointXYZ pt;
   Eigen::Vector3d p3d, p3d_inf;
 
-  int inf_step = ceil(mp_.obstacles_inflation_ / mp_.resolution_);
-  int inf_step_z = 1;
+  // int inf_step = ceil(mp_.obstacles_inflation_ / mp_.resolution_);
+  // int inf_step_z = 1;
 
-  double max_x, max_y, max_z, min_x, min_y, min_z;
+  // double max_x, max_y, max_z, min_x, min_y, min_z;
 
-  min_x = mp_.map_max_boundary_(0);
-  min_y = mp_.map_max_boundary_(1);
-  min_z = mp_.map_max_boundary_(2);
+  // min_x = mp_.map_max_boundary_(0);
+  // min_y = mp_.map_max_boundary_(1);
+  // min_z = mp_.map_max_boundary_(2);
 
-  max_x = mp_.map_min_boundary_(0);
-  max_y = mp_.map_min_boundary_(1);
-  max_z = mp_.map_min_boundary_(2);
+  // max_x = mp_.map_min_boundary_(0);
+  // max_y = mp_.map_min_boundary_(1);
+  // max_z = mp_.map_min_boundary_(2);
 
   for (size_t i = 0; i < latest_cloud.points.size(); ++i)
   {
     pt = latest_cloud.points[i];
     p3d(0) = pt.x, p3d(1) = pt.y, p3d(2) = pt.z;
+    md_.proj_points_.push_back(p3d);
+    md_.proj_points_cnt++;
 
-    /* point inside update range */
-    Eigen::Vector3d devi = p3d - md_.camera_pos_;
-    Eigen::Vector3i inf_pt;
+  //   /* point inside update range */
+  //   Eigen::Vector3d devi = p3d - md_.camera_pos_;
+  //   Eigen::Vector3i inf_pt;
 
-    if (fabs(devi(0)) < mp_.local_update_range_(0) && fabs(devi(1)) < mp_.local_update_range_(1) &&
-        fabs(devi(2)) < mp_.local_update_range_(2))
-    {
+  //   if (fabs(devi(0)) < mp_.local_update_range_(0) && fabs(devi(1)) < mp_.local_update_range_(1) &&
+  //       fabs(devi(2)) < mp_.local_update_range_(2))
+  //   {
 
-      /* inflate the point */
-      for (int x = -inf_step; x <= inf_step; ++x)
-        for (int y = -inf_step; y <= inf_step; ++y)
-          for (int z = -inf_step_z; z <= inf_step_z; ++z)
-          {
+  //     /* inflate the point */
+  //     for (int x = -inf_step; x <= inf_step; ++x)
+  //       for (int y = -inf_step; y <= inf_step; ++y)
+  //         for (int z = -inf_step_z; z <= inf_step_z; ++z)
+  //         {
 
-            p3d_inf(0) = pt.x + x * mp_.resolution_;
-            p3d_inf(1) = pt.y + y * mp_.resolution_;
-            p3d_inf(2) = pt.z + z * mp_.resolution_;
+  //           p3d_inf(0) = pt.x + x * mp_.resolution_;
+  //           p3d_inf(1) = pt.y + y * mp_.resolution_;
+  //           p3d_inf(2) = pt.z + z * mp_.resolution_;
 
-            max_x = max(max_x, p3d_inf(0));
-            max_y = max(max_y, p3d_inf(1));
-            max_z = max(max_z, p3d_inf(2));
+  //           max_x = max(max_x, p3d_inf(0));
+  //           max_y = max(max_y, p3d_inf(1));
+  //           max_z = max(max_z, p3d_inf(2));
 
-            min_x = min(min_x, p3d_inf(0));
-            min_y = min(min_y, p3d_inf(1));
-            min_z = min(min_z, p3d_inf(2));
+  //           min_x = min(min_x, p3d_inf(0));
+  //           min_y = min(min_y, p3d_inf(1));
+  //           min_z = min(min_z, p3d_inf(2));
 
-            posToIndex(p3d_inf, inf_pt);
+  //           posToIndex(p3d_inf, inf_pt);
 
-            if (!isInMap(inf_pt))
-              continue;
+  //           if (!isInMap(inf_pt))
+  //             continue;
 
-            int idx_inf = toAddress(inf_pt);
+  //           int idx_inf = toAddress(inf_pt);
 
-            md_.occupancy_buffer_inflate_[idx_inf] = 1;
-          }
-    }
+  //           md_.occupancy_buffer_inflate_[idx_inf] = 1;
+  //         }
+  //   }
   }
 
-  min_x = min(min_x, md_.camera_pos_(0));
-  min_y = min(min_y, md_.camera_pos_(1));
-  min_z = min(min_z, md_.camera_pos_(2));
+  // min_x = min(min_x, md_.camera_pos_(0));
+  // min_y = min(min_y, md_.camera_pos_(1));
+  // min_z = min(min_z, md_.camera_pos_(2));
 
-  max_x = max(max_x, md_.camera_pos_(0));
-  max_y = max(max_y, md_.camera_pos_(1));
-  max_z = max(max_z, md_.camera_pos_(2));
+  // max_x = max(max_x, md_.camera_pos_(0));
+  // max_y = max(max_y, md_.camera_pos_(1));
+  // max_z = max(max_z, md_.camera_pos_(2));
 
-  max_z = max(max_z, mp_.ground_height_);
+  // max_z = max(max_z, mp_.ground_height_);
 
-  posToIndex(Eigen::Vector3d(max_x, max_y, max_z), md_.local_bound_max_);
-  posToIndex(Eigen::Vector3d(min_x, min_y, min_z), md_.local_bound_min_);
+  // posToIndex(Eigen::Vector3d(max_x, max_y, max_z), md_.local_bound_max_);
+  // posToIndex(Eigen::Vector3d(min_x, min_y, min_z), md_.local_bound_min_);
 
-  boundIndex(md_.local_bound_min_);
-  boundIndex(md_.local_bound_max_);
+  // boundIndex(md_.local_bound_min_);
+  // boundIndex(md_.local_bound_max_);
 }
 
 void GridMap::publishMap()
