@@ -13,6 +13,7 @@ namespace ego_planner
     init_list_pub = nh.advertise<visualization_msgs::Marker>("init_list", 2);
     optimal_list_pub = nh.advertise<visualization_msgs::Marker>("optimal_list", 2);
     a_star_list_pub = nh.advertise<visualization_msgs::Marker>("a_star_list", 20);
+    traj_list_pub = nh.advertise<visualization_msgs::Marker>("traj_list", 2);
   }
 
   // // real ids used: {id, id+1000}
@@ -192,6 +193,12 @@ namespace ego_planner
     }
     Eigen::Vector4d color(1, 0, 0, 1);
     displayMarkerList(optimal_list_pub, list, 0.15, color, id);
+  }
+
+  void PlanningVisualization::displayTrajList(vector<Eigen::Vector3d> traj_pts, int id)
+  {
+    Eigen::Vector4d color(0, 1, 0, 1);
+    displayMarkerList(traj_list_pub, traj_pts, 0.15, color, id);
   }
 
   void PlanningVisualization::displayAStarList(std::vector<std::vector<Eigen::Vector3d>> a_star_paths, int id /* = Eigen::Vector4d(0.5,0.5,0,1)*/)

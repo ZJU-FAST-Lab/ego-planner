@@ -4,7 +4,6 @@ Panels:
     Name: Displays
     Property Tree Widget:
       Expanded:
-        - /Global Options1
         - /Planning1
         - /Mapping1
         - /Mapping1/simulation_map1/Autocompute Value Bounds1
@@ -129,6 +128,14 @@ Visualization Manager:
           Topic: /odom_visualization/path
           Unreliable: false
           Value: true
+        - Class: rviz/Marker
+          Enabled: true
+          Marker Topic: /ego_planner_node/traj_list
+          Name: traj_list
+          Namespaces:
+            {}
+          Queue Size: 100
+          Value: true
       Enabled: true
       Name: Planning
     - Class: rviz/Group
@@ -164,8 +171,8 @@ Visualization Manager:
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
-            Max Value: 4.239999771118164
-            Min Value: 0.03999999910593033
+            Max Value: -9999
+            Min Value: 9999
             Value: true
           Axis: Z
           Channel Name: intensity

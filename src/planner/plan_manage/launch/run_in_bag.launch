@@ -2,7 +2,7 @@
   <!-- size of map, change the size inflate x, y, z according to your application -->
   <arg name="map_size_x" value="100.0"/>
   <arg name="map_size_y" value="100.0"/>
-  <arg name="map_size_z" value=" 10.0"/>
+  <arg name="map_size_z" value=" 20.0"/>
 
   <!-- topic of your odometry such as VIO or LIO -->
   <arg name="odom_topic" value="/Odometry" />
@@ -80,6 +80,7 @@
     <remap from="~odom" to="$(arg odom_topic)"/>        
     <remap from="~goal" to="/move_base_simple/goal"/>
     <remap from="~traj_start_trigger" to="/traj_start_trigger" />
+    <remap from="~rc_demo" to="/rc_demo" />
     <param name="waypoint_type" value="manual-lonely-waypoint"/>    
   </node>
 

@@ -6,6 +6,7 @@
 #include <geometry_msgs/PoseArray.h>
 #include <geometry_msgs/Vector3.h>
 #include <nav_msgs/Path.h>
+#include <std_msgs/String.h>
 #include "sample_waypoints.h"
 #include <vector>
 #include <deque>
@@ -26,6 +27,14 @@ nav_msgs::Path waypoints;
 // series waypoint needed
 std::deque<nav_msgs::Path> waypointSegments;
 ros::Time trigged_time;
+
+struct rc_input_t {
+    /* meaning axis, -1 ~ 1 value */
+    double roll;
+    double pitch;
+    double yaw;
+    double throttle;
+} rc_input;
 
 void load_seg(ros::NodeHandle& nh, int segid, const ros::Time& time_base) {
     std::string seg_str = boost::str(bfmt("seg%d/") % segid);
@@ -241,6 +250,50 @@ void traj_start_trigger_callback(const geometry_msgs::PoseStamped& msg) {
     }
 }
 
+std::vector<std::string> split(std::string str)
+{
+    std::string temp = "";
+    std::vector<std::string> ret;
+    for (auto x : str) {
+        if (x == ',') {
+            ret.push_back(temp);
+            temp = "";
+        }
+        else {
+            temp = temp + x;
+        }
+    }
+
+    ret.push_back(temp);
+    return ret;
+}
+
+void rc_demo_callback(const std_msgs::String& msg) {
+    auto splited = split(msg.data);
+    rc_input.roll = std::stod(splited[0]);
+    rc_input.pitch = std::stod(splited[1]);
+    rc_input.yaw = std::stod(splited[2]);
+    rc_input.throttle = std::stod(splited[3]);
+}
+
+void rc_input_to_waypoint(const ros::TimerEvent &e) {
+    if (abs(rc_input.roll) > 0.05 || abs(rc_input.pitch) > 0.05) {
+        Eigen::Vector3d vector(rc_input.pitch * 10.0, rc_input.roll * 10.0, rc_input.throttle * 2.0);
+        Eigen::AngleAxisd rotate_yaw(tf::getYaw(odom.pose.pose.orientation), Eigen::Vector3d::UnitZ());
+        Eigen::Vector3d offset(odom.pose.pose.position.x, odom.pose.pose.position.y, odom.pose.pose.position.z);
+        Eigen::Vector3d target_pose = rotate_yaw * vector + offset;
+
+        geometry_msgs::PoseStamped pt;
+        pt.pose.position.x = target_pose.x();
+        pt.pose.position.y = target_pose.y();
+        pt.pose.position.z = target_pose.z();
+
+        waypoints.poses.push_back(pt);
+        publish_waypoints_vis();
+        publish_waypoints();
+    }
+}
+
 int main(int argc, char** argv) {
     ros::init(argc, argv, "waypoint_generator");
     ros::NodeHandle n("~");
@@ -248,10 +301,19 @@ int main(int argc, char** argv) {
     ros::Subscriber sub1 = n.subscribe("odom", 10, odom_callback);
     ros::Subscriber sub2 = n.subscribe("goal", 10, goal_callback);
     ros::Subscriber sub3 = n.subscribe("traj_start_trigger", 10, traj_start_trigger_callback);
+    ros::Subscriber sub4 = n.subscribe("rc_demo", 10, rc_demo_callback);
     pub1 = n.advertise<nav_msgs::Path>("waypoints", 50);
     pub2 = n.advertise<geometry_msgs::PoseArray>("waypoints_vis", 10);
 
     trigged_time = ros::Time(0);
+
+    rc_input.roll = 0;
+    rc_input.pitch = 0;
+    rc_input.yaw = 0;
+    rc_input.throttle = 0;
+
+    ros::Timer rc_check_timer = n.createTimer(ros::Duration(0.5), rc_input_to_waypoint);
+
 
     ros::spin();
     return 0;

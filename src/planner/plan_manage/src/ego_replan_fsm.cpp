@@ -116,7 +116,7 @@ namespace ego_planner
     init_pt_ = odom_pos_;
 
     bool success = false;
-    end_pt_ << msg->poses[0].pose.position.x, msg->poses[0].pose.position.y, 1.0;
+    end_pt_ << msg->poses[0].pose.position.x, msg->poses[0].pose.position.y, msg->poses[0].pose.position.z;
     success = planner_manager_->planGlobalTraj(odom_pos_, odom_vel_, Eigen::Vector3d::Zero(), end_pt_, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
 
     visualization_->displayGoalPoint(end_pt_, Eigen::Vector4d(0, 0.5, 0.5, 1), 0.3, 0);
@@ -245,6 +245,8 @@ namespace ego_planner
       start_pt_ = odom_pos_;
       start_vel_ = odom_vel_;
       start_acc_.setZero();
+      traj_pts_.clear();
+      traj_pts_.push_back(start_pt_);
 
       // Eigen::Vector3d rot_x = odom_orient_.toRotationMatrix().block(0, 0, 3, 1);
       // start_yaw_(0)         = atan2(rot_x(1), rot_x(0));
@@ -289,6 +291,7 @@ namespace ego_planner
     {
       /* determine if need to replan */
       LocalTrajData *info = &planner_manager_->local_data_;
+      info->start_time_ -= ros::Duration(0.501);
       ros::Time time_now = ros::Time::now();
       double t_cur = (time_now - info->start_time_).toSec();
       t_cur = min(info->duration_, t_cur);
@@ -306,6 +309,8 @@ namespace ego_planner
       else if ((end_pt_ - pos).norm() < no_replan_thresh_)
       {
         // cout << "near end" << endl;
+        traj_pts_.push_back(end_pt_);
+        visualization_->displayTrajList(traj_pts_, 0);
         return;
       }
       else if ((info->start_pos_ - pos).norm() < replan_thresh_)
@@ -354,6 +359,9 @@ namespace ego_planner
     start_pt_ = info->position_traj_.evaluateDeBoorT(t_cur);
     start_vel_ = info->velocity_traj_.evaluateDeBoorT(t_cur);
     start_acc_ = info->acceleration_traj_.evaluateDeBoorT(t_cur);
+
+    traj_pts_.push_back(start_pt_);
+    visualization_->displayTrajList(traj_pts_, 0);
 
     bool success = callReboundReplan(false, false);
 

@@ -99,6 +99,9 @@ namespace ego_planner
 
     bool checkCollision();
 
+    /* Custom data */
+    vector<Eigen::Vector3d> traj_pts_;
+
   public:
     EGOReplanFSM(/* args */)
     {
