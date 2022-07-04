@@ -153,10 +153,20 @@ class Controller:
         pygame.display.update()
 
         # Publish
-        roll = float(-self.stick_2.pos_x) / float(self.stick_2.radius)
-        pitch = float(-self.stick_2.pos_y) / float(self.stick_2.radius)
-        yaw = float(-self.stick_1.pos_x) / float(self.stick_1.radius)
-        throttle = float(-self.stick_1.pos_y) / float(self.stick_1.radius)
+        if self.stick_2_pressed:
+            roll = float(-self.stick_2.pos_x) / float(self.stick_2.radius)
+            pitch = float(-self.stick_2.pos_y) / float(self.stick_2.radius)
+        else: # skip motion
+            roll = 0
+            pitch = 0
+            
+        if self.stick_1_pressed:
+            yaw = float(-self.stick_1.pos_x) / float(self.stick_1.radius)
+            throttle = float(-self.stick_1.pos_y) / float(self.stick_1.radius)
+        else: # skip motion
+            yaw = 0
+            throttle = float(-self.stick_1.pos_y) / float(self.stick_1.radius)
+
         self.string_msg.data = "{roll},{pitch},{yaw},{throttle}".format(roll=roll,pitch=pitch,yaw=yaw,throttle=throttle)
         self.pub.publish(self.string_msg)
 

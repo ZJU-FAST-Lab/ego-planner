@@ -32,7 +32,7 @@ struct rc_input_t {
     /* meaning axis, -1 ~ 1 value */
     double roll;
     double pitch;
-    double yaw;
+    double yawrate;
     double throttle;
 } rc_input;
 
@@ -182,6 +182,7 @@ void goal_callback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
         if (msg->pose.position.z > -0.1) {
             // if height > 0, it's a valid goal;
             geometry_msgs::PoseStamped pt = *msg;
+            pt.pose.position.z = 1.2;
             waypoints.poses.clear();
             waypoints.poses.push_back(pt);
             publish_waypoints_vis();
@@ -272,7 +273,7 @@ void rc_demo_callback(const std_msgs::String& msg) {
     auto splited = split(msg.data);
     rc_input.roll = std::stod(splited[0]);
     rc_input.pitch = std::stod(splited[1]);
-    rc_input.yaw = std::stod(splited[2]);
+    rc_input.yawrate = std::stod(splited[2]);
     rc_input.throttle = std::stod(splited[3]);
 }
 
@@ -309,7 +310,7 @@ int main(int argc, char** argv) {
 
     rc_input.roll = 0;
     rc_input.pitch = 0;
-    rc_input.yaw = 0;
+    rc_input.yawrate = 0;
     rc_input.throttle = 0;
 
     ros::Timer rc_check_timer = n.createTimer(ros::Duration(0.5), rc_input_to_waypoint);

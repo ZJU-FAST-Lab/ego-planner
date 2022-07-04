@@ -200,6 +200,9 @@ int GridMap::setCacheOccupancy(Eigen::Vector3d pos, int occ)
 
 void GridMap::projectDepthImage()
 {
+  if (!md_.has_first_depth_)
+    return;
+
   // md_.proj_points_.clear();
   md_.proj_points_cnt = 0;
 
@@ -241,10 +244,6 @@ void GridMap::projectDepthImage()
   /* use depth filter */
   else
   {
-
-    if (!md_.has_first_depth_)
-      md_.has_first_depth_ = true;
-    else
     {
       Eigen::Vector3d pt_cur, pt_world, pt_reproj;
 
@@ -659,7 +658,7 @@ void GridMap::updateOccupancyCallback(const ros::TimerEvent & /*event*/)
   // ros::Time t1, t2, t3, t4;
   // t1 = ros::Time::now();
 
-  // projectDepthImage();
+  projectDepthImage();
   // t2 = ros::Time::now();
   raycastProcess();
   // t3 = ros::Time::now();
@@ -1016,6 +1015,9 @@ void GridMap::depthOdomCallback(const sensor_msgs::ImageConstPtr &img,
   cv_ptr->image.copyTo(md_.depth_image_);
 
   md_.occ_need_update_ = true;
+
+  if (!md_.has_first_depth_)
+    md_.has_first_depth_ = true;
 }
 
 // GridMap

@@ -169,6 +169,8 @@ namespace ego_planner
     odom_orient_.y() = msg->pose.pose.orientation.y;
     odom_orient_.z() = msg->pose.pose.orientation.z;
 
+    odom_vel_ = odom_orient_ * odom_vel_; // fix for PX4
+
     have_odom_ = true;
   }
 
