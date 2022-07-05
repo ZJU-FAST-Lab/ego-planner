@@ -60,5 +60,5 @@ roslaunch rc_demo rc_demo.launch
 ```
 
 # rc_demo
-left : throttle & yawrate
-right : pitch & roll
+- left : throttle & yawrate
+- right : pitch & roll
