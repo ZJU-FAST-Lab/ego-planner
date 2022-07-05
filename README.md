@@ -60,5 +60,6 @@ roslaunch rc_demo rc_demo.launch
 ```
 
 # rc_demo
+- enable only mouse-drag
 - left : throttle & yawrate
 - right : pitch & roll
