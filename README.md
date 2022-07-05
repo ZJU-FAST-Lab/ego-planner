@@ -1,7 +1,7 @@
 This repository is forked from https://github.com/ZJU-FAST-Lab/ego-planner.
 
 # build
-```
+```bash
 sudo apt-get install libarmadillo-dev
 cd ego-planner
 catkin_make
@@ -14,14 +14,14 @@ source devel/setup.bash
 
 ### in Docker of LIO-Algorithm
 *** Check your Internet(ROS) settings ***
-```
+```bash
 ### shell 1
 roslaunch faster_lio mapping_avia.launch
 ### shell 2
 rosbag play filtered_05_yongin_bando.bag
 ```
 ### in j-marple-dev/ego-planner
-```
+```bash
 ### shell 1
 roslaunch ego_planner run_in_bag.launch
 ### shell 2
@@ -34,12 +34,12 @@ roslaunch rc_demo rc_demo.launch
 - these are include in https://github.com/j-marple-dev/PX4-container-custom/tree/ego-planner
 
 ### in Docker of PX4-container-custom
-```
+```bash
 roslaunch simulation_environment ego_depth.launch
 ```
 
 ### in ego-planner installed env
-```
+```bash
 ### shell 1
 roslaunch ego_planner run_in_px4sim.launch
 ### shell 2
