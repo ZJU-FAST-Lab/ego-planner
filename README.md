@@ -28,7 +28,7 @@ roslaunch ego_planner run_in_bag.launch
 roslaunch rc_demo rc_demo.launch
 ```
 
-# Test with px4 SITL
+# Test with PX4 SITL
 - PX4 firmware is required : https://github.com/PX4/PX4-Autopilot
 - gazebo_models (for bayland) : https://github.com/osrf/gazebo_models
 
@@ -58,6 +58,11 @@ roslaunch ego_planner run_in_px4sim.launch
 ### shell 3
 roslaunch rc_demo rc_demo.launch
 ```
+
+## PX4 setting
+- EKF2_AID_MASK = 24
+- EKF2_HGT_MODE = Vision
+- MIS_TAKEOFF_ALT = 1.0
 
 # rc_demo
 - enable only mouse-drag
