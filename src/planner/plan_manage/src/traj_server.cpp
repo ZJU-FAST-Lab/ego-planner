@@ -8,19 +8,15 @@
 #include <std_msgs/String.h>
 
 #include <mavros_msgs/PositionTarget.h>
+#include <nav_msgs/Path.h>
+#include <tf/tf.h>
 
 ros::Publisher setpoint_raw_pub;
 Eigen::Vector3d odom_pos_, odom_vel_; // odometry state
+double odom_yaw_ = 0;
+geometry_msgs::Pose control_;
 
 ros::Publisher pos_cmd_pub, ref_target_pub;
-
-struct rc_input_t {
-    /* meaning axis, -1 ~ 1 value */
-    double roll;
-    double pitch;
-    double yawrate;
-    double throttle;
-} rc_input;
 
 bool have_odom_ = false;
 Eigen::Vector3d last_odom_pos_(0, 0, 0);
@@ -41,6 +37,7 @@ int traj_id_;
 double last_yaw_, last_yaw_dot_;
 double time_forward_;
 bool use_velocity_control_;
+double forward_length_;
 
 void bsplineCallback(ego_planner::BsplineConstPtr msg)
 {
@@ -78,8 +75,8 @@ void bsplineCallback(ego_planner::BsplineConstPtr msg)
 
   traj_.clear();
   traj_.push_back(pos_traj);
-  traj_.push_back(traj_[0].getDerivative());
-  traj_.push_back(traj_[1].getDerivative());
+  // traj_.push_back(traj_[0].getDerivative());
+  // traj_.push_back(traj_[1].getDerivative());
 
   traj_duration_ = traj_[0].getTimeSum();
 
@@ -90,29 +87,46 @@ void customTrajCallback(visualization_msgs::MarkerConstPtr msg)
 {
   if (msg->type == visualization_msgs::Marker::SPHERE_LIST)
   {
-    if (msg->points.size() < 2) return;
+    if (msg->points.size() == 0) {
+      receive_traj_ = false;
+      last_odom_pos_ = odom_pos_;
+      return;
+    } else if (msg->points.size() < 2) return;
 
-    Eigen::MatrixXd pos_pts(3, msg->points.size());
+    Eigen::MatrixXd pos_pts(3, msg->points.size() + 1);
+
+    pos_pts(0, 0) = odom_pos_.x();
+    pos_pts(1, 0) = odom_pos_.y();
+    pos_pts(2, 0) = odom_pos_.z();
 
     for (size_t i = 0; i < msg->points.size(); i++)
     {
-      pos_pts(0, i) = msg->points[i].x;
-      pos_pts(1, i) = msg->points[i].y;
-      pos_pts(2, i) = msg->points[i].z;
+      pos_pts(0, i + 1) = msg->points[i].x;
+      pos_pts(1, i + 1) = msg->points[i].y;
+      pos_pts(2, i + 1) = msg->points[i].z;
     }
     
     UniformBspline pos_traj(pos_pts, 3, 1.0);
 
-    start_time_ = ros::Time::now();
-
-    traj_.clear();
-    traj_.push_back(pos_traj);
-    traj_.push_back(traj_[0].getDerivative());
-    traj_.push_back(traj_[1].getDerivative());
-    traj_duration_ = traj_[0].getTimeSum();
+    if (pos_traj.getTimeSum() > 0 && pos_traj.getLength(0.02) > forward_length_) {
+      start_time_ = ros::Time::now();
+      traj_.clear();
+      traj_.push_back(pos_traj);
+      traj_duration_ = traj_[0].getTimeSum();
+    } else {
+      traj_.push_back(pos_traj);
+    }
+    
+    // traj_.push_back(traj_[0].getDerivative());
+    // traj_.push_back(traj_[1].getDerivative());
 
     receive_traj_ = true;
   }
+}
+
+inline double getYaw(const geometry_msgs::Quaternion& q) {
+    tf::Quaternion bt = tf::Quaternion(q.x, q.y, q.z, q.w).normalized();
+    return tf::getYaw(bt);
 }
 
 Eigen::Vector3d findClosestPoint(Eigen::Vector3d point, ego_planner::UniformBspline &bspline, double l_offset = 0)
@@ -139,6 +153,9 @@ Eigen::Vector3d findClosestPoint(Eigen::Vector3d point, ego_planner::UniformBspl
 
     double length = 0.0, res = 0.01;
     Eigen::Vector3d p_l = bspline.evaluateDeBoorT(t_start), p_n;
+
+    if (l_offset == 0) return p_l;
+
     for (double t = t_start; t <= t_end; t += res)
     {
       p_n = bspline.evaluateDeBoorT(t);
@@ -148,98 +165,6 @@ Eigen::Vector3d findClosestPoint(Eigen::Vector3d point, ego_planner::UniformBspl
     }
 
     return p_l;
-}
-
-std::pair<double, double> calculate_yaw(double t_cur, Eigen::Vector3d &pos, ros::Time &time_now, ros::Time &time_last)
-{
-  constexpr double PI = 3.1415926;
-  constexpr double YAW_DOT_MAX_PER_SEC = PI;
-  // constexpr double YAW_DOT_DOT_MAX_PER_SEC = PI;
-  std::pair<double, double> yaw_yawdot(0, 0);
-  double yaw = 0;
-  double yawdot = 0;
-
-  Eigen::Vector3d dir = t_cur + time_forward_ <= traj_duration_ ? traj_[0].evaluateDeBoorT(t_cur + time_forward_) - pos : traj_[0].evaluateDeBoorT(traj_duration_) - pos;
-  double yaw_temp = dir.norm() > 0.1 ? atan2(dir(1), dir(0)) : last_yaw_;
-  double max_yaw_change = YAW_DOT_MAX_PER_SEC * (time_now - time_last).toSec();
-  if (yaw_temp - last_yaw_ > PI)
-  {
-    if (yaw_temp - last_yaw_ - 2 * PI < -max_yaw_change)
-    {
-      yaw = last_yaw_ - max_yaw_change;
-      if (yaw < -PI)
-        yaw += 2 * PI;
-
-      yawdot = -YAW_DOT_MAX_PER_SEC;
-    }
-    else
-    {
-      yaw = yaw_temp;
-      if (yaw - last_yaw_ > PI)
-        yawdot = -YAW_DOT_MAX_PER_SEC;
-      else
-        yawdot = (yaw_temp - last_yaw_) / (time_now - time_last).toSec();
-    }
-  }
-  else if (yaw_temp - last_yaw_ < -PI)
-  {
-    if (yaw_temp - last_yaw_ + 2 * PI > max_yaw_change)
-    {
-      yaw = last_yaw_ + max_yaw_change;
-      if (yaw > PI)
-        yaw -= 2 * PI;
-
-      yawdot = YAW_DOT_MAX_PER_SEC;
-    }
-    else
-    {
-      yaw = yaw_temp;
-      if (yaw - last_yaw_ < -PI)
-        yawdot = YAW_DOT_MAX_PER_SEC;
-      else
-        yawdot = (yaw_temp - last_yaw_) / (time_now - time_last).toSec();
-    }
-  }
-  else
-  {
-    if (yaw_temp - last_yaw_ < -max_yaw_change)
-    {
-      yaw = last_yaw_ - max_yaw_change;
-      if (yaw < -PI)
-        yaw += 2 * PI;
-
-      yawdot = -YAW_DOT_MAX_PER_SEC;
-    }
-    else if (yaw_temp - last_yaw_ > max_yaw_change)
-    {
-      yaw = last_yaw_ + max_yaw_change;
-      if (yaw > PI)
-        yaw -= 2 * PI;
-
-      yawdot = YAW_DOT_MAX_PER_SEC;
-    }
-    else
-    {
-      yaw = yaw_temp;
-      if (yaw - last_yaw_ > PI)
-        yawdot = -YAW_DOT_MAX_PER_SEC;
-      else if (yaw - last_yaw_ < -PI)
-        yawdot = YAW_DOT_MAX_PER_SEC;
-      else
-        yawdot = (yaw_temp - last_yaw_) / (time_now - time_last).toSec();
-    }
-  }
-
-  if (fabs(yaw - last_yaw_) <= max_yaw_change)
-    yaw = 0.5 * last_yaw_ + 0.5 * yaw; // nieve LPF
-  yawdot = 0.5 * last_yaw_dot_ + 0.5 * yawdot;
-  last_yaw_ = yaw;
-  last_yaw_dot_ = yawdot;
-
-  yaw_yawdot.first = yaw;
-  yaw_yawdot.second = yawdot;
-
-  return yaw_yawdot;
 }
 
 void cmdCallback(const ros::TimerEvent &e)
@@ -260,10 +185,11 @@ void cmdCallback(const ros::TimerEvent &e)
   /* check receive traj_ before calculate target */
   if (receive_traj_) {
     Eigen::Vector3d closestPoint = findClosestPoint(odom_pos_, traj_[0]);
-    Eigen::Vector3d refTarget = findClosestPoint(closestPoint, traj_[0], 1.0);
-    Eigen::Vector3d refTarget_forward = findClosestPoint(closestPoint, traj_[0], 2.5);
+    Eigen::Vector3d refTarget = findClosestPoint(closestPoint, traj_[0], forward_length_);
+    // Eigen::Vector3d refTarget_forward = findClosestPoint(closestPoint, traj_[0], forward_length_ * 2.5);
     Eigen::Vector3d sub_vector(refTarget.x() - odom_pos_.x(), refTarget.y() - odom_pos_.y(), 0);
-    double ref_yaw = atan2(refTarget_forward.y() - odom_pos_.y(), refTarget_forward.x() - odom_pos_.x());
+    // double ref_yaw = atan2(refTarget_forward.y() - odom_pos_.y(), refTarget_forward.x() - odom_pos_.x());
+    double ref_yaw = last_yaw_;
 
     // visualize target
     {
@@ -310,96 +236,41 @@ void cmdCallback(const ros::TimerEvent &e)
     if (sub_vector.norm() > 0.5) {
       msg.type_mask |= msg.IGNORE_YAW_RATE;
       msg.yaw = ref_yaw;
-
-      setpoint_raw_pub.publish(msg);
-      return;
-
     } else if (sub_vector.norm() < 0.1) {
       receive_traj_ = false;
       last_odom_pos_ = odom_pos_;
-
     } else {
       last_odom_pos_ = odom_pos_;
     }
-  }
 
-  if (abs(rc_input.yawrate) > 0.2) {
-    msg.type_mask |= msg.IGNORE_VX | msg.IGNORE_VY | msg.IGNORE_VZ | msg.IGNORE_YAW;
-    msg.yaw_rate = rc_input.yawrate;
   } else {
-    msg.type_mask |= msg.IGNORE_VX | msg.IGNORE_VY | msg.IGNORE_VZ | msg.IGNORE_YAW | msg.IGNORE_YAW_RATE;
-  }
-
-  if (abs(rc_input.throttle) > 0.2) {
     msg.type_mask |= msg.IGNORE_VX | msg.IGNORE_VY | msg.IGNORE_VZ;
-    msg.position.z = odom_pos_.z() + rc_input.throttle * 0.5;
-    last_odom_pos_.z() = odom_pos_.z();
+
+    Eigen::Vector3d waypoint_pose(control_.position.x, control_.position.y, 0);
+
+    double waypoint_yaw = getYaw(control_.orientation);
+    if (waypoint_yaw > M_PI) waypoint_yaw -= M_PI * 2.0;
+    if (waypoint_yaw < -M_PI) waypoint_yaw += M_PI * 2.0;
+
+    // set altitude
+    if (abs(control_.position.z) > 0.1) {
+      msg.position.z = odom_pos_.z() + control_.position.z * 0.5;
+      last_odom_pos_.z() = odom_pos_.z();
+    }
+
+    // set yawrate
+    if (abs(waypoint_yaw) > 0.1) {
+      msg.type_mask |= msg.IGNORE_YAW;
+      msg.yaw_rate = waypoint_yaw;
+      last_yaw_ = odom_yaw_;
+    } else {
+      msg.type_mask |= msg.IGNORE_YAW_RATE;
+      msg.yaw = last_yaw_;
+    }
   }
 
   setpoint_raw_pub.publish(msg);
   return;
-
-  // ros::Time time_now = ros::Time::now();
-  // double t_cur = (time_now - start_time_).toSec();
-
-  // Eigen::Vector3d pos(Eigen::Vector3d::Zero()), vel(Eigen::Vector3d::Zero()), acc(Eigen::Vector3d::Zero()), pos_f;
-  // std::pair<double, double> yaw_yawdot(0, 0);
-
-  // static ros::Time time_last = ros::Time::now();
-  // if (t_cur < traj_duration_ && t_cur >= 0.0)
-  // {
-  //   pos = traj_[0].evaluateDeBoorT(t_cur);
-  //   vel = traj_[1].evaluateDeBoorT(t_cur);
-  //   acc = traj_[2].evaluateDeBoorT(t_cur);
-
-  //   /*** calculate yaw ***/
-  //   yaw_yawdot = calculate_yaw(t_cur, pos, time_now, time_last);
-  //   /*** calculate yaw ***/
-
-  //   double tf = min(traj_duration_, t_cur + 2.0);
-  //   pos_f = traj_[0].evaluateDeBoorT(tf);
-  // }
-  // else if (t_cur >= traj_duration_)
-  // {
-  //   /* hover when finish traj_ */
-  //   pos = traj_[0].evaluateDeBoorT(traj_duration_);
-  //   vel.setZero();
-  //   acc.setZero();
-
-  //   yaw_yawdot.first = last_yaw_;
-  //   yaw_yawdot.second = 0;
-
-  //   pos_f = pos;
-  // }
-  // else
-  // {
-  //   cout << "[Traj server]: invalid time." << endl;
-  // }
-  // time_last = time_now;
-
-  // cmd.header.stamp = time_now;
-  // cmd.header.frame_id = "map";
-  // cmd.trajectory_flag = quadrotor_msgs::PositionCommand::TRAJECTORY_STATUS_READY;
-  // cmd.trajectory_id = traj_id_;
-
-  // cmd.position.x = pos(0);
-  // cmd.position.y = pos(1);
-  // cmd.position.z = pos(2);
-
-  // cmd.velocity.x = vel(0);
-  // cmd.velocity.y = vel(1);
-  // cmd.velocity.z = vel(2);
-
-  // cmd.acceleration.x = acc(0);
-  // cmd.acceleration.y = acc(1);
-  // cmd.acceleration.z = acc(2);
-
-  // cmd.yaw = yaw_yawdot.first;
-  // cmd.yaw_dot = yaw_yawdot.second;
-
-  // last_yaw_ = cmd.yaw;
-
-  // pos_cmd_pub.publish(cmd);
 }
 
 void odom_callback(const nav_msgs::Odometry::ConstPtr& msg) {
@@ -411,36 +282,17 @@ void odom_callback(const nav_msgs::Odometry::ConstPtr& msg) {
   odom_vel_(1) = msg->twist.twist.linear.y;
   odom_vel_(2) = msg->twist.twist.linear.z;
 
+  odom_yaw_ = getYaw(msg->pose.pose.orientation);
+
   if (!have_odom_) {
     have_odom_ = true;
     last_odom_pos_ = odom_pos_;
+    last_yaw_ = odom_yaw_;
   }
 }
 
-std::vector<std::string> split(std::string str)
-{
-    std::string temp = "";
-    std::vector<std::string> ret;
-    for (auto x : str) {
-        if (x == ',') {
-            ret.push_back(temp);
-            temp = "";
-        }
-        else {
-            temp = temp + x;
-        }
-    }
-
-    ret.push_back(temp);
-    return ret;
-}
-
-void rc_demo_callback(const std_msgs::String& msg) {
-    auto splited = split(msg.data);
-    rc_input.roll = std::stod(splited[0]);
-    rc_input.pitch = std::stod(splited[1]);
-    rc_input.yawrate = std::stod(splited[2]);
-    rc_input.throttle = std::stod(splited[3]);
+void controlCallback(const geometry_msgs::PoseConstPtr &msg) {
+  control_ = *msg;
 }
 
 int main(int argc, char **argv)
@@ -452,7 +304,7 @@ int main(int argc, char **argv)
   // ros::Subscriber bspline_sub = node.subscribe("planning/bspline", 10, bsplineCallback);
   ros::Subscriber trajlist_sub = node.subscribe("/ego_planner_node/traj_list", 10, customTrajCallback);
   ros::Subscriber odom_sub = node.subscribe("/odom_world", 10, odom_callback);
-  ros::Subscriber rc_demo_sub =node.subscribe("rc_demo", 10, rc_demo_callback);
+  ros::Subscriber waypoint_sub = node.subscribe("/waypoint_generator/waypoint_manual", 10, controlCallback);
 
   pos_cmd_pub = node.advertise<quadrotor_msgs::PositionCommand>("/position_cmd", 50);
   setpoint_raw_pub = node.advertise<mavros_msgs::PositionTarget>("/mavros/setpoint_raw/local", 1);
@@ -473,12 +325,8 @@ int main(int argc, char **argv)
   last_yaw_ = 0.0;
   last_yaw_dot_ = 0.0;
 
-  rc_input.roll = 0;
-  rc_input.pitch = 0;
-  rc_input.yawrate = 0;
-  rc_input.throttle = 0;
-
   nh.param("traj_server/use_velocity_control", use_velocity_control_, false);
+  nh.param("traj_server/forward_length", forward_length_, 1.0);
 
   ros::Duration(1.0).sleep();
 

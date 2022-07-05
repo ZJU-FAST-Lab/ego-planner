@@ -1,4 +1,5 @@
 .vscode/settings.json
+.vscode/c_cpp_properties.json
 .catkin_workspace
 build/
 devel/
@@ -8,4 +9,6 @@ src/CMakeLists.txt
 benchmark_haha.zip
 rebound_planner_BB.zip
 .catkin_tools/
-
+sim_ws/build/
+sim_ws/devel/
+sim_ws/build/

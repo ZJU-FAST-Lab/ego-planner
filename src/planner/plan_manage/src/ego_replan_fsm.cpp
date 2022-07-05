@@ -34,15 +34,19 @@ namespace ego_planner
 
     /* callback */
     exec_timer_ = nh.createTimer(ros::Duration(0.01), &EGOReplanFSM::execFSMCallback, this);
-    safety_timer_ = nh.createTimer(ros::Duration(0.05), &EGOReplanFSM::checkCollisionCallback, this);
+    // safety_timer_ = nh.createTimer(ros::Duration(0.05), &EGOReplanFSM::checkCollisionCallback, this);
 
     odom_sub_ = nh.subscribe("/odom_world", 1, &EGOReplanFSM::odometryCallback, this);
 
     bspline_pub_ = nh.advertise<ego_planner::Bspline>("/planning/bspline", 10);
     data_disp_pub_ = nh.advertise<ego_planner::DataDisp>("/planning/data_display", 100);
 
-    if (target_type_ == TARGET_TYPE::MANUAL_TARGET)
+    last_control_ = Eigen::Vector3d(0, 0, 0);
+
+    if (target_type_ == TARGET_TYPE::MANUAL_TARGET) {
       waypoint_sub_ = nh.subscribe("/waypoint_generator/waypoints", 1, &EGOReplanFSM::waypointCallback, this);
+      control_sub_ = nh.subscribe("/waypoint_generator/waypoint_manual", 1, &EGOReplanFSM::controlCallback, this);
+    }
     else if (target_type_ == TARGET_TYPE::PRESET_TARGET)
     {
       ros::Duration(1.0).sleep();
@@ -106,9 +110,116 @@ namespace ego_planner
     }
   }
 
-  void EGOReplanFSM::waypointCallback(const nav_msgs::PathConstPtr &msg)
+  double EGOReplanFSM::getRemainLength(Eigen::Vector3d point, ego_planner::UniformBspline &bspline) {
+    const double tol = 0.01, dt = tol * 0.49;
+    double t_start = 0, t_end = bspline.getTimeSum();
+
+    if (t_end <= 0) return 0;
+    
+    while (t_end - t_start > tol)
+    {
+        double t_cur = (t_start + t_end) / 2.0;
+        Eigen::Vector3d pos1 = bspline.evaluateDeBoorT(t_cur);
+        Eigen::Vector3d pos2 = bspline.evaluateDeBoorT(t_cur + dt);
+        double dist1 = (point - pos1).norm();
+        double dist2 = (point - pos2).norm();
+        if (dist1 < dist2)
+            t_end = t_cur;
+        else
+            t_start = t_cur;
+    }
+
+    t_end = bspline.getTimeSum();
+
+    double length = 0.0, res = 0.01;
+    Eigen::Vector3d p_l = bspline.evaluateDeBoorT(t_start), p_n;
+
+    for (double t = t_start; t <= t_end; t += res)
+    {
+      p_n = bspline.evaluateDeBoorT(t);
+      length += (p_n - p_l).norm();
+      p_l = p_n;
+    }
+
+    return length;
+  }
+
+  UniformBspline EGOReplanFSM::generateTraj(const vector<Eigen::Vector3d> &traj_pts) {
+    Eigen::MatrixXd pos_pts(3, traj_pts.size());
+
+    for (size_t i = 0; i < traj_pts.size(); i++)
+    {
+      pos_pts(0, i) = traj_pts[i].x();
+      pos_pts(1, i) = traj_pts[i].y();
+      pos_pts(2, i) = traj_pts[i].z();
+    }
+    
+    return UniformBspline(pos_pts, 3, 1.0);
+  }
+
+  void EGOReplanFSM::controlCallback(const geometry_msgs::PoseConstPtr &msg) {
+    if (abs(msg->position.x) < 0.05 && abs(msg->position.y) < 0.05) {
+      // cancel exist waypoint and stop
+      traj_pts_.clear();
+      visualization_->displayTrajList(traj_pts_, 0);
+
+      last_control_ = Eigen::Vector3d(msg->position.x, msg->position.y, msg->position.z);
+
+      have_target_ = false;
+      have_new_target_ = false;
+      changeFSMExecState(WAIT_TARGET, "TRIG");
+
+    } else {
+      Eigen::Vector3d control(msg->position.x, msg->position.y, msg->position.z);
+
+      if ((last_control_ - control).norm() < 0.1) {
+
+        if (current_traj_.getControlPoint().size() > 2) {
+          double remain_length = getRemainLength(odom_pos_, current_traj_);
+          double total_length = current_traj_.getLength();
+          bool is_need_replan = false;
+
+          if (remain_length < max(min(total_length * 0.7, 12.0), 0.5)) {
+            is_need_replan = true;
+          } else {
+            /* ---------- check trajectory ---------- */
+            auto map = planner_manager_->grid_map_;
+            double t_end = current_traj_.getTimeSum();
+
+            for (double t = 0; t < t_end; t += 0.1) {
+              if (map->getInflateOccupancy(current_traj_.evaluateDeBoorT(t))) {
+                is_need_replan = true;
+                break;
+              }
+            }
+          }
+
+          if (!is_need_replan) return;
+        }
+      }
+
+      last_control_ = control;
+
+      Eigen::Vector3d rot_x = odom_orient_.toRotationMatrix().block(0, 0, 3, 1);
+      Eigen::AngleAxisd rot_yaw(atan2(rot_x(1), rot_x(0)), Eigen::Vector3d::UnitZ());
+      Eigen::Vector3d converted_control(control.x() * 20.0, control.y() * 20.0, control.z() * 2.0);
+      converted_control = rot_yaw * converted_control + odom_pos_;
+
+      geometry_msgs::PoseStamped waypoint;
+      waypoint.pose.position.x = converted_control.x();
+      waypoint.pose.position.y = converted_control.y();
+      waypoint.pose.position.z = converted_control.z();
+
+      nav_msgs::Path waypoints;
+      waypoints.poses.push_back(waypoint);
+      
+      waypointCallback(waypoints);
+    }
+  }
+
+  void EGOReplanFSM::waypointCallback(const nav_msgs::Path &msg)
   {
-    if (msg->poses[0].pose.position.z < -0.1)
+    if (msg.poses[0].pose.position.z < -0.1)
       return;
 
     cout << "Triggered!" << endl;
@@ -116,7 +227,7 @@ namespace ego_planner
     init_pt_ = odom_pos_;
 
     bool success = false;
-    end_pt_ << msg->poses[0].pose.position.x, msg->poses[0].pose.position.y, msg->poses[0].pose.position.z;
+    end_pt_ << msg.poses[0].pose.position.x, msg.poses[0].pose.position.y, msg.poses[0].pose.position.z;
     success = planner_manager_->planGlobalTraj(odom_pos_, odom_vel_, Eigen::Vector3d::Zero(), end_pt_, Eigen::Vector3d::Zero(), Eigen::Vector3d::Zero());
 
     visualization_->displayGoalPoint(end_pt_, Eigen::Vector4d(0, 0.5, 0.5, 1), 0.3, 0);
@@ -313,6 +424,7 @@ namespace ego_planner
         // cout << "near end" << endl;
         traj_pts_.push_back(end_pt_);
         visualization_->displayTrajList(traj_pts_, 0);
+        current_traj_ = generateTraj(traj_pts_);
         return;
       }
       else if ((info->start_pos_ - pos).norm() < replan_thresh_)
@@ -514,15 +626,15 @@ namespace ego_planner
   void EGOReplanFSM::getLocalTarget()
   {
     double t;
-
-    double t_step = planning_horizen_ / 20 / planner_manager_->pp_.max_vel_;
+    double start_t = planner_manager_->global_data_.last_progress_time_;
+    double t_step = planning_horizen_ / 20.0 / planner_manager_->pp_.max_vel_;
     double dist_min = 9999, dist_min_t = 0.0;
-    for (t = planner_manager_->global_data_.last_progress_time_; t < planner_manager_->global_data_.global_duration_; t += t_step)
+    for (t = start_t; t < planner_manager_->global_data_.global_duration_; t += t_step)
     {
       Eigen::Vector3d pos_t = planner_manager_->global_data_.getPosition(t);
       double dist = (pos_t - start_pt_).norm();
 
-      if (t < planner_manager_->global_data_.last_progress_time_ + 1e-5 && dist > planning_horizen_)
+      if (t < start_t + 1e-5 && dist > planning_horizen_)
       {
         // todo
         ROS_ERROR("last_progress_time_ ERROR !!!!!!!!!");
@@ -530,6 +642,8 @@ namespace ego_planner
         ROS_ERROR("last_progress_time_ ERROR !!!!!!!!!");
         ROS_ERROR("last_progress_time_ ERROR !!!!!!!!!");
         ROS_ERROR("last_progress_time_ ERROR !!!!!!!!!");
+        local_target_pt_ = end_pt_;
+        local_target_vel_ = Eigen::Vector3d::Zero();
         return;
       }
       if (dist < dist_min)

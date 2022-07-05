@@ -18,6 +18,8 @@
 #include <plan_manage/planner_manager.h>
 #include <traj_utils/planning_visualization.h>
 
+#include "bspline_opt/uniform_bspline.h"
+
 using std::vector;
 
 namespace ego_planner
@@ -94,13 +96,21 @@ namespace ego_planner
     /* ROS functions */
     void execFSMCallback(const ros::TimerEvent &e);
     void checkCollisionCallback(const ros::TimerEvent &e);
-    void waypointCallback(const nav_msgs::PathConstPtr &msg);
+    void waypointCallback(const nav_msgs::Path &msg);
+    void waypointCallback(const nav_msgs::PathConstPtr &msg) { waypointCallback(nav_msgs::Path(*msg)); };
     void odometryCallback(const nav_msgs::OdometryConstPtr &msg);
 
     bool checkCollision();
 
     /* Custom data */
     vector<Eigen::Vector3d> traj_pts_;
+    ros::Subscriber control_sub_;
+    void controlCallback(const geometry_msgs::PoseConstPtr &msg);
+    UniformBspline current_traj_;
+    UniformBspline generateTraj(const vector<Eigen::Vector3d> &traj_pts);
+    // Eigen::Vector3d findClosestPoint(Eigen::Vector3d point, ego_planner::UniformBspline &bspline);
+    double getRemainLength(Eigen::Vector3d point, ego_planner::UniformBspline &bspline);
+    Eigen::Vector3d last_control_;
 
   public:
     EGOReplanFSM(/* args */)

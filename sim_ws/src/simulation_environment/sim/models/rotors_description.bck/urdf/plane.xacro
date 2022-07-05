@@ -1,0 +1,237 @@
+<?xml version="1.0"?>
+<!--
+  -   Copyright (c) 2020 PX4 Development Team. All rights reserved.
+  -
+  - Redistribution and use in source and binary forms, with or without
+  - modification, are permitted provided that the following conditions
+  - are met:
+  -
+  - 1. Redistributions of source code must retain the above copyright
+  -    notice, this list of conditions and the following disclaimer.
+  - 2. Redistributions in binary form must reproduce the above copyright
+  -    notice, this list of conditions and the following disclaimer in
+  -    the documentation and/or other materials provided with the
+  -    distribution.
+  - 3. Neither the name PX4 nor the names of its contributors may be
+  -    used to endorse or promote products derived from this software
+  -    without specific prior written permission.
+  -
+  - THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS
+  - "AS IS" AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT
+  - LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS
+  - FOR A PARTICULAR PURPOSE ARE DISCLAIMED. IN NO EVENT SHALL THE
+  - COPYRIGHT OWNER OR CONTRIBUTORS BE LIABLE FOR ANY DIRECT, INDIRECT,
+  - INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES (INCLUDING,
+  - BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES; LOSS
+  - OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED
+  - AND ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT
+  - LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN
+  - ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  - POSSIBILITY OF SUCH DAMAGE.
+  -
+  -->
+
+<robot name="plane" xmlns:xacro="http://ros.org/wiki/xacro">
+  <!-- Properties -->
+  <xacro:property name="namespace" value="" />
+  <xacro:property name="rotor_velocity_slowdown_sim" value="10" />
+  <xacro:property name="mass" value="1.5" /> <!-- [kg] -->
+  <xacro:property name="body_width" value="0.47" /> <!-- [m] -->
+  <xacro:property name="body_height" value="0.11" /> <!-- [m] -->
+  <xacro:property name="mass_rotor" value="0.005" /> <!-- [kg] -->
+  <xacro:property name="arm_length_front_x" value="0.13" /> <!-- [m] -->
+  <xacro:property name="arm_length_back_x" value="0.13" /> <!-- [m] -->
+  <xacro:property name="arm_length_front_y" value="0.22" /> <!-- [m] -->
+  <xacro:property name="arm_length_back_y" value="0.2" /> <!-- [m] -->
+  <xacro:property name="rotor_offset_top" value="0.023" /> <!-- [m] -->
+  <xacro:property name="radius_rotor" value="0.128" /> <!-- [m] -->
+  <xacro:property name="motor_constant" value="8.54858e-06" /> <!-- [kg.m/s^2] -->
+  <xacro:property name="moment_constant" value="0.01" /> <!-- [m] -->
+  <xacro:property name="time_constant_up" value="0.0125" /> <!-- [s] -->
+  <xacro:property name="time_constant_down" value="0.025" /> <!-- [s] -->
+  <xacro:property name="max_rot_velocity" value="3500" /> <!-- [rad/s] -->
+  <xacro:property name="rotor_drag_coefficient" value="8.06428e-05" />
+  <xacro:property name="rolling_moment_coefficient" value="0.000001" />
+  <xacro:property name="color" value="$(arg visual_material)" />
+
+  <!-- Property Blocks -->
+  <xacro:property name="body_inertia">
+    <inertia
+    ixx="${1/12 * mass * (body_height * body_height + body_width * body_width)}"
+    iyy="${1/12 * mass * (body_height * body_height + body_width * body_width)}"
+    izz="${1/12 * mass * (body_width * body_width + body_width * body_width)}"
+    ixy="0.0" ixz="0.0" iyz="0.0" /> <!-- [kg.m^2] [kg.m^2] [kg.m^2] [kg.m^2] [kg.m^2] [kg.m^2] -->
+  </xacro:property>
+
+  <!-- inertia of a single rotor, assuming it is a cuboid. Height=3mm, width=15mm -->
+  <xacro:property name="rotor_inertia">
+    <inertia
+    ixx="9.75e-07"
+    iyy="0.000166704"
+    izz="0.000167604"
+    ixy="0.0" ixz="0.0"  iyz="0.0" /> <!-- [kg.m^2] [kg.m^2] [kg.m^2] [kg.m^2] [kg.m^2] [kg.m^2] -->
+  </xacro:property>
+
+  <xacro:property name="left_aileron_mesh_origin">
+    <origin xyz="0.07 -0.3 -0.08"/>
+  </xacro:property>
+
+  <xacro:property name="left_aileron_joint_origin">
+    <origin xyz="0.0 0.3 0.0"/>
+  </xacro:property>
+
+  <xacro:property name="right_aileron_mesh_origin">
+    <origin xyz="0.07 0.3 -0.08"/>
+  </xacro:property>
+
+  <xacro:property name="right_aileron_joint_origin">
+    <origin xyz="0.0 -0.3 0.0"/>
+  </xacro:property>
+
+  <xacro:property name="rudder_mesh_origin">
+    <origin xyz="0.57 0.0 -0.13"/>
+  </xacro:property>
+
+  <xacro:property name="rudder_joint_origin">
+    <origin xyz="-0.5 0.0 0.05"/>
+  </xacro:property>
+
+  <xacro:property name="elevator_mesh_origin">
+    <origin xyz="0.57 0.0 -0.08"/>
+  </xacro:property>
+
+  <xacro:property name="elevator_joint_origin">
+    <origin xyz="-0.5 0.0 0.0"/>
+  </xacro:property>
+
+  <!-- Included URDF Files -->
+  <xacro:include filename="$(arg rotors_description_dir)/urdf/fixedwing_base.xacro" />
+  <origin xyz="0 0 0.246" rpy="0 0 0" />
+
+  <!-- Instantiate multirotor_base_macro once -->
+  <xacro:fixedwing_base_macro
+    robot_namespace="${namespace}">
+    <origin xyz="0 0 0.0" rpy="0 0 0" />
+  </xacro:fixedwing_base_macro>
+
+  <!-- Instantiate rotors -->
+  <xacro:horizontal_rotor
+    robot_namespace="${namespace}"
+    suffix="front_right"
+    direction="cw"
+    motor_constant="${motor_constant}"
+    moment_constant="${moment_constant}"
+    parent="base_link"
+    mass_rotor="${mass_rotor}"
+    radius_rotor="0.1"
+    time_constant_up="${time_constant_up}"
+    time_constant_down="${time_constant_down}"
+    max_rot_velocity="${max_rot_velocity}"
+    motor_number="4"
+    rotor_drag_coefficient="${rotor_drag_coefficient}"
+    rolling_moment_coefficient="${rolling_moment_coefficient}"
+    mesh="iris_prop"
+    mesh_scale="1 1 1"
+    color="Blue">
+    <origin xyz="0.3 0 0.0" rpy="0 1.57 0" />
+    <xacro:insert_block name="rotor_inertia" />
+  </xacro:horizontal_rotor>
+
+  <!-- Left Aileron -->
+  <xacro:control_surface
+    robot_namespace="${namespace}"
+    link_name="left_elevon"
+    parent="base_link"
+    mesh_file="model://plane/meshes/left_aileron.dae"
+    mesh_scale="0.1 0.1 0.1"
+    color="Blue"
+    area="0.12"
+    control_joint_rad_to_cl="-0.5"
+    a0="0.05984281113"
+    cpx="-0.05"
+    cpy="0.3"
+    cpz="0.05"
+    upx="0"
+    upy="0"
+    upz="1"
+    joint_limit="0.53">
+    <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
+    <axis xyz="0 1 0" />
+    <xacro:insert_block name="left_aileron_joint_origin" />
+    <xacro:insert_block name="left_aileron_mesh_origin" />
+  </xacro:control_surface>
+
+  <!-- Right Aileron -->
+  <xacro:control_surface
+    robot_namespace="${namespace}"
+    link_name="right_elevon"
+    parent="base_link"
+    mesh_file="model://plane/meshes/right_aileron.dae"
+    mesh_scale="0.1 0.1 0.1"
+    color="Blue"
+    area="0.12"
+    control_joint_rad_to_cl="-0.5"
+    a0="0.05984281113"
+    cpx="-0.05"
+    cpy="-0.3"
+    cpz="0.05"
+    upx="0"
+    upy="0"
+    upz="1"
+    joint_limit="0.53">
+    <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
+    <axis xyz="0 1 0" />
+    <xacro:insert_block name="right_aileron_joint_origin" />
+    <xacro:insert_block name="right_aileron_mesh_origin" />
+  </xacro:control_surface>
+
+  <!-- Elevator -->
+  <xacro:control_surface
+    robot_namespace="${namespace}"
+    link_name="elevator"
+    mesh_file="model://plane/meshes/elevators.dae"
+    parent="base_link"
+    mesh_scale="0.1 0.1 0.1"
+    color="Blue"
+    area="0.01"
+    control_joint_rad_to_cl="-4.0"
+    a0="-0.2"
+    cpx="-0.5"
+    cpy="0"
+    cpz="0.0"
+    upx="0"
+    upy="0"
+    upz="1"
+    joint_limit="0.53">
+    <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
+    <axis xyz="0 1 0" />
+      <xacro:insert_block name="elevator_joint_origin" />
+    <xacro:insert_block name="elevator_mesh_origin" />
+  </xacro:control_surface>
+
+
+  <!-- Rudder -->
+  <xacro:control_surface
+    robot_namespace="${namespace}"
+    link_name="rudder"
+    parent="base_link"
+    mesh_file="model://plane/meshes/rudder.dae"
+    mesh_scale="0.1 0.1 0.1"
+    color="Blue"
+    area="0.02"
+    control_joint_rad_to_cl="-0.5"
+    a0="0.0"
+    cpx="-0.5"
+    cpy="0"
+    cpz="0.05"
+    upx="0"
+    upy="1"
+    upz="0"
+    joint_limit="0.53">
+    <origin xyz="0.0 0.0 0.0" rpy="0 0 0" />
+    <axis xyz="0 0 1" />
+    <xacro:insert_block name="rudder_joint_origin" />
+    <xacro:insert_block name="rudder_mesh_origin" />
+  </xacro:control_surface>
+
+</robot>

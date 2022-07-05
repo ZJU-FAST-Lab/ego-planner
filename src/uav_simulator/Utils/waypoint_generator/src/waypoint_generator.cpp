@@ -23,6 +23,7 @@ string waypoint_type = string("manual");
 bool is_odom_ready;
 nav_msgs::Odometry odom;
 nav_msgs::Path waypoints;
+geometry_msgs::Pose waypoint_manual;
 
 // series waypoint needed
 std::deque<nav_msgs::Path> waypointSegments;
@@ -35,6 +36,11 @@ struct rc_input_t {
     double yawrate;
     double throttle;
 } rc_input;
+
+inline double getYaw(const geometry_msgs::Quaternion& q) {
+    tf::Quaternion bt = tf::Quaternion(q.x, q.y, q.z, q.w).normalized();
+    return tf::getYaw(bt);
+}
 
 void load_seg(ros::NodeHandle& nh, int segid, const ros::Time& time_base) {
     std::string seg_str = boost::str(bfmt("seg%d/") % segid);
@@ -61,7 +67,7 @@ void load_seg(ros::NodeHandle& nh, int segid, const ros::Time& time_base) {
 
     path_msg.header.stamp = time_base + ros::Duration(time_of_start);
 
-    double baseyaw = tf::getYaw(odom.pose.pose.orientation);
+    double baseyaw = getYaw(odom.pose.pose.orientation);
     
     for (size_t k = 0; k < ptx.size(); ++k) {
         geometry_msgs::PoseStamped pt;
@@ -122,6 +128,10 @@ void publish_waypoints_vis() {
         poseArray.poses.push_back(p);
     }
     pub2.publish(poseArray);
+}
+
+void publish_waypoint_manual(const geometry_msgs::Pose& pt) {
+    pub3.publish(pt);
 }
 
 void odom_callback(const nav_msgs::Odometry::ConstPtr& msg) {
@@ -195,7 +205,7 @@ void goal_callback(const geometry_msgs::PoseStamped::ConstPtr& msg) {
             // if height > 0, it's a normal goal;
             geometry_msgs::PoseStamped pt = *msg;
             if (waypoint_type == string("noyaw")) {
-                double yaw = tf::getYaw(odom.pose.pose.orientation);
+                double yaw = getYaw(odom.pose.pose.orientation);
                 pt.pose.orientation = tf::createQuaternionMsgFromYaw(yaw);
             }
             waypoints.poses.push_back(pt);
@@ -278,21 +288,20 @@ void rc_demo_callback(const std_msgs::String& msg) {
 }
 
 void rc_input_to_waypoint(const ros::TimerEvent &e) {
-    if (abs(rc_input.roll) > 0.05 || abs(rc_input.pitch) > 0.05) {
-        Eigen::Vector3d vector(rc_input.pitch * 10.0, rc_input.roll * 10.0, rc_input.throttle * 2.0);
-        Eigen::AngleAxisd rotate_yaw(tf::getYaw(odom.pose.pose.orientation), Eigen::Vector3d::UnitZ());
-        Eigen::Vector3d offset(odom.pose.pose.position.x, odom.pose.pose.position.y, odom.pose.pose.position.z);
-        Eigen::Vector3d target_pose = rotate_yaw * vector + offset;
+    // publish control state
+    geometry_msgs::Pose pt;
+    pt.position.x = rc_input.pitch;
+    pt.position.y = rc_input.roll;
+    pt.position.z = rc_input.throttle;
 
-        geometry_msgs::PoseStamped pt;
-        pt.pose.position.x = target_pose.x();
-        pt.pose.position.y = target_pose.y();
-        pt.pose.position.z = target_pose.z();
+    Eigen::AngleAxisd rotate_yaw(rc_input.yawrate, Eigen::Vector3d::UnitZ());
+    Eigen::Quaterniond q(rotate_yaw);
+    pt.orientation.w = q.w();
+    pt.orientation.x = q.x();
+    pt.orientation.y = q.y();
+    pt.orientation.z = q.z();
 
-        waypoints.poses.push_back(pt);
-        publish_waypoints_vis();
-        publish_waypoints();
-    }
+    publish_waypoint_manual(pt);
 }
 
 int main(int argc, char** argv) {
@@ -305,6 +314,7 @@ int main(int argc, char** argv) {
     ros::Subscriber sub4 = n.subscribe("rc_demo", 10, rc_demo_callback);
     pub1 = n.advertise<nav_msgs::Path>("waypoints", 50);
     pub2 = n.advertise<geometry_msgs::PoseArray>("waypoints_vis", 10);
+    pub3 = n.advertise<geometry_msgs::Pose>("waypoint_manual", 50);
 
     trigged_time = ros::Time(0);
 

@@ -1,0 +1,55 @@
+<launch>
+    <arg name="headless" default="false"/>
+    <arg name="gui" default="true"/>
+    <arg name="ns" default="/"/>
+    <arg name="world_path"/>
+    <arg name="build" default="px4_sitl_default"/>
+    <arg name="fcu_url" default="udp://:14540@localhost:14557"/>
+    <!-- <arg name="fcu_url" default="udp://:14547@localhost:14550"/> -->
+    <arg name="gcs_url" default="udp://@127.0.0.1:14990" />
+    <!-- GCS link is provided by SITL -->
+    <arg name="tgt_system" default="1" />
+    <arg name="tgt_component" default="1" />
+    <arg name="mavros_transformation" default="-1.5708" />
+    <arg name="model" default="iris"/>
+    <arg name="px4_vehicle" default="iris"/>
+
+    <arg name="x" default="0"/>
+    <arg name="y" default="0"/>
+    <arg name="z" default="0.05"/>
+    <arg name="R" default="0"/>
+    <arg name="P" default="0"/>
+    <arg name="Y" default="0"/>
+
+    <param name="use_sim_time" value="true" />
+
+    <!-- Launch PX4 SITL -->
+    <include file="$(find px4)/launch/px4.launch">
+        <arg name="vehicle" value="$(arg px4_vehicle)"/>
+    </include>
+
+    <!-- Launch MavROS -->
+    <group ns="$(arg ns)">
+        <include file="$(find mavros)/launch/node.launch">
+            <arg name="pluginlists_yaml" value="$(find simulation_environment)/launch/px4_pluginlists.yaml" />
+            <!-- Need to change the config file to get the tf topic and get local position in terms of local origin -->
+            <arg name="config_yaml" value="$(find simulation_environment)/launch/px4_config.yaml" />
+            <arg name="fcu_url" value="$(arg fcu_url)" />
+            <arg name="gcs_url" value="$(arg gcs_url)" />
+            <arg name="tgt_system" value="$(arg tgt_system)" />
+            <arg name="tgt_component" value="$(arg tgt_component)" />
+        </include>
+    </group>
+
+    <!-- Launch Gazebo -->
+    <include file="$(find gazebo_ros)/launch/empty_world.launch">
+        <arg name="headless" value="$(arg headless)"/>
+        <arg name="gui" value="$(arg gui)"/>
+        <arg name="world_name" value="$(arg world_path)" />
+    </include>
+
+    <!-- Spawn iris -->
+    <node name="spawn_model" pkg="gazebo_ros" type="spawn_model" output="screen" args="-sdf -database $(arg model) -model iris -x $(arg x) -y $(arg y) -z $(arg z) -R $(arg R) -P $(arg P) -Y $(arg Y)">
+    </node>
+
+</launch>

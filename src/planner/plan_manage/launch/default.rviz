@@ -136,6 +136,14 @@ Visualization Manager:
             {}
           Queue Size: 100
           Value: true
+        - Class: rviz/Marker
+          Enabled: true
+          Marker Topic: /ref_target
+          Name: Marker
+          Namespaces:
+            {}
+          Queue Size: 100
+          Value: true
       Enabled: true
       Name: Planning
     - Class: rviz/Group
@@ -171,8 +179,8 @@ Visualization Manager:
         - Alpha: 1
           Autocompute Intensity Bounds: true
           Autocompute Value Bounds:
-            Max Value: -9999
-            Min Value: 9999
+            Max Value: 2.940000057220459
+            Min Value: -0.05999999865889549
             Value: true
           Axis: Z
           Channel Name: intensity

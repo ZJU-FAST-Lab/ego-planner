@@ -1,0 +1,242 @@
+<?xml version="1.0"?>
+<!--
+  Copyright 2015 Fadri Furrer, ASL, ETH Zurich, Switzerland
+  Copyright 2015 Michael Burri, ASL, ETH Zurich, Switzerland
+  Copyright 2015 Mina Kamel, ASL, ETH Zurich, Switzerland
+  Copyright 2015 Janosch Nikolic, ASL, ETH Zurich, Switzerland
+  Copyright 2015 Markus Achtelik, ASL, ETH Zurich, Switzerland
+  Copyright 2020 PX4 Development Team. All rights reserved.
+
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License.
+-->
+
+<robot xmlns:xacro="http://ros.org/wiki/xacro">
+  <!-- Main multirotor link -->
+  <xacro:macro name="fixedwing_base_macro" params="robot_namespace *origin">
+    <xacro:insert_block name="origin" />
+    <link name="base_link"></link>
+    <joint name="base_joint" type="fixed">
+      <parent link="base_link" />
+      <child link="base_link_inertial" />
+    </joint>
+    <link name="base_link_inertial">
+      <inertial>
+        <mass value="1.5" />
+        <inertia ixx="0.197563" ixy="0.0" iyy="0.1458929" ixz="0.0" iyz="0.0" izz="0.1477" />
+      </inertial>
+      <visual>
+        <origin xyz="0.07 0 -0.08" rpy="0 0 0" />
+        <geometry>
+            <mesh scale="0.1 0.1 0.1" filename="model://plane/meshes/body.dae" />
+        </geometry>
+      </visual>
+      <collision name='base_link_collision'>
+        <origin xyz="0.0 0 -0.07" rpy="0 0 0" />
+        <geometry>
+            <box size="0.47 0.47 0.11"/>
+        </geometry>
+      </collision>
+    </link>
+    <gazebo reference="base_link">
+        <material>Gazebo/DarkGrey</material>
+        <!-- <maxVel>10</maxVel>
+        <minDepth>0.01</minDepth> -->
+        <selfCollide>0</selfCollide>
+    </gazebo>
+  </xacro:macro>
+
+  <!-- Rotor joint and link -->
+  <xacro:macro name="horizontal_rotor"
+    params="robot_namespace suffix direction motor_constant moment_constant parent mass_rotor radius_rotor time_constant_up time_constant_down max_rot_velocity motor_number rotor_drag_coefficient rolling_moment_coefficient color mesh mesh_scale *origin *inertia">
+    <joint name="rotor_${motor_number}_joint" type="continuous">
+      <xacro:insert_block name="origin" />
+      <axis xyz="0 0 1" />
+      <!-- TODO(ff): not currently set because it's not yet supported -->
+      <!-- <limit effort="2000" velocity="${max_rot_velocity}" /> -->
+      <parent link="${parent}" />
+      <child link="rotor_${motor_number}" />
+
+    </joint>
+    <!-- TODO(ff): not currently set because it's not yet supported -->
+    <!-- <gazebo reference="rotor_${motor_number}_joint"> <axis> <xyz>0 0 1</xyz>
+      <limit> <velocity> ${max_rot_velocity} </velocity> </limit> </axis> </gazebo> -->
+    <link name="rotor_${motor_number}">
+      <inertial>
+        <mass value="${mass_rotor}" /> <!-- [kg] -->
+        <xacro:insert_block name="inertia" />
+      </inertial>
+      <visual>
+        <origin xyz="0.0 0 -0.09" rpy="0 0.0 0" />
+        <geometry>
+          <mesh filename="model://plane/meshes/iris_prop_ccw.dae"
+            scale="${mesh_scale}" />
+        </geometry>
+      </visual>
+      <collision>
+        <geometry>
+          <cylinder length="0.005" radius="${radius_rotor}" /> <!-- [m] -->
+        </geometry>
+      </collision>
+    </link>
+    <gazebo>
+      <plugin name="${suffix}_motor_model" filename="libgazebo_motor_model.so">
+        <robotNamespace>${robot_namespace}</robotNamespace>
+        <jointName>rotor_${motor_number}_joint</jointName>
+        <linkName>rotor_${motor_number}</linkName>
+        <turningDirection>${direction}</turningDirection>
+        <timeConstantUp>${time_constant_up}</timeConstantUp>
+        <timeConstantDown>${time_constant_down}</timeConstantDown>
+        <maxRotVelocity>${max_rot_velocity}</maxRotVelocity>
+        <motorConstant>${motor_constant}</motorConstant>
+        <momentConstant>${moment_constant}</momentConstant>
+        <commandSubTopic>/gazebo/command/motor_speed</commandSubTopic>
+        <motorNumber>${motor_number}</motorNumber>
+        <rotorDragCoefficient>${rotor_drag_coefficient}</rotorDragCoefficient>
+        <rollingMomentCoefficient>${rolling_moment_coefficient}</rollingMomentCoefficient>
+        <motorSpeedPubTopic>/motor_speed/${motor_number}</motorSpeedPubTopic>
+        <rotorVelocitySlowdownSim>${rotor_velocity_slowdown_sim}</rotorVelocitySlowdownSim>
+        <!--
+        <gazebo_joint_control_pid>
+          <p>0.1</p>
+          <i>0</i>
+          <d>0</d>
+          <iMax>0</iMax>
+          <iMin>0</iMin>
+          <cmdMax>3</cmdMax>
+          <cmdMin>-3</cmdMin>
+        </gazebo_joint_control_pid>
+      -->
+      </plugin>
+    </gazebo>
+    <gazebo reference="rotor_${motor_number}">
+      <material>Gazebo/${color}</material>
+        <selfCollide>0</selfCollide>
+    </gazebo>
+  </xacro:macro>
+
+  <!-- Rotor joint and link -->
+  <xacro:macro name="control_surface"
+    params="robot_namespace link_name parent color mesh_file mesh_scale area joint_limit control_joint_rad_to_cl a0 cpx cpy cpz upx upy upz *origin *joint_origin *axis *mesh_origin">
+    <joint name="${link_name}_joint" type="revolute">
+      <xacro:insert_block name="joint_origin" />
+      <parent link="${parent}" />
+      <child link="${link_name}" />
+      <!-- <axis xyz="0 0 1" /> -->
+      <xacro:insert_block name="axis" />
+      <limit effort="1000" velocity="1000.0" lower="-${joint_limit}" upper="${joint_limit}" />
+      <!-- <dynamics damping="1.0"/> -->
+    </joint>
+    <link name="${link_name}">
+      <inertial>
+        <mass value="0.00001" /> <!-- [kg] -->
+        <inertia
+        ixx="0.000001"
+        iyy="0.000001"
+        izz="0.000001"
+        ixy="0.0" ixz="0.0"  iyz="0.0" /> <!-- [kg.m^2] [kg.m^2] [kg.m^2] [kg.m^2] [kg.m^2] [kg.m^2] -->
+        <xacro:insert_block name="origin" />
+      </inertial>
+      <visual>
+        <xacro:insert_block name="mesh_origin" />
+        <geometry>
+          <mesh filename="${mesh_file}" scale="${mesh_scale}" />
+        </geometry>
+      </visual>
+    </link>
+    <gazebo>
+         <plugin name="${link_name}_plugin" filename="libLiftDragPlugin.so">
+            <a0>${a0}</a0>
+            <cla>4.752798721</cla>
+            <cda>0.6417112299</cda>
+            <cma>0.0</cma>
+            <alpha_stall>0.3391428111</alpha_stall>
+            <cla_stall>-3.85</cla_stall>
+            <cda_stall>-0.9233984055</cda_stall>
+            <cma_stall>0</cma_stall>
+            <cp>${cpx} ${cpy} ${cpz}</cp>
+            <area>${area}</area>
+            <air_density>1.2041</air_density>
+            <forward>1 0 0</forward>
+            <upward>${upx} ${upy} ${upz}</upward>
+            <link_name>${parent}</link_name>
+            <control_joint_name>
+               ${link_name}_joint
+            </control_joint_name>
+            <control_joint_rad_to_cl>${control_joint_rad_to_cl}</control_joint_rad_to_cl>
+            <robotNamespace></robotNamespace>
+            <windSubTopic>/wind</windSubTopic>
+         </plugin>
+    </gazebo>
+    <gazebo reference="${link_name}">
+      <material>Gazebo/${color}</material>
+    </gazebo>
+    <gazebo reference="${link_name}_joint">
+        <implicitSpringDamper>True</implicitSpringDamper>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:macro name="hidden_control_surface"
+    params="robot_namespace link_name parent color area joint_limit control_joint_rad_to_cl a0 cpx cpy cpz upx upy upz *origin *joint_origin *axis">
+    <joint name="${link_name}_joint" type="revolute">
+      <parent link="${parent}" />
+      <child link="${link_name}" />
+      <xacro:insert_block name="joint_origin" />
+      <!-- <axis xyz="0 0 1" /> -->
+      <xacro:insert_block name="axis" />
+      <limit effort="1000" velocity="1000.0" lower="-${joint_limit}" upper="${joint_limit}" />
+      <!-- <dynamics damping="1.0"/> -->
+    </joint>
+    <link name="${link_name}">
+      <inertial>
+        <mass value="0.00001" /> <!-- [kg] -->
+        <inertia
+        ixx="0.000001"
+        iyy="0.000001"
+        izz="0.000001"
+        ixy="0.0" ixz="0.0"  iyz="0.0" /> <!-- [kg.m^2] [kg.m^2] [kg.m^2] [kg.m^2] [kg.m^2] [kg.m^2] -->
+        <xacro:insert_block name="origin" />
+      </inertial>
+    </link>
+    <gazebo>
+         <plugin name="${link_name}_plugin" filename="libLiftDragPlugin.so">
+            <a0>${a0}</a0>
+            <cla>4.752798721</cla>
+            <cda>0.6417112299</cda>
+            <cma>0.0</cma>
+            <alpha_stall>0.3391428111</alpha_stall>
+            <cla_stall>-3.85</cla_stall>
+            <cda_stall>-0.9233984055</cda_stall>
+            <cma_stall>0</cma_stall>
+            <cp>${cpx} ${cpy} ${cpz}</cp>
+            <area>${area}</area>
+            <air_density>1.2041</air_density>
+            <forward>1 0 0</forward>
+            <upward>${upx} ${upy} ${upz}</upward>
+            <link_name>${parent}</link_name>
+            <control_joint_name>
+               ${link_name}_joint
+            </control_joint_name>
+            <control_joint_rad_to_cl>${control_joint_rad_to_cl}</control_joint_rad_to_cl>
+            <robotNamespace></robotNamespace>
+            <windSubTopic>/wind</windSubTopic>
+         </plugin>
+    </gazebo>
+    <gazebo reference="${link_name}">
+      <material>Gazebo/${color}</material>
+    </gazebo>
+    <gazebo reference="${link_name}_joint">
+        <implicitSpringDamper>True</implicitSpringDamper>
+    </gazebo>
+  </xacro:macro>
+
+</robot>

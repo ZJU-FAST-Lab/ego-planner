@@ -1,0 +1,23 @@
+<launch>
+    <arg name="mavros_transformation" default="0" />   
+    <arg name="world_path" default="$(find simulation_environment)/sim/map/empty.world" />
+    <arg name="model" default="iris"/>
+    <arg name="px4_vehicle" default="iris" />
+    <!-- <arg name="model" default="typhoon_h480_custom"/> -->
+    <!-- <arg name="px4_vehicle" default="typhoon_h480" /> -->
+    <arg name="gui" default="true"/>
+   
+    <param name="use_sim_time" value="true" /> 
+
+    <!-- Mavros and Sitl -->
+    <include file="$(find simulation_environment)/launch/mavros_sitl.launch" >
+        <arg name="world_path" value="$(arg world_path)" /> 
+        <arg name="model" value="$(arg model)" />
+        <arg name="px4_vehicle" value="$(arg px4_vehicle)" />
+    	<arg name="x" value="0"/>
+    	<arg name="y" value="0"/>
+        <arg name="z" value="0.1"/>
+        <arg name="gui" value="$(arg gui)"/>
+    </include>
+
+</launch>
