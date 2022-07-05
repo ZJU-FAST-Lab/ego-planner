@@ -29,33 +29,20 @@ roslaunch rc_demo rc_demo.launch
 ```
 
 # Test with PX4 SITL
-- PX4 firmware is required : https://github.com/PX4/PX4-Autopilot
-- gazebo_models (for bayland) : https://github.com/osrf/gazebo_models
+- PX4 firmware is required
+- gazebo_models (for bayland)
+- these are include in https://github.com/j-marple-dev/PX4-container-custom/tree/ego-planner
 
-### build sim_ws
+### in Docker of PX4-container-custom
 ```
-cd sim_ws
-catkin_make
-source devel/setup.bash
-```
-- If the error occurs: ```Resource not found: px4```, override ROS_PACKAGE_PATH.
-- *** Check your path of ```Firmware``` ***
-```
-Firmware=~/Firmware
-export ROS_PACKAGE_PATH=${ROS_PACKAGE_PATH}:${Firmware}:${Firmware}/Tools/sitl_gazebo
-```
-- Check GAZEBO_MODEL_PATH
-```
-export GAZEBO_MODEL_PATH=~/gazebo_models:~/ego-planner/sim_ws/src/simulation_environment/sim/models
+roslaunch simulation_environment depth_camera.launch
 ```
 
-### Simulation!
+### in ego-planner installed env
 ```
 ### shell 1
-roslaunch simulation_environment depth_camera.launch
-### shell 2
 roslaunch ego_planner run_in_px4sim.launch
-### shell 3
+### shell 2
 roslaunch rc_demo rc_demo.launch
 ```
 
