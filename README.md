@@ -35,7 +35,7 @@ roslaunch rc_demo rc_demo.launch
 
 ### in Docker of PX4-container-custom
 ```
-roslaunch simulation_environment depth_camera.launch
+roslaunch simulation_environment ego_depth.launch
 ```
 
 ### in ego-planner installed env
