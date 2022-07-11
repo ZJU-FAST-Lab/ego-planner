@@ -111,6 +111,8 @@ namespace ego_planner
     // Eigen::Vector3d findClosestPoint(Eigen::Vector3d point, ego_planner::UniformBspline &bspline);
     double getRemainLength(Eigen::Vector3d point, ego_planner::UniformBspline &bspline);
     Eigen::Vector3d last_control_;
+    bool control_zero_reset_;
+    bool is_need_replan_ = false;
 
   public:
     EGOReplanFSM(/* args */)

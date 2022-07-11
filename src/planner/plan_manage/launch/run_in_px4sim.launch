@@ -65,6 +65,8 @@
     <arg name="point4_x" value="-15.0" />
     <arg name="point4_y" value="0.0" />
     <arg name="point4_z" value="1.0" />
+
+    <arg name="control_zero_reset" value="false" />
     
   </include>
 
