@@ -14,7 +14,10 @@ red = (255, 50, 50)
 green = (50, 255, 50)
 blue = (50, 50, 255)
 black = (0, 0, 0)
+
 screen = None
+SCREEN_WIDTH = 520
+SCREEN_HEIGHT = 200
 
 # @dataclass 
 class Stick:
@@ -80,14 +83,56 @@ class MAVROSCommander:
     def set_mode(self, mode):
         offb_set_mode = SetMode()
         offb_set_mode.custom_mode = mode
-        resp1 = self.set_mode_client(0, offb_set_mode.custom_mode)
-        return resp1.mode_sent
+        try:
+            resp1 = self.set_mode_client(0, offb_set_mode.custom_mode)
+            return resp1.mode_sent
+        except:
+            return False
 
     def set_arm(self, value):
         arm_cmd = CommandBool()
         arm_cmd.value = value
-        arm_client_1 = self.arming_client(arm_cmd.value)
-        return arm_client_1.success
+        try:
+            arm_client_1 = self.arming_client(arm_cmd.value)
+            return arm_client_1.success
+        except:
+            return False
+
+class Button:
+    def __init__(self, x, y, w, h):
+        self.pos_x = x
+        self.pos_y = y
+        self.width = w
+        self.height = h
+        self.set_border(-1)
+        self.set_color((255, 255, 255))
+        self.set_text("")
+        self.set_text_offset(0, 0)
+
+    def set_color(self, color):
+        self.color = color
+
+    def set_border(self, radius):
+        self.border = radius
+
+    def set_text(self, text, color=(0, 0, 0)):
+        self.font = pygame.font.SysFont('Comic Sans MS', 30)
+        self.text_surface = self.font.render(text, True, color)
+    
+    def set_text_offset(self, x, y):
+        self.off_x = x
+        self.off_y = y
+
+    def draw(self, screen):
+        rect = [self.pos_x, self.pos_y, self.width, self.height]
+        pygame.draw.rect(screen, self.color, rect, border_radius=self.border)
+        screen.blit(self.text_surface, (self.pos_x + self.off_x, self.pos_y + self.off_y))
+
+    def check_collide(self, pos):
+        if self.pos_x < pos[0] and pos[0] < self.pos_x + self.width:
+            if self.pos_y < pos[1] and pos[1] < self.pos_y + self.height:
+                return True
+        return False
 
 class Controller:
     def __init__(self):
@@ -111,13 +156,26 @@ class Controller:
 
         self.commander = MAVROSCommander()
 
+        self.button_1 = Button(215, 20, 90, 30)
+        self.button_1.set_color(blue)
+        self.button_1.set_text("Mode")
+        self.button_1.set_text_offset(5, -8)
+
+        self.button_1_pressed = False
+
     def get_diff(self, pos, center):
         return (pos[0] - center[0], pos[1] - center[1])
 
     def get_dist(self, pos, center):
         diff = self.get_diff(pos, center)
         return math.sqrt(diff[0] * diff[0] + diff[1] * diff[1])
-    
+
+    def send_mode_change_cmd(self):
+        if self.commander.set_mode("OFFBOARD") and self.commander.set_arm(True):
+            print('set offboard & arm!')
+        else:
+            print('set mode fail!')
+
     def control_callback(self, event):
         key_event = pygame.key.get_pressed()
 
@@ -126,9 +184,7 @@ class Controller:
                 sys.exit()
             elif event.type == pygame.KEYUP:
                 if key_event[pygame.K_TAB]:
-                    self.commander.set_mode("OFFBOARD")
-                    self.commander.set_arm(True)
-                    print('set offboard & arm!')
+                    self.send_mode_change_cmd()
 
         # mouse pressed event
         if pygame.mouse.get_pressed()[0]:
@@ -142,6 +198,11 @@ class Controller:
                 diff = self.get_diff(mouse_pos, self.stick_2.get_center())
                 self.stick_2.set_pose(diff[0], diff[1])
 
+            elif self.button_1.check_collide(mouse_pos):
+                if not self.button_1_pressed:
+                    self.button_1_pressed = True
+                    self.send_mode_change_cmd()
+
             else:
                 dist_1 = self.get_dist(mouse_pos, self.stick_1.get_center())
                 dist_2 = self.get_dist(mouse_pos, self.stick_2.get_center())
@@ -153,6 +214,7 @@ class Controller:
         else:
             self.stick_1_pressed = False
             self.stick_2_pressed = False
+            self.button_1_pressed = False
 
         # ESC
         if key_event[pygame.K_ESCAPE]:
@@ -169,6 +231,8 @@ class Controller:
         pygame.draw.circle(screen, white, self.stick_2.get_center(), self.stick_2.radius, width=1)
         pygame.draw.circle(screen, white, self.stick_1.get_pixel(), 15)
         pygame.draw.circle(screen, red, self.stick_2.get_pixel(), 15)
+        
+        self.button_1.draw(screen)
 
         self.stick_1.release()
         self.stick_2.release()
@@ -196,8 +260,6 @@ class Controller:
 
 if __name__ == '__main__':
     args = rospy.myargv(argv=sys.argv)
-    SCREEN_WIDTH = 520
-    SCREEN_HEIGHT = 200
     
     rospy.init_node("key_control_node", anonymous=True)
 

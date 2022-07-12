@@ -36,7 +36,7 @@ int traj_id_;
 // yaw control
 double last_yaw_, last_yaw_dot_;
 double time_forward_;
-bool use_velocity_control_;
+bool use_velocity_control_, enable_rotate_head_;
 double forward_length_;
 
 void bsplineCallback(ego_planner::BsplineConstPtr msg)
@@ -186,10 +186,13 @@ void cmdCallback(const ros::TimerEvent &e)
   if (receive_traj_) {
     Eigen::Vector3d closestPoint = findClosestPoint(odom_pos_, traj_[0]);
     Eigen::Vector3d refTarget = findClosestPoint(closestPoint, traj_[0], forward_length_);
-    // Eigen::Vector3d refTarget_forward = findClosestPoint(closestPoint, traj_[0], forward_length_ * 2.5);
+    Eigen::Vector3d refTarget_forward = findClosestPoint(closestPoint, traj_[0], forward_length_ * 2.5);
     Eigen::Vector3d sub_vector(refTarget.x() - odom_pos_.x(), refTarget.y() - odom_pos_.y(), 0);
-    // double ref_yaw = atan2(refTarget_forward.y() - odom_pos_.y(), refTarget_forward.x() - odom_pos_.x());
+    
     double ref_yaw = last_yaw_;
+    if (enable_rotate_head_) {
+      ref_yaw = atan2(refTarget_forward.y() - odom_pos_.y(), refTarget_forward.x() - odom_pos_.x());
+    }
 
     // visualize target
     {
@@ -329,6 +332,7 @@ int main(int argc, char **argv)
 
   nh.param("traj_server/use_velocity_control", use_velocity_control_, false);
   nh.param("traj_server/forward_length", forward_length_, 1.0);
+  nh.param("traj_server/enable_rotate_head", enable_rotate_head_, true);
 
   ros::Duration(1.0).sleep();
 

@@ -77,6 +77,7 @@
     <remap from="/odom_world" to="$(arg odom_topic)"/>
     <param name="traj_server/time_forward" value="1.0" type="double"/>
     <param name="traj_server/use_velocity_control" value="true" type="bool"/>
+    <param name="traj_server/enable_rotate_head" value="true" type="bool"/>
   </node>
 
   <node pkg="waypoint_generator" name="waypoint_generator" type="waypoint_generator" output="screen">
