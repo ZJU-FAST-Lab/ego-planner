@@ -6,6 +6,8 @@ import math
 
 import rospy
 from std_msgs.msg import String
+from mavros_msgs.srv import SetMode
+from mavros_msgs.srv import CommandBool
 
 white = (255, 255, 255)
 red = (255, 50, 50)
@@ -40,7 +42,7 @@ class Stick:
                 self.pos_x += self.power
 
         if not self.updated_y:
-            if not self.y_lock or abs(self.pos_y) < self.power * 2:
+            if not self.y_lock or abs(self.pos_y) < self.power * 5:
                 if abs(self.pos_y) < self.power:
                     self.pos_y = 0
                 elif self.pos_y > 0:
@@ -70,6 +72,23 @@ class Stick:
     def get_pixel(self):
         return (self.center_x + self.pos_x, self.center_y + self.pos_y)
 
+class MAVROSCommander:
+    def __init__(self):
+        self.set_mode_client = rospy.ServiceProxy('mavros/set_mode', SetMode)
+        self.arming_client = rospy.ServiceProxy('mavros/cmd/arming', CommandBool)
+
+    def set_mode(self, mode):
+        offb_set_mode = SetMode()
+        offb_set_mode.custom_mode = mode
+        resp1 = self.set_mode_client(0, offb_set_mode.custom_mode)
+        return resp1.mode_sent
+
+    def set_arm(self, value):
+        arm_cmd = CommandBool()
+        arm_cmd.value = value
+        arm_client_1 = self.arming_client(arm_cmd.value)
+        return arm_client_1.success
+
 class Controller:
     def __init__(self):
         self.pub = rospy.Publisher('/rc_demo', String, queue_size=1)
@@ -90,6 +109,8 @@ class Controller:
         self.stick_1_pressed = False
         self.stick_2_pressed = False
 
+        self.commander = MAVROSCommander()
+
     def get_diff(self, pos, center):
         return (pos[0] - center[0], pos[1] - center[1])
 
@@ -104,8 +125,10 @@ class Controller:
             if event.type == pygame.QUIT:
                 sys.exit()
             elif event.type == pygame.KEYUP:
-                # if key_event[pygame.K_SPACE]:
-                pass
+                if key_event[pygame.K_TAB]:
+                    self.commander.set_mode("OFFBOARD")
+                    self.commander.set_arm(True)
+                    print('set offboard & arm!')
 
         # mouse pressed event
         if pygame.mouse.get_pressed()[0]:
