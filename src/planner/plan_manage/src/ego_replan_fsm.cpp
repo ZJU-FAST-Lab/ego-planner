@@ -174,6 +174,9 @@ namespace ego_planner
         changeFSMExecState(WAIT_TARGET, "TRIG");
 
       } else if (is_need_replan_) {
+        traj_pts_.clear();
+        visualization_->displayTrajList(traj_pts_, 0);
+
         geometry_msgs::PoseStamped waypoint;
         waypoint.pose.position.x = end_pt_.x();
         waypoint.pose.position.y = end_pt_.y();
@@ -233,6 +236,8 @@ namespace ego_planner
   {
     if (msg.poses[0].pose.position.z < -0.1)
       return;
+
+    if (exec_state_ == REPLAN_TRAJ) return;
 
     is_need_replan_ = false;
 
@@ -392,7 +397,7 @@ namespace ego_planner
         changeFSMExecState(EXEC_TRAJ, "FSM");
         flag_escape_emergency_ = true;
       }
-      else
+      else if (exec_state_ == GEN_NEW_TRAJ)
       {
         changeFSMExecState(GEN_NEW_TRAJ, "FSM");
       }
@@ -406,7 +411,7 @@ namespace ego_planner
       {
         changeFSMExecState(EXEC_TRAJ, "FSM");
       }
-      else
+      else if (exec_state_ == REPLAN_TRAJ)
       {
         changeFSMExecState(REPLAN_TRAJ, "FSM");
       }
@@ -495,6 +500,8 @@ namespace ego_planner
 
     if (!success)
     {
+      if (planner_manager_->getFailuresCount() < 0) return false;
+
       success = callReboundReplan(true, false);
       //changeFSMExecState(EXEC_TRAJ, "FSM");
       if (!success)
@@ -607,6 +614,22 @@ namespace ego_planner
       bspline_pub_.publish(bspline);
 
       visualization_->displayOptimalList(info->position_traj_.get_control_points(), 0);
+
+      reboundReplan_fail_count_ = 0;
+
+    } else {
+      reboundReplan_fail_count_++;
+
+      if (planner_manager_->getFailuresCount() < 0) {
+        ROS_WARN("Remove wrong goal. reboundReplan_fail_count : %d", reboundReplan_fail_count_);
+
+        traj_pts_.clear();
+        visualization_->displayTrajList(traj_pts_, 0);
+
+        have_target_ = false;
+        have_new_target_ = false;
+        changeFSMExecState(WAIT_TARGET, "TRIG");
+      }
     }
 
     return plan_success;

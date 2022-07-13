@@ -228,7 +228,7 @@ namespace ego_planner
     if (!flag_step_1_success)
     {
       // visualization_->displayOptimalList( ctrl_pts, vis_id );
-      continous_failures_count_++;
+      continous_failures_count_ = -1;
       return false;
     }
     //visualization_->displayOptimalList( ctrl_pts, vis_id );
