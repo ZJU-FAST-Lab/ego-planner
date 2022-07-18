@@ -190,6 +190,7 @@ void cmdCallback(const ros::TimerEvent &e)
     Eigen::Vector3d sub_vector(refTarget.x() - odom_pos_.x(), refTarget.y() - odom_pos_.y(), 0);
     // double ref_yaw = atan2(refTarget_forward.y() - odom_pos_.y(), refTarget_forward.x() - odom_pos_.x());
     double ref_yaw = last_yaw_;
+    // last_yaw_ = ref_yaw;
 
     // visualize target
     {
