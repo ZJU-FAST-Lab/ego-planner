@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import pygame
 import sys
 import math
@@ -14,7 +14,28 @@ blue = (50, 50, 255)
 black = (0, 0, 0)
 screen = None
 
-# @dataclass 
+
+class ControlMessage:
+    """Send control message via MavROS"""
+
+    def __init__(self) -> None:
+        self.control_pub = rospy.Publisher('/rc_demo', String, queue_size=1)
+
+    def send_control(self, roll: float, pitch: float, yaw: float, throttle: float) -> None:
+        """Send control message
+
+        Args:
+            roll: roll
+            pitch: pitch
+            yaw: yaw
+            throttle: throttle
+        """
+        msg = String()
+        msg.data = "{roll},{pitch},{yaw},{throttle}".format(roll=roll,pitch=pitch,yaw=yaw,throttle=throttle)
+        self.control_pub.publish(msg)
+
+
+# @dataclass
 class Stick:
     def __init__(self, center_x, center_y, radius):
         self.center_x = center_x
@@ -28,7 +49,7 @@ class Stick:
         self.updated_y = False
         self.radius = radius
         self.y_lock = False
-        
+
 
     def release(self):
         if not self.updated_x:
@@ -50,7 +71,7 @@ class Stick:
 
         self.updated_x = False
         self.updated_y = False
-    
+
     def set_pose(self, x=float, y=float):
         dist = math.sqrt(x * x + y * y)
 
@@ -60,7 +81,7 @@ class Stick:
         else:
             self.pos_x = x / math.sqrt(x * x + y * y) * self.radius
             self.pos_y = y / math.sqrt(x * x + y * y) * self.radius
-            
+
         self.updated_x
         self.updated_y
 
@@ -72,8 +93,9 @@ class Stick:
 
 class Controller:
     def __init__(self):
-        self.pub = rospy.Publisher('/rc_demo', String, queue_size=1)
-        self.string_msg = String()
+        self.control_msg = ControlMessage()
+        # self.pub = rospy.Publisher('/rc_demo', String, queue_size=1)
+        # self.string_msg = String()
         self.pygame_img = None
 
         self.stick_1 = Stick(100,100,60)
@@ -96,7 +118,7 @@ class Controller:
     def get_dist(self, pos, center):
         diff = self.get_diff(pos, center)
         return math.sqrt(diff[0] * diff[0] + diff[1] * diff[1])
-    
+
     def control_callback(self, event):
         key_event = pygame.key.get_pressed()
 
@@ -159,7 +181,7 @@ class Controller:
         else: # skip motion
             roll = 0
             pitch = 0
-            
+
         if self.stick_1_pressed:
             yaw = float(-self.stick_1.pos_x) / float(self.stick_1.radius)
             throttle = float(-self.stick_1.pos_y) / float(self.stick_1.radius)
@@ -167,15 +189,14 @@ class Controller:
             yaw = 0
             throttle = float(-self.stick_1.pos_y) / float(self.stick_1.radius)
 
-        self.string_msg.data = "{roll},{pitch},{yaw},{throttle}".format(roll=roll,pitch=pitch,yaw=yaw,throttle=throttle)
-        self.pub.publish(self.string_msg)
+        self.control_msg.send_control(roll, pitch, yaw, throttle)
 
 
 if __name__ == '__main__':
     args = rospy.myargv(argv=sys.argv)
     SCREEN_WIDTH = 520
     SCREEN_HEIGHT = 200
-    
+
     rospy.init_node("key_control_node", anonymous=True)
 
     pygame.init()
