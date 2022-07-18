@@ -83,6 +83,8 @@ namespace ego_planner
 
     inline int getOrder(void) { return order_; }
 
+    int getForceStopType() { return (int)force_stop_type_; }
+
   private:
     GridMap::Ptr grid_map_;
 

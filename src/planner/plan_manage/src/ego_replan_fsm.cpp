@@ -27,6 +27,9 @@ namespace ego_planner
       nh.param("fsm/waypoint" + to_string(i) + "_z", waypoints_[i][2], -1.0);
     }
 
+    nh.param("fsm/control_zero_reset", control_zero_reset_, false);
+    // control_zero_reset_ = false;
+
     /* initialize main modules */
     visualization_.reset(new PlanningVisualization(nh));
     planner_manager_.reset(new EGOPlannerManager);
@@ -34,7 +37,7 @@ namespace ego_planner
 
     /* callback */
     exec_timer_ = nh.createTimer(ros::Duration(0.01), &EGOReplanFSM::execFSMCallback, this);
-    // safety_timer_ = nh.createTimer(ros::Duration(0.05), &EGOReplanFSM::checkCollisionCallback, this);
+    safety_timer_ = nh.createTimer(ros::Duration(0.5), &EGOReplanFSM::checkCollisionCallback, this);
 
     odom_sub_ = nh.subscribe("/odom_world", 1, &EGOReplanFSM::odometryCallback, this);
 
@@ -159,15 +162,39 @@ namespace ego_planner
 
   void EGOReplanFSM::controlCallback(const geometry_msgs::PoseConstPtr &msg) {
     if (abs(msg->position.x) < 0.05 && abs(msg->position.y) < 0.05) {
-      // cancel exist waypoint and stop
-      traj_pts_.clear();
-      visualization_->displayTrajList(traj_pts_, 0);
+      if (control_zero_reset_) {
+        // cancel exist waypoint and stop
+        traj_pts_.clear();
+        visualization_->displayTrajList(traj_pts_, 0);
 
-      last_control_ = Eigen::Vector3d(msg->position.x, msg->position.y, msg->position.z);
+        last_control_ = Eigen::Vector3d(msg->position.x, msg->position.y, msg->position.z);
 
-      have_target_ = false;
-      have_new_target_ = false;
-      changeFSMExecState(WAIT_TARGET, "TRIG");
+        have_target_ = false;
+        have_new_target_ = false;
+        changeFSMExecState(WAIT_TARGET, "TRIG");
+
+      } else if (is_need_replan_) {
+        traj_pts_.clear();
+        visualization_->displayTrajList(traj_pts_, 0);
+
+        geometry_msgs::PoseStamped waypoint;
+        waypoint.pose.position.x = end_pt_.x();
+        waypoint.pose.position.y = end_pt_.y();
+        waypoint.pose.position.z = end_pt_.z();
+
+        nav_msgs::Path waypoints;
+        waypoints.poses.push_back(waypoint);
+        
+        waypointCallback(waypoints);
+
+      } else if ((end_pt_ - odom_pos_).norm() < 0.3) {
+        traj_pts_.clear();
+        visualization_->displayTrajList(traj_pts_, 0);
+
+        have_target_ = false;
+        have_new_target_ = false;
+        changeFSMExecState(WAIT_TARGET, "TRIG");
+      }
 
     } else {
       Eigen::Vector3d control(msg->position.x, msg->position.y, msg->position.z);
@@ -177,25 +204,13 @@ namespace ego_planner
         if (current_traj_.getControlPoint().size() > 2) {
           double remain_length = getRemainLength(odom_pos_, current_traj_);
           double total_length = current_traj_.getLength();
-          bool is_need_replan = false;
 
-          if (remain_length < max(min(total_length * 0.7, 12.0), 0.5)) {
-            is_need_replan = true;
-          } else {
-            /* ---------- check trajectory ---------- */
-            auto map = planner_manager_->grid_map_;
-            double t_end = current_traj_.getTimeSum();
-
-            for (double t = 0; t < t_end; t += 0.1) {
-              if (map->getInflateOccupancy(current_traj_.evaluateDeBoorT(t))) {
-                is_need_replan = true;
-                break;
-              }
-            }
+          if (remain_length < max(min(total_length * 0.3, 12.0), 0.5)) {
+            is_need_replan_ = true;
           }
-
-          if (!is_need_replan) return;
         }
+
+        if (!is_need_replan_) return;
       }
 
       last_control_ = control;
@@ -221,6 +236,10 @@ namespace ego_planner
   {
     if (msg.poses[0].pose.position.z < -0.1)
       return;
+
+    if (exec_state_ == REPLAN_TRAJ) return;
+
+    is_need_replan_ = false;
 
     cout << "Triggered!" << endl;
     trigger_ = true;
@@ -252,7 +271,7 @@ namespace ego_planner
       if (exec_state_ == WAIT_TARGET)
         changeFSMExecState(GEN_NEW_TRAJ, "TRIG");
       else if (exec_state_ == EXEC_TRAJ)
-        changeFSMExecState(REPLAN_TRAJ, "TRIG");
+        changeFSMExecState(GEN_NEW_TRAJ, "TRIG");
 
       // visualization_->displayGoalPoint(end_pt_, Eigen::Vector4d(1, 0, 0, 1), 0.3, 0);
       visualization_->displayGlobalPathList(gloabl_traj, 0.1, 0);
@@ -378,7 +397,7 @@ namespace ego_planner
         changeFSMExecState(EXEC_TRAJ, "FSM");
         flag_escape_emergency_ = true;
       }
-      else
+      else if (exec_state_ == GEN_NEW_TRAJ)
       {
         changeFSMExecState(GEN_NEW_TRAJ, "FSM");
       }
@@ -392,7 +411,7 @@ namespace ego_planner
       {
         changeFSMExecState(EXEC_TRAJ, "FSM");
       }
-      else
+      else if (exec_state_ == REPLAN_TRAJ)
       {
         changeFSMExecState(REPLAN_TRAJ, "FSM");
       }
@@ -481,6 +500,8 @@ namespace ego_planner
 
     if (!success)
     {
+      if (planner_manager_->getFailuresCount() < 0) return false;
+
       success = callReboundReplan(true, false);
       //changeFSMExecState(EXEC_TRAJ, "FSM");
       if (!success)
@@ -498,45 +519,56 @@ namespace ego_planner
 
   void EGOReplanFSM::checkCollisionCallback(const ros::TimerEvent &e)
   {
-    LocalTrajData *info = &planner_manager_->local_data_;
-    auto map = planner_manager_->grid_map_;
-
-    if (exec_state_ == WAIT_TARGET || info->start_time_.toSec() < 1e-5)
-      return;
-
     /* ---------- check trajectory ---------- */
-    constexpr double time_step = 0.01;
-    double t_cur = (ros::Time::now() - info->start_time_).toSec();
-    double t_2_3 = info->duration_ * 2 / 3;
-    for (double t = t_cur; t < info->duration_; t += time_step)
-    {
-      if (t_cur < t_2_3 && t >= t_2_3) // If t_cur < t_2_3, only the first 2/3 partition of the trajectory is considered valid and will get checked.
-        break;
+    auto map = planner_manager_->grid_map_;
+    double t_end = current_traj_.getTimeSum();
 
-      if (map->getInflateOccupancy(info->position_traj_.evaluateDeBoorT(t)))
-      {
-        if (planFromCurrentTraj()) // Make a chance
-        {
-          changeFSMExecState(EXEC_TRAJ, "SAFETY");
-          return;
-        }
-        else
-        {
-          if (t - t_cur < emergency_time_) // 0.8s of emergency time
-          {
-            ROS_WARN("Suddenly discovered obstacles. emergency stop! time=%f", t - t_cur);
-            changeFSMExecState(EMERGENCY_STOP, "SAFETY");
-          }
-          else
-          {
-            //ROS_WARN("current traj in collision, replan.");
-            changeFSMExecState(REPLAN_TRAJ, "SAFETY");
-          }
-          return;
-        }
+    for (double t = 0; t < t_end; t += 0.1) {
+      if (map->getInflateOccupancy(current_traj_.evaluateDeBoorT(t))) {
+        is_need_replan_ = true;
         break;
       }
     }
+
+    // LocalTrajData *info = &planner_manager_->local_data_;
+    // auto map = planner_manager_->grid_map_;
+
+    // if (exec_state_ == WAIT_TARGET || info->start_time_.toSec() < 1e-5)
+    //   return;
+
+    // /* ---------- check trajectory ---------- */
+    // constexpr double time_step = 0.01;
+    // double t_cur = (ros::Time::now() - info->start_time_).toSec();
+    // double t_2_3 = info->duration_ * 2 / 3;
+    // for (double t = t_cur; t < info->duration_; t += time_step)
+    // {
+    //   if (t_cur < t_2_3 && t >= t_2_3) // If t_cur < t_2_3, only the first 2/3 partition of the trajectory is considered valid and will get checked.
+    //     break;
+
+    //   if (map->getInflateOccupancy(info->position_traj_.evaluateDeBoorT(t)))
+    //   {
+    //     if (planFromCurrentTraj()) // Make a chance
+    //     {
+    //       changeFSMExecState(EXEC_TRAJ, "SAFETY");
+    //       return;
+    //     }
+    //     else
+    //     {
+    //       if (t - t_cur < emergency_time_) // 0.8s of emergency time
+    //       {
+    //         ROS_WARN("Suddenly discovered obstacles. emergency stop! time=%f", t - t_cur);
+    //         changeFSMExecState(EMERGENCY_STOP, "SAFETY");
+    //       }
+    //       else
+    //       {
+    //         //ROS_WARN("current traj in collision, replan.");
+    //         changeFSMExecState(REPLAN_TRAJ, "SAFETY");
+    //       }
+    //       return;
+    //     }
+    //     break;
+    //   }
+    // }
   }
 
   bool EGOReplanFSM::callReboundReplan(bool flag_use_poly_init, bool flag_randomPolyTraj)
@@ -582,6 +614,22 @@ namespace ego_planner
       bspline_pub_.publish(bspline);
 
       visualization_->displayOptimalList(info->position_traj_.get_control_points(), 0);
+
+      reboundReplan_fail_count_ = 0;
+
+    } else {
+      reboundReplan_fail_count_++;
+
+      if (planner_manager_->getFailuresCount() < 0) {
+        ROS_WARN("Remove wrong goal. reboundReplan_fail_count : %d", reboundReplan_fail_count_);
+
+        traj_pts_.clear();
+        visualization_->displayTrajList(traj_pts_, 0);
+
+        have_target_ = false;
+        have_new_target_ = false;
+        changeFSMExecState(WAIT_TARGET, "TRIG");
+      }
     }
 
     return plan_success;

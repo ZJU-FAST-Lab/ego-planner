@@ -36,6 +36,8 @@
 
   <arg name="flight_type"/>
 
+  <arg name="control_zero_reset" default="false" />
+
   <!-- main node -->
   <node pkg="ego_planner" name="ego_planner_node" type="ego_planner_node" output="screen">
     <remap from="/odom_world" to="$(arg odometry_topic)"/>
@@ -69,6 +71,8 @@
     <param name="fsm/waypoint4_y" value="$(arg point4_y)" type="double"/>
     <param name="fsm/waypoint4_z" value="$(arg point4_z)" type="double"/>
 
+    <param name="fsm/control_zero_reset" value="$(arg control_zero_reset)" type="bool"/>
+
     <param name="grid_map/resolution"      value="0.1" /> 
     <param name="grid_map/map_size_x"   value="$(arg map_size_x_)" /> 
     <param name="grid_map/map_size_y"   value="$(arg map_size_y_)" /> 
@@ -78,7 +82,7 @@
     <param name="grid_map/local_update_range_z"  value="1.5" /> 
     <param name="grid_map/obstacles_inflation"     value="0.199" /> 
     <param name="grid_map/local_map_margin" value="30"/>
-    <param name="grid_map/ground_height"        value="-0.11"/>
+    <param name="grid_map/ground_height"        value="-1.11"/>
     <!-- camera parameter -->
     <param name="grid_map/cx" value="$(arg cx)"/>
     <param name="grid_map/cy" value="$(arg cy)"/>

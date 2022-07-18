@@ -36,7 +36,7 @@ int traj_id_;
 // yaw control
 double last_yaw_, last_yaw_dot_;
 double time_forward_;
-bool use_velocity_control_;
+bool use_velocity_control_, enable_rotate_head_;
 double forward_length_;
 
 void bsplineCallback(ego_planner::BsplineConstPtr msg)
@@ -186,11 +186,14 @@ void cmdCallback(const ros::TimerEvent &e)
   if (receive_traj_) {
     Eigen::Vector3d closestPoint = findClosestPoint(odom_pos_, traj_[0]);
     Eigen::Vector3d refTarget = findClosestPoint(closestPoint, traj_[0], forward_length_);
-    // Eigen::Vector3d refTarget_forward = findClosestPoint(closestPoint, traj_[0], forward_length_ * 2.5);
+    Eigen::Vector3d refTarget_forward = findClosestPoint(closestPoint, traj_[0], forward_length_ * 2.5);
     Eigen::Vector3d sub_vector(refTarget.x() - odom_pos_.x(), refTarget.y() - odom_pos_.y(), 0);
-    // double ref_yaw = atan2(refTarget_forward.y() - odom_pos_.y(), refTarget_forward.x() - odom_pos_.x());
+    
     double ref_yaw = last_yaw_;
-    // last_yaw_ = ref_yaw;
+    if (enable_rotate_head_) {
+      ref_yaw = atan2(refTarget_forward.y() - odom_pos_.y(), refTarget_forward.x() - odom_pos_.x());
+      last_yaw_ = ref_yaw;
+    }
 
     // visualize target
     {
@@ -232,20 +235,29 @@ void cmdCallback(const ros::TimerEvent &e)
       msg.velocity.x = refVel.x();
       msg.velocity.y = refVel.y();
       msg.velocity.z = refVel.z();
+
+      if ((ros::Time::now() - start_time_).toSec() < 1.0) {
+        msg.velocity.x = 0.0;
+        msg.velocity.y = 0.0;
+        msg.velocity.z = 0.0;
+      }
     }
 
     if (sub_vector.norm() > 0.5) {
       msg.type_mask |= msg.IGNORE_YAW_RATE;
       msg.yaw = ref_yaw;
     } else if (sub_vector.norm() < 0.1) {
+      msg.type_mask |= msg.IGNORE_YAW;
       receive_traj_ = false;
       last_odom_pos_ = odom_pos_;
     } else {
+      msg.type_mask |= msg.IGNORE_YAW;
       last_odom_pos_ = odom_pos_;
     }
 
   } else {
     msg.type_mask |= msg.IGNORE_VX | msg.IGNORE_VY | msg.IGNORE_VZ;
+    last_yaw_ = odom_yaw_;
 
     Eigen::Vector3d waypoint_pose(control_.position.x, control_.position.y, 0);
 
@@ -263,7 +275,6 @@ void cmdCallback(const ros::TimerEvent &e)
     if (abs(waypoint_yaw) > 0.1) {
       msg.type_mask |= msg.IGNORE_YAW;
       msg.yaw_rate = waypoint_yaw;
-      last_yaw_ = odom_yaw_;
     } else {
       msg.type_mask |= msg.IGNORE_YAW_RATE;
       msg.yaw = last_yaw_;
@@ -328,6 +339,7 @@ int main(int argc, char **argv)
 
   nh.param("traj_server/use_velocity_control", use_velocity_control_, false);
   nh.param("traj_server/forward_length", forward_length_, 1.0);
+  nh.param("traj_server/enable_rotate_head", enable_rotate_head_, true);
 
   ros::Duration(1.0).sleep();
 

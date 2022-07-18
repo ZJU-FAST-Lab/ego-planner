@@ -42,6 +42,8 @@ namespace ego_planner
     GlobalTrajData global_data_;
     GridMap::Ptr grid_map_;
 
+    int getFailuresCount() { return continous_failures_count_; }
+
   private:
     /* main planning algorithms & modules */
     PlanningVisualization::Ptr visualization_;
