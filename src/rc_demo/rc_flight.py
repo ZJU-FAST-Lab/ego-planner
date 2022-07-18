@@ -5,7 +5,7 @@ import rospy
 
 from mavros_msgs.msg import RCIn
 
-from rc_demo import ControlMessage
+from utils import ControlMessage
 
 class RCHandler:
     """Receieve RC stick data."""
