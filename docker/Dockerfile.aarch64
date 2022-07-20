@@ -67,6 +67,14 @@ RUN sudo apt-get install -y ros-melodic-catkin python-catkin-tools \
 RUN git clone https://github.com/wjakob/tbb.git && cd tbb/build && cmake .. && make -j && sudo make install
 RUN echo "export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/usr/local/lib/" >> ~/.bashrc
 
+# Install Livox-SDK
+WORKDIR /home/user
+RUN git clone https://github.com/Livox-SDK/Livox-SDK.git \
+    && cd Livox-SDK/build \
+    && cmake .. \
+    && make -j \
+    && sudo make install
+
 # Install MavROS
 WORKDIR /home/user
 RUN sudo apt-get install -y ros-melodic-mavros ros-melodic-mavros-extras \

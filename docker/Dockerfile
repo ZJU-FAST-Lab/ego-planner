@@ -62,6 +62,13 @@ RUN wget http://ceres-solver.org/ceres-solver-2.1.0.tar.gz \
     && mkdir ceres-bin && cd ceres-bin \
     && cmake ../ceres-solver-2.1.0 && make -j3 && sudo make install
 
+# Build livox_ros_driver
+RUN echo "source /opt/ros/melodic/setup.sh" >> /home/user/.bashrc
+WORKDIR /home/user
+RUN git clone https://github.com/Livox-SDK/livox_ros_driver.git ws_livox/src \
+    && /bin/bash -c '. /opt/ros/melodic/setup.bash; cd ~/ws_livox; catkin build' 
+RUN echo "source ~/ws_livox/devel/setup.bash" >> /home/user/.bashrc
+
 # Prebuild the algorithms
 WORKDIR /home/user
 RUN mkdir -p ~/catkin_ws/src
