@@ -50,6 +50,9 @@ namespace ego_planner
     if (p_ > u_.rows() || m_ - p_ > u_.rows())
       return false;
 
+    if (p_ < 1)
+        return false;
+
     um = u_(p_);
     um_p = u_(m_ - p_);
 
