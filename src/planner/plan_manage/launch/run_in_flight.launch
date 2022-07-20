@@ -1,7 +1,7 @@
 <launch>
   <!-- size of map, change the size inflate x, y, z according to your application -->
-  <arg name="map_size_x" value="100.0"/>
-  <arg name="map_size_y" value="100.0"/>
+  <arg name="map_size_x" value="150.0"/>
+  <arg name="map_size_y" value="150.0"/>
   <arg name="map_size_z" value=" 10.0"/>
 
   <!-- topic of your odometry such as VIO or LIO -->
@@ -66,7 +66,7 @@
     <arg name="point4_y" value="0.0" />
     <arg name="point4_z" value="1.0" />
     
-    <arg name="control_zero_reset" value="false" />
+    <arg name="control_zero_reset" value="true" />
 
   </include>
 
@@ -76,7 +76,7 @@
 
     <remap from="/odom_world" to="$(arg odom_topic)"/>
     <param name="traj_server/time_forward" value="1.0" type="double"/>
-    <param name="traj_server/use_velocity_control" value="true" type="bool"/>
+    <param name="traj_server/use_velocity_control" value="false" type="bool"/>
     <param name="traj_server/enable_rotate_head" value="true" type="bool"/>
   </node>
 
