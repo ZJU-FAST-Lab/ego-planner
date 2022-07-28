@@ -192,6 +192,7 @@ void cmdCallback(const ros::TimerEvent &e)
     double ref_yaw = last_yaw_;
     if (enable_rotate_head_) {
       ref_yaw = atan2(refTarget_forward.y() - odom_pos_.y(), refTarget_forward.x() - odom_pos_.x());
+      last_yaw_ = ref_yaw;
     }
 
     // visualize target

@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 import pygame
 import sys
 import math
@@ -6,8 +6,7 @@ import math
 
 import rospy
 from std_msgs.msg import String
-from mavros_msgs.srv import SetMode
-from mavros_msgs.srv import CommandBool
+from utils import ControlMessage, MAVROSCommander
 
 white = (255, 255, 255)
 red = (255, 50, 50)
@@ -19,7 +18,7 @@ screen = None
 SCREEN_WIDTH = 520
 SCREEN_HEIGHT = 200
 
-# @dataclass 
+# @dataclass
 class Stick:
     def __init__(self, center_x, center_y, radius):
         self.center_x = center_x
@@ -33,7 +32,7 @@ class Stick:
         self.updated_y = False
         self.radius = radius
         self.y_lock = False
-        
+
 
     def release(self):
         if not self.updated_x:
@@ -55,7 +54,7 @@ class Stick:
 
         self.updated_x = False
         self.updated_y = False
-    
+
     def set_pose(self, x=float, y=float):
         dist = math.sqrt(x * x + y * y)
 
@@ -65,7 +64,7 @@ class Stick:
         else:
             self.pos_x = x / math.sqrt(x * x + y * y) * self.radius
             self.pos_y = y / math.sqrt(x * x + y * y) * self.radius
-            
+
         self.updated_x
         self.updated_y
 
@@ -75,28 +74,7 @@ class Stick:
     def get_pixel(self):
         return (self.center_x + self.pos_x, self.center_y + self.pos_y)
 
-class MAVROSCommander:
-    def __init__(self):
-        self.set_mode_client = rospy.ServiceProxy('mavros/set_mode', SetMode)
-        self.arming_client = rospy.ServiceProxy('mavros/cmd/arming', CommandBool)
 
-    def set_mode(self, mode):
-        offb_set_mode = SetMode()
-        offb_set_mode.custom_mode = mode
-        try:
-            resp1 = self.set_mode_client(0, offb_set_mode.custom_mode)
-            return resp1.mode_sent
-        except:
-            return False
-
-    def set_arm(self, value):
-        arm_cmd = CommandBool()
-        arm_cmd.value = value
-        try:
-            arm_client_1 = self.arming_client(arm_cmd.value)
-            return arm_client_1.success
-        except:
-            return False
 
 class Button:
     def __init__(self, x, y, w, h):
@@ -118,7 +96,7 @@ class Button:
     def set_text(self, text, color=(0, 0, 0)):
         self.font = pygame.font.SysFont('', 30)
         self.text_surface = self.font.render(text, True, color)
-    
+
     def set_text_offset(self, x, y):
         self.off_x = x
         self.off_y = y
@@ -136,8 +114,7 @@ class Button:
 
 class Controller:
     def __init__(self):
-        self.pub = rospy.Publisher('/rc_demo', String, queue_size=1)
-        self.string_msg = String()
+        self.control_msg = ControlMessage()
         self.pygame_img = None
 
         self.stick_1 = Stick(100,100,60)
@@ -261,7 +238,7 @@ class Controller:
         pygame.draw.circle(screen, white, self.stick_2.get_center(), self.stick_2.radius, width=1)
         pygame.draw.circle(screen, white, self.stick_1.get_pixel(), 15)
         pygame.draw.circle(screen, red, self.stick_2.get_pixel(), 15)
-        
+
         self.button_1.draw(screen)
         self.button_2.draw(screen)
         self.button_3.draw(screen)
@@ -278,7 +255,7 @@ class Controller:
         else: # skip motion
             roll = 0
             pitch = 0
-            
+
         if self.stick_1_pressed:
             yaw = float(-self.stick_1.pos_x) / float(self.stick_1.radius)
             throttle = float(-self.stick_1.pos_y) / float(self.stick_1.radius)
@@ -286,13 +263,14 @@ class Controller:
             yaw = 0
             throttle = float(-self.stick_1.pos_y) / float(self.stick_1.radius)
 
-        self.string_msg.data = "{roll},{pitch},{yaw},{throttle}".format(roll=roll,pitch=pitch,yaw=yaw,throttle=throttle)
-        self.pub.publish(self.string_msg)
+        self.control_msg.send_control(roll, pitch, yaw, throttle)
 
 
 if __name__ == '__main__':
     args = rospy.myargv(argv=sys.argv)
-    
+    SCREEN_WIDTH = 520
+    SCREEN_HEIGHT = 200
+
     rospy.init_node("key_control_node", anonymous=True)
 
     pygame.init()

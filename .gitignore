@@ -12,3 +12,5 @@ rebound_planner_BB.zip
 sim_ws/build/
 sim_ws/devel/
 sim_ws/build/
+__pycache__
+.last_exec_cont_id.txt

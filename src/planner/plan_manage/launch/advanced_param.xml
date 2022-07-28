@@ -73,14 +73,14 @@
 
     <param name="fsm/control_zero_reset" value="$(arg control_zero_reset)" type="bool"/>
 
-    <param name="grid_map/resolution"      value="0.1" /> 
+    <param name="grid_map/resolution"      value="0.2" /> 
     <param name="grid_map/map_size_x"   value="$(arg map_size_x_)" /> 
     <param name="grid_map/map_size_y"   value="$(arg map_size_y_)" /> 
     <param name="grid_map/map_size_z"   value="$(arg map_size_z_)" /> 
-    <param name="grid_map/local_update_range_x"  value="15.5" /> 
-    <param name="grid_map/local_update_range_y"  value="15.5" /> 
-    <param name="grid_map/local_update_range_z"  value="1.5" /> 
-    <param name="grid_map/obstacles_inflation"     value="0.199" /> 
+    <param name="grid_map/local_update_range_x"  value="25.5" /> 
+    <param name="grid_map/local_update_range_y"  value="25.5" /> 
+    <param name="grid_map/local_update_range_z"  value="3.5" /> 
+    <param name="grid_map/obstacles_inflation"     value="0.399" /> 
     <param name="grid_map/local_map_margin" value="30"/>
     <param name="grid_map/ground_height"        value="-1.11"/>
     <!-- camera parameter -->
