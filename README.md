@@ -138,7 +138,7 @@ Please remember to also change the 'arch' and 'code' flags in the line of
       -gencode arch=compute_61,code=sm_61;
     ) 
 ``` 
-in _CMakeList.txt_, if you encounter compiling error due to different Nvidia graphics card you use. You can check the right code [here](https://github.com/tpruvot/ccminer/wiki/Compatibility).
+in _CMakeList.txt_. If you encounter compiling error due to different Nvidia graphics card you use or you can not see proper depth images as expected, you can check the right code via [link1](https://arnon.dk/matching-sm-architectures-arch-and-gencode-for-various-nvidia-cards/) or [link2](https://github.com/tpruvot/ccminer/wiki/Compatibility).
  
 Don't forget to re-compile the code!
 
