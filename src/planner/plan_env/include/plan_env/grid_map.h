@@ -46,17 +46,17 @@ struct matrix_hash : std::unary_function<T, size_t> {
 struct MappingParameters {
 
   /* map properties */
-  Eigen::Vector3d map_origin_, map_size_;
+  Eigen::Vector3d map_origin_, map_size_; // 地图起始原点，地图大小
   Eigen::Vector3d map_min_boundary_, map_max_boundary_;  // map range in pos
   Eigen::Vector3i map_voxel_num_;                        // map range in index
-  Eigen::Vector3d local_update_range_;
-  double resolution_, resolution_inv_;
-  double obstacles_inflation_;
-  string frame_id_;
-  int pose_type_;
+  Eigen::Vector3d local_update_range_;   //局部地图的更新频率
+  double resolution_, resolution_inv_;    // 分辨率，逆分辨率
+  double obstacles_inflation_;   // 障碍物膨胀尺寸
+  string frame_id_;  //地图的坐标系
+  int pose_type_;   //
 
   /* camera parameters */
-  double cx_, cy_, fx_, fy_;
+  double cx_, cy_, fx_, fy_;   //相机内参
 
   /* depth image projection filtering */
   double depth_filter_maxdist_, depth_filter_mindist_, depth_filter_tolerance_;
@@ -72,7 +72,7 @@ struct MappingParameters {
   double min_ray_length_, max_ray_length_;  // range of doing raycasting
 
   /* local map update and clear */
-  int local_map_margin_;
+  int local_map_margin_;  // 局部地图的大小，超出了就要删除
 
   /* visualization and computation time display */
   double visualization_truncate_height_, virtual_ceil_height_, ground_height_;
@@ -87,17 +87,17 @@ struct MappingParameters {
 struct MappingData {
   // main map data, occupancy of each voxel and Euclidean distance
 
-  std::vector<double> occupancy_buffer_;
-  std::vector<char> occupancy_buffer_inflate_;
+  std::vector<double> occupancy_buffer_;  
+  std::vector<char> occupancy_buffer_inflate_;  
 
   // camera position and pose data
 
-  Eigen::Vector3d camera_pos_, last_camera_pos_;
-  Eigen::Quaterniond camera_q_, last_camera_q_;
+  Eigen::Vector3d camera_pos_, last_camera_pos_;  //当前相机的位置，上一个相机的位置
+  Eigen::Quaterniond camera_q_, last_camera_q_;  //当前相机的姿态，上一个相机的姿态
 
   // depth image data
 
-  cv::Mat depth_image_, last_depth_image_;
+  cv::Mat depth_image_, last_depth_image_;    // 当前深度图，上一张深度图
   int image_cnt_;
 
   Eigen::Matrix4d cam2body_;
@@ -110,8 +110,8 @@ struct MappingData {
 
   // depth image projected point cloud
 
-  vector<Eigen::Vector3d> proj_points_;
-  int proj_points_cnt;
+  vector<Eigen::Vector3d> proj_points_;       //由深度相机投影出来的点云列表
+  int proj_points_cnt;  
 
   // flag buffers for speeding up raycasting
 
@@ -122,18 +122,18 @@ struct MappingData {
 
   // range of updating grid
 
-  Eigen::Vector3i local_bound_min_, local_bound_max_;
+  Eigen::Vector3i local_bound_min_, local_bound_max_;   //需要更新的地图下界和上界
 
   // computation time
 
-  double fuse_time_, max_fuse_time_;
-  int update_num_;
+  double fuse_time_, max_fuse_time_;  //将单次观测融入到局部地图的时间？，最大融入时间
+  int update_num_;   // 更新次数
 
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 };
 
-class GridMap {
-public:
+class GridMap {   //用来存储地图类
+public: 
   GridMap() {}
   ~GridMap() {}
 
@@ -182,8 +182,8 @@ public:
   EIGEN_MAKE_ALIGNED_OPERATOR_NEW
 
 private:
-  MappingParameters mp_;
-  MappingData md_;
+  MappingParameters mp_; //地图参数数据结构
+  MappingData md_;  //地图数据结构
 
   // get depth image and camera pose
   void depthPoseCallback(const sensor_msgs::ImageConstPtr& img,

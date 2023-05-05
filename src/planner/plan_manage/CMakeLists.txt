@@ -27,6 +27,7 @@ add_message_files(
   FILES
   Bspline.msg
   DataDisp.msg
+  FeasibleVelocity.msg
   )
   
 # Generate added messages and services with any dependencies listed here
@@ -58,6 +59,7 @@ add_executable(ego_planner_node
   src/ego_replan_fsm.cpp
   src/planner_manager.cpp
   )
+  
 target_link_libraries(ego_planner_node 
   ${catkin_LIBRARIES}
   )
@@ -66,5 +68,9 @@ add_dependencies(ego_planner_node ${${PROJECT_NAME}_EXPORTED_TARGETS})
 add_executable(traj_server src/traj_server.cpp)
 target_link_libraries(traj_server ${catkin_LIBRARIES})
 add_dependencies(traj_server ${${PROJECT_NAME}_EXPORTED_TARGETS})
+
+add_executable(ellipsoid src/ellipsoid_publisher.cpp)
+target_link_libraries(ellipsoid ${catkin_LIBRARIES})
+add_dependencies(ellipsoid ${${PROJECT_NAME}_EXPORTED_TARGETS})
 
 

@@ -66,9 +66,10 @@ if(ENABLE_CUDA)
   )
 else(ENABLE_CUDA)
   find_package(Eigen3 REQUIRED)
+  # find_package(catkin REQUIRED COMPONENTS
+  #     roscpp roslib cmake_modules pcl_ros sensor_msgs geometry_msgs nav_msgs quadrotor_msgs)
   find_package(catkin REQUIRED COMPONENTS
-      roscpp roslib cmake_modules pcl_ros sensor_msgs geometry_msgs nav_msgs quadrotor_msgs)
-  
+        roscpp roslib  pcl_ros sensor_msgs geometry_msgs nav_msgs quadrotor_msgs)
   catkin_package(
       DEPENDS Eigen
       CATKIN_DEPENDS roscpp roslib pcl_ros

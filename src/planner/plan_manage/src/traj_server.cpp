@@ -24,6 +24,22 @@ int traj_id_;
 double last_yaw_, last_yaw_dot_;
 double time_forward_;
 
+
+// // ellipsoid struct
+// struct ELLIPSOID
+// {
+//     Eigen::Vector3d center;
+//     double rx,ry,rz;
+//     Eigen::Matrix3d R;
+//     ELLIPSOID(const Eigen::Vector3d &c, const Eigen::Vector3d &r,const Eigen::Matrix3d &rot)
+//     :center(c),rx(r.x()),ry(r.y()),rz(r.z()),R(rot){};
+//     ELLIPSOID(){};
+// };
+
+// ELLIPSOID ellipsoid;
+
+
+
 void bsplineCallback(ego_planner::BsplineConstPtr msg)
 {
   // parse pos traj
@@ -225,6 +241,8 @@ void cmdCallback(const ros::TimerEvent &e)
   cmd.yaw_dot = yaw_yawdot.second;
 
   last_yaw_ = cmd.yaw;
+  
+  
 
   pos_cmd_pub.publish(cmd);
 }
