@@ -29,10 +29,13 @@ void feasibleVelocityCallback(const nav_msgs::OdometryConstPtr &msg)
 {
     Eigen::Vector3d pos(Eigen::Vector3d::Zero()), vel(Eigen::Vector3d::Zero()), acc(Eigen::Vector3d::Zero());
     Eigen::Quaterniond orient;
+    printf("x:%lf,y:%lf,z:%lf",msg->pose.pose.position.x,msg->pose.pose.position.x,msg->pose.pose.position.z);
+
     pos(0) = msg->pose.pose.position.x;
-    pos(1) = msg->pose.pose.position.y;
+    pos(1) = msg->pose.pose.position.x;
     pos(2) = msg->pose.pose.position.z;
 
+    printf("x:%lf,y:%lf,z:%lf",pos(0),pos(1),pos(2));
     vel(0) = msg->twist.twist.linear.x;
     vel(1) = msg->twist.twist.linear.y;
     vel(2) = msg->twist.twist.linear.z;
@@ -85,8 +88,6 @@ int main(int argc,char **argv)
 {
     ros::init(argc,argv,"draw_ellipsoid");
     ros::NodeHandle node;
-
-
 
     ros::Subscriber odom_sub = node.subscribe("visual_slam/odom", 10, feasibleVelocityCallback);
 
