@@ -7,9 +7,9 @@
   <param name="resolution" type="double" value="0.15"/>
 
   <!-- map size unit meter-->
-  <param name="x_length" type="int" value="40"/>
-  <param name="y_length" type="int" value="20"/>
-  <param name="z_length" type="int" value="5"/>
+  <param name="x_length" type="int" value="10"/>
+  <param name="y_length" type="int" value="10"/>
+  <param name="z_length" type="int" value="10"/>
 
   <param name="type" type="int" value="1"/>
     <!-- 1 perlin noise parameters -->
@@ -27,4 +27,7 @@
     <param name="fractal"       type="int"    value="1"/>
     <param name="attenuation"   type="double" value="0.1"/>
   </node>
+  <node name="rviz" pkg="rviz" type="rviz"
+      args="-d $(find mockamap)/config/rviz.rviz"
+  />
 </launch>

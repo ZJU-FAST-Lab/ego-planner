@@ -1,0 +1,30 @@
+<launch>
+    <node pkg ="map_generator" name ="random_forest" type ="random_forest" output = "screen">    
+        <remap from="~odometry"   to="$(arg odometry_topic)"/>    
+        <param name="init_state_x"   value="$(arg init_x)"/>
+        <param name="init_state_y"   value="$(arg init_y)"/>
+        <param name="map/x_size"     value="$(arg map_size_x_)" />
+        <param name="map/y_size"     value="$(arg map_size_y_)" />
+        <param name="map/z_size"     value="$(arg map_size_z_)" />
+        <param name="map/resolution" value="0.1"/>        
+
+        <param name="ObstacleShape/seed" value="1"/>
+        <param name="map/obs_num"    value="$(arg p_num)"/>
+        <param name="ObstacleShape/lower_rad" value="0.5"/>
+        <param name="ObstacleShape/upper_rad" value="0.7"/>
+        <param name="ObstacleShape/lower_hei" value="0.0"/>
+        <param name="ObstacleShape/upper_hei" value="3.0"/>        
+
+        <param name="map/circle_num" value="$(arg c_num)"/>        
+        <param name="ObstacleShape/radius_l" value="0.7"/>        
+        <param name="ObstacleShape/radius_h" value="0.5"/>        
+        <param name="ObstacleShape/z_l" value="0.7"/>        
+        <param name="ObstacleShape/z_h" value="0.8"/>        
+        <param name="ObstacleShape/theta" value="0.5"/>        
+
+        <param name="sensing/radius" value="5.0"/>        
+        <param name="sensing/rate"   value="10.0"/>  
+
+        <param name="min_distance" value="$(arg min_dist)"/>         
+    </node>
+</launch>

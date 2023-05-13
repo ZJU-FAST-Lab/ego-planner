@@ -40,7 +40,7 @@
 
     <!-- 1: use 2D Nav Goal to select goal  -->
     <!-- 2: use global waypoints below  -->
-    <arg name="flight_type" value="2" />
+    <arg name="flight_type" value="1" />
     
     <!-- global waypoints -->
     <!-- It generates a piecewise min-snap traj passing all waypoints -->
@@ -97,5 +97,14 @@
 
   <include file="$(find ego_planner)/launch/rviz.launch"/>
 
-  <node pkg="ego_planner" name="ellipsoid" type="ellipsoid" output="screen"/>
+  <node pkg="perceptive" name="perceptive_sphere" type="perceptive_node" output="screen">
+    <param name="ball_radius"  value="3.0"/>
+    <param name="min_radius" value="1.0"/>
+    <param name="max_radius" value="5.0"/>
+    <param name="cluster_points" value="10"/>
+    <param name="cluster_epsilon" value="0.2"/>
+    <param name="max_obs" value="5"/>
+
+
+  </node>
 </launch>

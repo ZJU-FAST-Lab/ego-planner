@@ -93,7 +93,7 @@ void
 Maps::pcl2ros()
 {
   pcl::toROSMsg(*info.cloud, *info.output);
-  info.output->header.frame_id = "world";
+  info.output->header.frame_id = "map";
   ROS_INFO("finish: infill %lf%%",
            info.cloud->width / (1.0 * info.sizeX * info.sizeY * info.sizeZ));
 }
@@ -887,6 +887,7 @@ Maps::Maze3DGen()
   }
 
   info.cloud->width  = info.cloud->points.size();
+  std::cout << info.cloud->width << std::endl;
   info.cloud->height = 1;
   ROS_INFO("the number of points before optimization is %d", info.cloud->width);
   info.cloud->points.resize(info.cloud->width * info.cloud->height);

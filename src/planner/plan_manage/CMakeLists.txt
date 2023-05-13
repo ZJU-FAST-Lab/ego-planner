@@ -27,7 +27,6 @@ add_message_files(
   FILES
   Bspline.msg
   DataDisp.msg
-  FeasibleVelocity.msg
   )
   
 # Generate added messages and services with any dependencies listed here
@@ -39,16 +38,17 @@ generate_messages(
 
 # catkin_package(CATKIN_DEPENDS message_runtime)
 catkin_package(
- INCLUDE_DIRS include
- LIBRARIES ego_planner
- CATKIN_DEPENDS plan_env path_searching bspline_opt traj_utils message_runtime
+  INCLUDE_DIRS include
+  LIBRARIES ego_planner
+  CATKIN_DEPENDS plan_env path_searching bspline_opt traj_utils message_runtime
 #  DEPENDS system_lib
 )
 
 include_directories(
   include
   SYSTEM
-  ${catkin_INCLUDE_DIRS} ${PROJECT_SOURCE_DIR}/include
+  ${catkin_INCLUDE_DIRS} 
+  ${PROJECT_SOURCE_DIR}/include
   ${EIGEN3_INCLUDE_DIR}
   ${PCL_INCLUDE_DIRS}
 )

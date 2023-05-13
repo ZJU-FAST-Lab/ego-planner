@@ -29,16 +29,21 @@ void feasibleVelocityCallback(const nav_msgs::OdometryConstPtr &msg)
 {
     Eigen::Vector3d pos(Eigen::Vector3d::Zero()), vel(Eigen::Vector3d::Zero()), acc(Eigen::Vector3d::Zero());
     Eigen::Quaterniond orient;
-    printf("x:%lf,y:%lf,z:%lf",msg->pose.pose.position.x,msg->pose.pose.position.x,msg->pose.pose.position.z);
+    // printf("1");
+    // printf("x:%lf,y:%lf,z:%lf",msg->pose.pose.position.x,msg->pose.pose.position.x,msg->pose.pose.position.z);
 
     pos(0) = msg->pose.pose.position.x;
-    pos(1) = msg->pose.pose.position.x;
+    pos(1) = msg->pose.pose.position.y;
     pos(2) = msg->pose.pose.position.z;
 
-    printf("x:%lf,y:%lf,z:%lf",pos(0),pos(1),pos(2));
-    vel(0) = msg->twist.twist.linear.x;
-    vel(1) = msg->twist.twist.linear.y;
-    vel(2) = msg->twist.twist.linear.z;
+    // printf("x:%lf,y:%lf,z:%lf",pos(0),pos(1),pos(2));
+    vel(0) = 10 * msg->twist.twist.linear.x;
+    vel(1) = 10 * msg->twist.twist.linear.y;
+    vel(2) = 10 * msg->twist.twist.linear.z;
+    // vel(0) = 5;
+    // vel(1) = 3;
+    // vel(2) = 2;
+
     vel = vel.array().abs();
     
     orient.w() = msg->pose.pose.orientation.w;
@@ -48,6 +53,35 @@ void feasibleVelocityCallback(const nav_msgs::OdometryConstPtr &msg)
     Eigen::Matrix3d rot = orient.toRotationMatrix();
     
     el = new ellipsoid(pos,vel,rot);
+
+
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = "world";
+    marker.header.stamp = ros::Time::now();
+    marker.type = visualization_msgs::Marker::SPHERE;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.id = 0;
+    marker.color.r = 1;
+    marker.color.g = 1;
+    marker.color.b = 0;
+    marker.color.a = 0.4;
+    
+    //set pose
+    marker.pose.position.x = el->center.x();
+    marker.pose.position.y = el->center.y();
+    marker.pose.position.z = el->center.z();
+    Eigen::Quaterniond r(el->R);
+    marker.pose.orientation.w = r.w();
+    marker.pose.orientation.x = r.x();
+    marker.pose.orientation.y = r.y();
+    marker.pose.orientation.z = r.z();
+
+    //set scale
+    marker.scale.x = el->abc.x();
+    marker.scale.y = el->abc.y();
+    marker.scale.z = el->abc.z();
+    ellipsoid_pub.publish(marker);
+    delete el;
 }
 
 
@@ -89,12 +123,15 @@ int main(int argc,char **argv)
     ros::init(argc,argv,"draw_ellipsoid");
     ros::NodeHandle node;
 
-    ros::Subscriber odom_sub = node.subscribe("visual_slam/odom", 10, feasibleVelocityCallback);
+    ros::Subscriber odom_sub = node.subscribe("/visual_slam/odom", 50, feasibleVelocityCallback);
+    // cout << 1;
 
     ellipsoid_pub = node.advertise<visualization_msgs::Marker>("/planning/ellipsoid",50);
 
-    ros::Timer ellipsoid_timer = node.createTimer(ros::Duration(0.01),drawEllipsoidCallback);
+    // cout << 2;
+    // ros::Timer ellipsoid_timer = node.createTimer(ros::Duration(0.01),drawEllipsoidCallback);
 
+    // cout << 3;
     ros::Duration(1.0).sleep();
     ros::spin();
 
