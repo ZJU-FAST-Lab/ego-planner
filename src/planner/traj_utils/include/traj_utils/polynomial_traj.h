@@ -231,8 +231,8 @@ public:
       /* jerk matrix */
       Eigen::MatrixXd mat_jerk(order, order);
       mat_jerk.setZero();
-      for (double i = 3; i < order; i += 1)
-        for (double j = 3; j < order; j += 1)
+      for (int i = 3; i < order; i += 1)
+        for (int j = 3; j < order; j += 1)
         {
           mat_jerk(i, j) =
               i * (i - 1) * (i - 2) * j * (j - 1) * (j - 2) * pow(ts, i + j - 5) / (i + j - 5);
