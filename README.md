@@ -4,6 +4,9 @@ It is more robust and safe, and therefore, is more recommended to use.
 If you have only one drone, just set the `drone_id` to `0` in EGO-Swarm's launch files.
 Of course, some topic names are changed from EGO-Planner, check it using `rqt_graph` and `rosnode info <package name>`.
 
+# ROS2 Support
+For the ROS2 version, please refer to the branch [ros2_version](https://github.com/ZJU-FAST-Lab/ego-planner-swarm/tree/ros2_version) of the repo ego-planner-swarm.
+
 # Quick Start within 3 Minutes 
 Compiling tests passed on ubuntu **16.04, 18.04 and 20.04** with ros installed.
 You can just execute the following commands one by one.
